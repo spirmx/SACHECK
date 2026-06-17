@@ -1,0 +1,32 @@
+[project]
+name = "sacheck"
+version = "1.0.0"
+description = "SA CHECK desktop work board"
+dependencies = [
+  "flet==0.85.3",
+  "pillow>=11.0.0",
+  "pywin32>=306",
+]
+
+[tool.flet]
+product = "SA CHECK"
+company = "Hoyturbro"
+copyright = "Copyright (c) 2026 Hoyturbro"
+
+[tool.flet.app]
+module = "app"
+exclude = [
+  ".venv",
+  "app",
+  "build",
+  "dist",
+  "release",
+  "cache",
+  "design",
+  "installer",
+  "tools",
+  "__pycache__",
+]
+
+[tool.flet.windows]
+artifact = "SACHECK"
