@@ -1,0 +1,19 @@
+SA CHECK
+
+Developer / Creator:
+HOYTURBRO
+
+Publisher:
+HOYTURBRO
+
+Alias:
+Hoyturbro
+
+Product:
+SA CHECK Desktop Work Board
+
+Copyright:
+Copyright (c) 2026 HOYTURBRO
+
+Notes:
+This production build is prepared as a native Windows standalone app.

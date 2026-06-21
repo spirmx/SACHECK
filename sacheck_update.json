@@ -1,0 +1,24 @@
+{
+  "version": "1.0.2",
+  "release_date": "2026-06-21",
+  "required": false,
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "notes": [
+    "SA CHECK V1.0.2 Git update platform and theme apply update.",
+    "Update checks now read sacheck_update.json from https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json.",
+    "Installer downloads from the repository release folder.",
+    "Google Drive update channel was removed from the app flow.",
+    "Theme changes now wait for the Apply theme button.",
+    "SA CHECK V1.0.1 Finally theme and sidebar media update.",
+    "Fixed red Unknown control: FilePicker screen by registering FilePicker as a Flet service for the packaged runtime.",
+    "Added native Windows folder picker fallback for project folders, Work folder settings, and relink actions.",
+    "Fixed Settings screen crash where the sidebar/menu could disappear on some Flet runtimes.",
+    "Fixed Work folder picker in Settings so Choose Work folder opens the Windows folder dialog correctly.",
+    "Added App Theme presets: Ocean Pro, Candy Cartoon, Sakura Desk, Mint Studio, Sunset Pop, Night Arcade, and Graphite Focus.",
+    "Added sidebar profile media upload for PNG, JPG, WEBP, BMP, and animated GIF.",
+    "Added online/offline switch with confirmation in the sidebar.",
+    "Update button appears above the user guide button only when a newer version is available.",
+    "User guide layout is organized into clearer sections.",
+    "Offline-first app behavior is preserved; updates do not clear user Work folders, settings, or cache."
+  ]
+}

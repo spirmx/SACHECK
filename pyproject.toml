@@ -10,8 +10,8 @@ dependencies = [
 
 [tool.flet]
 product = "SA CHECK"
-company = "Hoyturbro"
-copyright = "Copyright (c) 2026 Hoyturbro"
+company = "HOYTURBRO"
+copyright = "Copyright (c) 2026 HOYTURBRO"
 
 [tool.flet.app]
 module = "app"

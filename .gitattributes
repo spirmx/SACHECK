@@ -1,5 +1,0 @@
-*.md text eol=lf working-tree-encoding=UTF-8
-*.py text eol=lf working-tree-encoding=UTF-8
-*.ps1 text eol=crlf working-tree-encoding=UTF-8
-*.toml text eol=lf working-tree-encoding=UTF-8
-*.json text eol=lf working-tree-encoding=UTF-8

@@ -4,10 +4,15 @@ import shutil
 import subprocess
 import sys
 import uuid
+import urllib.error
+import urllib.request
 import webbrowser
 import calendar
+import csv
 import html
 import time
+import re
+import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -42,6 +47,33 @@ STATUS_BY_FILTER = {"Waiting": STATUS_PENDING, "Doing": STATUS_PROGRESS, "Comple
 STATUS_LABELS = {STATUS_PENDING: "Waiting", STATUS_PROGRESS: "Doing", STATUS_DONE: "Success"}
 FILE_TYPES = ["Other", "Word", "Excel", "Google Sheet", "Miro", "Web", "Project", "Link"]
 MAX_GROUP_RENDER_ITEMS = 80
+STATUS_THEME_PRESETS = {
+    "Classic Blue": {
+        STATUS_PENDING: ("#EFF6FF", "#2563EB"),
+        STATUS_PROGRESS: ("#FFFBEB", "#D97706"),
+        STATUS_DONE: ("#F0FDF4", "#16A34A"),
+    },
+    "Clean Slate": {
+        STATUS_PENDING: ("#F8FAFC", "#475569"),
+        STATUS_PROGRESS: ("#FFF7ED", "#EA580C"),
+        STATUS_DONE: ("#ECFDF5", "#059669"),
+    },
+    "High Contrast": {
+        STATUS_PENDING: ("#EEF2FF", "#4338CA"),
+        STATUS_PROGRESS: ("#FEF3C7", "#92400E"),
+        STATUS_DONE: ("#DCFCE7", "#166534"),
+    },
+}
+
+APP_THEME_PRESETS = {
+    "Ocean Pro": {"bg": "#F8FAFC", "surface": "#FFFFFF", "text": "#0F172A", "muted": "#64748B", "muted_2": "#94A3B8", "border": "#E2E8F0", "primary": "#2563EB", "nav": "#08111F", "nav_active": "#1D4ED8", "soft": "#EFF6FF"},
+    "Candy Cartoon": {"bg": "#FFF7ED", "surface": "#FFFFFF", "text": "#1F2937", "muted": "#7C3AED", "muted_2": "#F472B6", "border": "#FBCFE8", "primary": "#DB2777", "nav": "#2E1065", "nav_active": "#F97316", "soft": "#FDF2F8"},
+    "Sakura Desk": {"bg": "#FFF1F2", "surface": "#FFFFFF", "text": "#27272A", "muted": "#71717A", "muted_2": "#FB7185", "border": "#FFE4E6", "primary": "#E11D48", "nav": "#3F0A1D", "nav_active": "#FB7185", "soft": "#FFF7F9"},
+    "Mint Studio": {"bg": "#F0FDFA", "surface": "#FFFFFF", "text": "#134E4A", "muted": "#0F766E", "muted_2": "#5EEAD4", "border": "#CCFBF1", "primary": "#0D9488", "nav": "#042F2E", "nav_active": "#14B8A6", "soft": "#ECFEFF"},
+    "Sunset Pop": {"bg": "#FFF7ED", "surface": "#FFFFFF", "text": "#1F2937", "muted": "#9A3412", "muted_2": "#F59E0B", "border": "#FED7AA", "primary": "#EA580C", "nav": "#1E1B4B", "nav_active": "#F97316", "soft": "#FFFBEB"},
+    "Night Arcade": {"bg": "#0B1020", "surface": "#111827", "text": "#E5E7EB", "muted": "#A5B4FC", "muted_2": "#67E8F9", "border": "#334155", "primary": "#22D3EE", "nav": "#020617", "nav_active": "#7C3AED", "soft": "#172554"},
+    "Graphite Focus": {"bg": "#F4F4F5", "surface": "#FFFFFF", "text": "#18181B", "muted": "#52525B", "muted_2": "#A1A1AA", "border": "#D4D4D8", "primary": "#334155", "nav": "#111827", "nav_active": "#475569", "soft": "#F8FAFC"},
+}
 
 
 def bundled_asset_path(*parts):
@@ -50,9 +82,25 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
+APP_VERSION = "1.0.2"
+MANUAL_VERSION = "2026-06-18-user-guide"
+DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
+UPDATE_MANIFEST_FILE = "sacheck_update.json"
+UPDATE_CHECK_INTERVAL_SECONDS = 1800
+CURRENT_CHANGELOG = [
+    "V1.0.2: Update channel now uses GitHub repo spirmx/SACHECK and Drive fallback was removed from the app flow.",
+    "V1.0.2: Theme changes now wait for the Apply theme button, so users can choose before committing.",
+    "Added App Theme presets for the whole workspace look.",
+    "Added a brighter update button above the user guide button when updates are available.",
+    "Improved the user guide layout with grouped sections.",
+    "Kept offline-first behavior and safe app updates without clearing user Work data.",
+]
 APP_LOGO_SRC = "app/app_logo.png"
 APP_LOGO_PATH = bundled_asset_path("app", "app_logo.png")
 APP_ICON_PATH = bundled_asset_path("app", "app.ico")
+PROFILE_MEDIA_DIR = APP_SETTINGS_FILE.parent / "profile_media"
+PROFILE_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+PROFILE_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
 
 
 def pad_sym(horizontal=0, vertical=0):
@@ -80,6 +128,64 @@ def load_json(path, fallback):
         return data if isinstance(data, type(fallback)) else fallback
     except (OSError, json.JSONDecodeError):
         return fallback
+
+
+def parse_version(value):
+    parts = []
+    for part in str(value or "0").split("."):
+        try:
+            parts.append(int("".join(ch for ch in part if ch.isdigit()) or "0"))
+        except ValueError:
+            parts.append(0)
+    return tuple((parts + [0, 0, 0])[:3])
+
+
+def is_newer_version(candidate, current=APP_VERSION):
+    return parse_version(candidate) > parse_version(current)
+
+
+def update_force_reason(candidate, manifest, dismissed_count):
+    if bool(manifest.get("required")):
+        return "This update is marked as required."
+    current = parse_version(APP_VERSION)
+    target = parse_version(candidate)
+    if target[0] > current[0] or target[1] > current[1]:
+        return "This is a major app update."
+    if target[2] - current[2] >= 3:
+        return "This machine is 3 patch versions behind."
+    if dismissed_count >= 3:
+        return "This update was skipped 3 times."
+    return ""
+
+
+def normalize_update_manifest(raw):
+    if not isinstance(raw, dict):
+        return {}
+    version = str(raw.get("version") or "").strip()
+    if not version:
+        return {}
+    notes = raw.get("notes") or raw.get("changes") or []
+    if isinstance(notes, str):
+        notes = [line.strip() for line in notes.splitlines() if line.strip()]
+    if not isinstance(notes, list):
+        notes = []
+    return {
+        "version": version,
+        "installer_url": str(raw.get("installer_url") or raw.get("download_url") or raw.get("url") or "").strip(),
+        "release_date": str(raw.get("release_date") or raw.get("date") or "").strip(),
+        "required": bool(raw.get("required") or raw.get("force")),
+        "notes": [str(item) for item in notes],
+    }
+
+
+def direct_download_url(url):
+    return str(url or "").strip()
+
+
+def read_update_url(url, max_bytes=2 * 1024 * 1024, timeout=7):
+    request = urllib.request.Request(url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.read(max_bytes)
 
 
 def load_tasks():
@@ -567,6 +673,8 @@ from core.flet_data import (  # noqa: E402
 )
 from core.create_tools import CREATE_TOOLS  # noqa: E402
 from ui.virtual_list import DEFAULT_BATCH_SIZE, next_visible_limit, visible_slice  # noqa: E402
+import core.flet_constants as theme_constants  # noqa: E402
+import ui.flet_widgets as widget_theme  # noqa: E402
 from ui.flet_widgets import (  # noqa: E402
     CENTER,
     border_all,
@@ -631,10 +739,51 @@ def install_pointer_feedback():
     ft.Container.__init__ = patched_container_init
 
 
+def selected_app_theme(settings):
+    name = str(settings.get("app_theme_preset") or "Ocean Pro")
+    return name if name in APP_THEME_PRESETS else "Ocean Pro"
+
+
+def apply_app_theme(settings):
+    global BG, WHITE, TEXT, MUTED, MUTED_2, BORDER, PRIMARY, NAV_BG, NAV_ACTIVE
+    palette = APP_THEME_PRESETS[selected_app_theme(settings)]
+    BG = palette["bg"]
+    WHITE = palette["surface"]
+    TEXT = palette["text"]
+    MUTED = palette["muted"]
+    MUTED_2 = palette["muted_2"]
+    BORDER = palette["border"]
+    PRIMARY = palette["primary"]
+    NAV_BG = palette["nav"]
+    NAV_ACTIVE = palette["nav_active"]
+    for module in (theme_constants, widget_theme):
+        module.BG = BG
+        module.WHITE = WHITE
+        module.TEXT = TEXT
+        module.MUTED = MUTED
+        module.MUTED_2 = MUTED_2
+        module.BORDER = BORDER
+        module.PRIMARY = PRIMARY
+    return palette
+
+
+def app_logo_control(size=44, radius=14):
+    return ft.Container(
+        width=size,
+        height=size,
+        border_radius=radius,
+        bgcolor="#EEF2FF",
+        alignment=CENTER,
+        clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+        content=ft.Image(src=APP_LOGO_PATH, width=size, height=size, fit=ft.BoxFit.COVER, error_content=ft.Text("SA", size=max(11, size // 3), weight=ft.FontWeight.W_900, color=TEXT)),
+    )
+
+
 def main(page: ft.Page):
     install_pointer_feedback()
     all_tasks = load_tasks()
     settings = load_settings()
+    apply_app_theme(settings)
     root_work = work_folder()
     current_browser_path = {"path": root_work}
     state = {
@@ -654,6 +803,12 @@ def main(page: ft.Page):
         "last_sync_check": datetime.now().timestamp(),
         "syncing": False,
         "closed": False,
+        "online_status": "checking",
+        "update_manifest": None,
+        "update_available": False,
+        "update_checking": False,
+        "last_update_check": 0,
+        "update_prompted_versions": set(),
     }
 
     page.title = APP_NAME
@@ -672,7 +827,85 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK if settings.get("theme") == "Dark" else ft.ThemeMode.LIGHT
     page.theme = ft.Theme(font_family="Segoe UI")
     file_picker = ft.FilePicker()
-    page.services.append(file_picker)
+    if hasattr(page, "services"):
+        page.services.append(file_picker)
+    else:
+        page.overlay.append(file_picker)
+    page.update()
+
+    def native_directory_picker(title):
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            selected = filedialog.askdirectory(title=title)
+            root.destroy()
+            return selected or ""
+        except Exception:
+            return ""
+
+    async def pick_directory(title):
+        try:
+            selected = await file_picker.get_directory_path(dialog_title=title)
+            if selected:
+                return selected
+        except Exception:
+            pass
+        return native_directory_picker(title)
+
+    def profile_media_path():
+        value = str(settings.get("profile_media_path") or "").strip()
+        if value and Path(value).exists():
+            return value
+        return APP_LOGO_PATH
+
+    def profile_media_control(size=48):
+        source = profile_media_path()
+        suffix = Path(source).suffix.lower()
+        if suffix in PROFILE_IMAGE_EXTENSIONS:
+            return ft.Image(src=source, width=size, height=size, fit=ft.BoxFit.COVER, error_content=ft.Text("SA", size=15, weight=ft.FontWeight.W_900, color=WHITE))
+        return ft.Image(src=APP_LOGO_PATH, width=size, height=size, fit=ft.BoxFit.COVER, error_content=ft.Text("SA", size=15, weight=ft.FontWeight.W_900, color=WHITE))
+
+    def set_offline_mode(enabled, render=True):
+        settings["offline_mode"] = bool(enabled)
+        save_settings(settings)
+        state["online_status"] = "offline" if enabled else "checking"
+        if render:
+            update_sidebar()
+            page.update()
+        if not enabled:
+            check_for_updates(manual=False)
+
+    def confirm_connectivity_change(enabled):
+        title = "Turn Online Checks On" if enabled else "Turn Offline Mode On"
+        message = (
+            "SA CHECK will use internet only for update checks and update downloads. Work files still stay local and offline-first."
+            if enabled
+            else "SA CHECK will stop checking for updates. Work board, folders, calendar, and local tools keep working offline."
+        )
+
+        def apply_choice(_event):
+            page.pop_dialog()
+            set_offline_mode(not enabled)
+            show_message(page, "Connectivity", "Online update checks enabled." if enabled else "Offline mode enabled.")
+
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.WIFI if enabled else ft.Icons.WIFI_OFF, color=PRIMARY if enabled else "#DC2626"), ft.Text(title, size=20, weight=ft.FontWeight.W_900, color=TEXT)]),
+                content=ft.Text(message, size=13, color=MUTED),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), update_sidebar(), page.update())),
+                    ft.Button("Confirm", icon=ft.Icons.CHECK, on_click=apply_choice, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
 
     def file_types():
         return runtime_file_types()
@@ -748,6 +981,11 @@ def main(page: ft.Page):
         color=TEXT,
         content_padding=pad_sym(horizontal=14),
     )
+
+    def status_theme(status):
+        selected = settings.get("status_theme_preset") or "Classic Blue"
+        palette = STATUS_THEME_PRESETS.get(selected, STATUS_THEME_PRESETS["Classic Blue"])
+        return palette.get(status, STATUS_THEME_PRESETS["Classic Blue"][status])
 
     def save_and_render(message=None):
         save_tasks(all_tasks)
@@ -937,9 +1175,9 @@ def main(page: ft.Page):
             spacing=18,
             expand=True,
             controls=[
-                kanban_column(page, "Waiting List", waiting, WAITING_BG, WAITING_TEXT, save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
-                kanban_column(page, "Active Work", doing, DOING_BG, DOING_TEXT, save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
-                kanban_column(page, "Complete", done, DONE_BG, DONE_TEXT, save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
+                kanban_column(page, "Waiting List", waiting, *status_theme(STATUS_PENDING), save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
+                kanban_column(page, "Active Work", doing, *status_theme(STATUS_PROGRESS), save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
+                kanban_column(page, "Complete", done, *status_theme(STATUS_DONE), save_and_render, all_tasks, grouped=True, group_limits=state["group_limits"], on_more=render_current),
             ],
         )
         smart_help = ft.Container(
@@ -1699,7 +1937,7 @@ def main(page: ft.Page):
 
         async def browse(_e):
             if kind == "project":
-                path = await file_picker.get_directory_path(dialog_title="Choose project folder")
+                path = await pick_directory("Choose project folder")
             else:
                 picked = await file_picker.pick_files(dialog_title="Choose file", allow_multiple=False)
                 path = picked[0].path if picked else ""
@@ -2239,6 +2477,8 @@ def main(page: ft.Page):
             settings["custom_file_types"] = custom_types
 
         theme_switch = ft.Switch(label="Dark window chrome", value=settings.get("theme") == "Dark")
+        app_theme_select = dropdown(220, selected_app_theme(settings), list(APP_THEME_PRESETS.keys()))
+        status_theme_select = dropdown(220, settings.get("status_theme_preset") or "Classic Blue", list(STATUS_THEME_PRESETS.keys()))
         realtime_switch = ft.Switch(label="Realtime sync", value=settings.get("realtime_sync_enabled", True))
         move_files_switch = ft.Switch(label="Move files when status changes", value=settings.get("move_files_on_status", True))
         confirm_switch = ft.Switch(label="Confirm risky actions", value=settings.get("confirm_risky_actions", True))
@@ -2246,6 +2486,8 @@ def main(page: ft.Page):
         smart_health_switch = ft.Switch(label="Smart Health insights", value=settings.get("smart_health_enabled", True))
         workload_switch = ft.Switch(label="Workload & zombie hints", value=settings.get("workload_hints_enabled", True))
         template_rank_switch = ft.Switch(label="Smart Template ranking", value=settings.get("template_ranking_enabled", True))
+        update_checks_switch = ft.Switch(label="Online update checks", value=settings.get("update_checks_enabled", True))
+        offline_mode_switch = ft.Switch(label="Offline mode", value=settings.get("offline_mode", False))
         interval_select = dropdown(150, str(settings.get("sync_interval_seconds", 5)), ["3", "5", "10", "30", "60"])
         snapshot_select = dropdown(150, str(settings.get("snapshot_retention", 25)), ["10", "25", "50", "100"])
         stale_select = dropdown(150, str(settings.get("stale_doing_days", 7)), ["3", "7", "14", "30"])
@@ -2287,16 +2529,82 @@ def main(page: ft.Page):
         ]
         color_preview = ft.Container(width=44, height=44, border_radius=12, bgcolor=type_color.value, border=border_all(1, BORDER))
 
+        def app_theme_preview():
+            palette = APP_THEME_PRESETS.get(app_theme_select.value or "Ocean Pro", APP_THEME_PRESETS["Ocean Pro"])
+            return ft.Row(
+                spacing=8,
+                controls=[
+                    ft.Container(width=30, height=30, border_radius=999, bgcolor=palette["bg"], border=border_all(1, palette["border"])),
+                    ft.Container(width=30, height=30, border_radius=999, bgcolor=palette["surface"], border=border_all(1, palette["border"])),
+                    ft.Container(width=30, height=30, border_radius=999, bgcolor=palette["primary"], border=border_all(1, palette["primary"])),
+                    ft.Container(width=30, height=30, border_radius=999, bgcolor=palette["nav"], border=border_all(1, palette["nav_active"])),
+                    ft.Container(width=30, height=30, border_radius=999, bgcolor=palette["nav_active"], border=border_all(1, palette["nav_active"])),
+                    ft.Text("Preview", size=12, weight=ft.FontWeight.W_800, color=MUTED),
+                ],
+            )
+
+        def app_theme_mockup():
+            palette = APP_THEME_PRESETS.get(app_theme_select.value or "Ocean Pro", APP_THEME_PRESETS["Ocean Pro"])
+            return ft.Container(
+                width=210,
+                height=118,
+                border_radius=16,
+                border=border_all(1, palette["border"]),
+                bgcolor=palette["bg"],
+                padding=8,
+                content=ft.Row(
+                    spacing=8,
+                    controls=[
+                        ft.Container(width=34, border_radius=12, bgcolor=palette["nav"], content=ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8, controls=[
+                            ft.Container(width=22, height=22, border_radius=8, bgcolor=palette["nav_active"]),
+                            ft.Container(width=22, height=22, border_radius=8, bgcolor=palette["surface"]),
+                            ft.Container(width=22, height=22, border_radius=8, bgcolor=palette["surface"]),
+                        ])),
+                        ft.Column(expand=True, spacing=8, controls=[
+                            ft.Container(height=20, border_radius=8, bgcolor=palette["surface"], border=border_all(1, palette["border"])),
+                            ft.Row(spacing=6, controls=[
+                                ft.Container(expand=True, height=56, border_radius=10, bgcolor=palette["soft"], border=border_all(1, palette["primary"])),
+                                ft.Container(expand=True, height=56, border_radius=10, bgcolor=palette["surface"], border=border_all(1, palette["border"])),
+                            ]),
+                        ]),
+                    ],
+                ),
+            )
+
         async def choose_icon(_event):
             picked = await file_picker.pick_files(dialog_title="Choose icon image", allow_multiple=False)
             if picked:
                 icon_file["value"] = picked[0].path
                 show_message(page, "Icon selected", Path(picked[0].path).name)
 
+        async def choose_profile_media(_event):
+            picked = await file_picker.pick_files(dialog_title="Choose profile image or GIF", allow_multiple=False)
+            if not picked:
+                return
+            source = Path(picked[0].path)
+            suffix = source.suffix.lower()
+            if suffix in PROFILE_VIDEO_EXTENSIONS:
+                show_message(page, "Video profile", "This Flet runtime does not include video playback/cut support yet. Use PNG, JPG, WEBP, or animated GIF for now.")
+                return
+            if suffix not in PROFILE_IMAGE_EXTENSIONS:
+                show_message(page, "Unsupported media", "Use PNG, JPG, JPEG, WEBP, BMP, or animated GIF.")
+                return
+            try:
+                PROFILE_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+                target = PROFILE_MEDIA_DIR / f"profile{suffix}"
+                shutil.copy2(str(source), str(target))
+                settings["profile_media_path"] = str(target)
+                save_settings(settings)
+                show_message(page, "Profile media updated", source.name, kind="success")
+                render_current()
+            except OSError as exc:
+                show_message(page, "Profile media failed", str(exc))
+
         async def choose_work_folder(_event):
             nonlocal root_work
-            selected = await file_picker.get_directory_path(dialog_title="Choose Work folder")
+            selected = await pick_directory("Choose Work folder")
             if not selected:
+                show_message(page, "No folder selected", "Work folder was not changed.")
                 return
             selected_path = Path(selected)
             try:
@@ -2340,9 +2648,13 @@ def main(page: ft.Page):
 
         def save_theme(_event):
             settings["theme"] = "Dark" if theme_switch.value else "Light"
+            settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
+            settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             save_settings(settings)
+            apply_app_theme(settings)
+            page.bgcolor = BG
             page.theme_mode = ft.ThemeMode.DARK if theme_switch.value else ft.ThemeMode.LIGHT
-            page.update()
+            render_current()
             show_message(page, "Settings", "Theme saved.")
 
         def save_policy(_event):
@@ -2353,6 +2665,8 @@ def main(page: ft.Page):
             settings["smart_health_enabled"] = bool(smart_health_switch.value)
             settings["workload_hints_enabled"] = bool(workload_switch.value)
             settings["template_ranking_enabled"] = bool(template_rank_switch.value)
+            settings["update_checks_enabled"] = bool(update_checks_switch.value)
+            settings["offline_mode"] = bool(offline_mode_switch.value)
             settings["sync_interval_seconds"] = int(interval_select.value or 5)
             settings["snapshot_retention"] = int(snapshot_select.value or 25)
             settings["stale_doing_days"] = int(stale_select.value or 7)
@@ -2364,6 +2678,8 @@ def main(page: ft.Page):
 
         def save_all_settings(_event):
             settings["theme"] = "Dark" if theme_switch.value else "Light"
+            settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
+            settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             settings["realtime_sync_enabled"] = bool(realtime_switch.value)
             settings["move_files_on_status"] = bool(move_files_switch.value)
             settings["confirm_risky_actions"] = bool(confirm_switch.value)
@@ -2371,6 +2687,8 @@ def main(page: ft.Page):
             settings["smart_health_enabled"] = bool(smart_health_switch.value)
             settings["workload_hints_enabled"] = bool(workload_switch.value)
             settings["template_ranking_enabled"] = bool(template_rank_switch.value)
+            settings["update_checks_enabled"] = bool(update_checks_switch.value)
+            settings["offline_mode"] = bool(offline_mode_switch.value)
             settings["sync_interval_seconds"] = int(interval_select.value or 5)
             settings["snapshot_retention"] = int(snapshot_select.value or 25)
             settings["stale_doing_days"] = int(stale_select.value or 7)
@@ -2378,6 +2696,8 @@ def main(page: ft.Page):
             settings["overload_doing_limit"] = int(overload_doing_select.value or 4)
             settings["overload_total_limit"] = int(overload_total_select.value or 10)
             save_settings(settings)
+            apply_app_theme(settings)
+            page.bgcolor = BG
             page.theme_mode = ft.ThemeMode.DARK if theme_switch.value else ft.ThemeMode.LIGHT
             page.update()
             show_message(page, "Settings", "Settings saved.")
@@ -2415,7 +2735,11 @@ def main(page: ft.Page):
 
         def reset_ui_defaults(_event):
             settings["theme"] = "Light"
+            settings["app_theme_preset"] = "Ocean Pro"
+            settings["status_theme_preset"] = "Classic Blue"
             save_settings(settings)
+            apply_app_theme(settings)
+            page.bgcolor = BG
             page.theme_mode = ft.ThemeMode.LIGHT
             show_message(page, "Settings", "UI defaults restored.")
             render_current()
@@ -2605,6 +2929,23 @@ def main(page: ft.Page):
                     ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SETTINGS_OUTLINED, color=MUTED), ft.Text("System", size=22, weight=ft.FontWeight.W_800, color=TEXT)]),
                     settings_search,
                     ft.Container(
+                        border=border_all(1, "#E0E7FF"),
+                        border_radius=16,
+                        padding=14,
+                        bgcolor="#F8FBFF",
+                        content=ft.Column(
+                            spacing=8,
+                            controls=[
+                                ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.INFO_OUTLINED, color=PRIMARY), ft.Text("Credits", size=16, weight=ft.FontWeight.W_800, color=TEXT)]),
+                                ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[app_logo_control(48, 14), ft.Column(spacing=3, controls=[ft.Text(APP_NAME, size=17, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Desktop Work Board", size=12, color=MUTED)])]),
+                                ft.Text("Developer / Creator: HOYTURBRO", size=13, weight=ft.FontWeight.W_800, color=TEXT, selectable=True),
+                                ft.Text("Publisher: HOYTURBRO", size=12, color=MUTED, selectable=True),
+                                ft.Text("Alias: Hoyturbro | Product: SA CHECK Desktop Work Board | Copyright (c) 2026 HOYTURBRO", size=12, color=MUTED, selectable=True),
+                                ft.Row(spacing=10, controls=[ft.Button("About SA CHECK", icon=ft.Icons.INFO_OUTLINED, on_click=show_about), ft.Button("User guide", icon=ft.Icons.HELP_OUTLINE, on_click=show_help)]),
+                            ],
+                        ),
+                    ),
+                    ft.Container(
                         border=border_all(1, "#DBEAFE"),
                         border_radius=16,
                         padding=14,
@@ -2627,6 +2968,57 @@ def main(page: ft.Page):
                     ft.Text(f"Data file\n{DATA_FILE}", size=13, color=MUTED, selectable=True),
                     ft.Row(spacing=10, controls=[settings_stat(*row) for row in status_rows]),
                     theme_switch,
+                    ft.Container(
+                        border=border_all(1, "#E2E8F0"),
+                        border_radius=16,
+                        padding=14,
+                        bgcolor="#FFFFFF",
+                        content=ft.Column(
+                            spacing=10,
+                            controls=[
+                                ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.PALETTE_OUTLINED, color=PRIMARY), ft.Text("Appearance", size=16, weight=ft.FontWeight.W_800, color=TEXT)]),
+                                ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[profile_media_control(52), ft.Column(spacing=4, expand=True, controls=[ft.Text("Sidebar profile media", size=13, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Use PNG, JPG, WEBP, BMP, or animated GIF. Video support needs a video runtime in a later build.", size=11, color=MUTED)]), ft.Button("Upload media", icon=ft.Icons.ADD_PHOTO_ALTERNATE_OUTLINED, on_click=choose_profile_media)]),
+                                ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text("App theme", size=13, weight=ft.FontWeight.W_800, color=MUTED), app_theme_select, app_theme_preview()]),
+                                app_theme_mockup(),
+                                ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text("Status theme", size=13, weight=ft.FontWeight.W_800, color=MUTED), status_theme_select]),
+                                ft.Row(
+                                    spacing=10,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                    controls=[
+                                        ft.Button("Apply theme", icon=ft.Icons.CHECK_CIRCLE_OUTLINE, on_click=save_theme, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                                        ft.Text("Theme changes apply after pressing this button.", size=11, color=MUTED),
+                                    ],
+                                ),
+                                ft.Row(
+                                    spacing=8,
+                                    controls=[
+                                        ft.Container(width=74, height=28, border_radius=999, bgcolor=status_theme(STATUS_PENDING)[0], border=border_all(1, status_theme(STATUS_PENDING)[1]), alignment=CENTER, content=ft.Text("Waiting", size=11, weight=ft.FontWeight.W_800, color=status_theme(STATUS_PENDING)[1])),
+                                        ft.Container(width=74, height=28, border_radius=999, bgcolor=status_theme(STATUS_PROGRESS)[0], border=border_all(1, status_theme(STATUS_PROGRESS)[1]), alignment=CENTER, content=ft.Text("Doing", size=11, weight=ft.FontWeight.W_800, color=status_theme(STATUS_PROGRESS)[1])),
+                                        ft.Container(width=74, height=28, border_radius=999, bgcolor=status_theme(STATUS_DONE)[0], border=border_all(1, status_theme(STATUS_DONE)[1]), alignment=CENTER, content=ft.Text("Success", size=11, weight=ft.FontWeight.W_800, color=status_theme(STATUS_DONE)[1])),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ),
+                    ft.Container(
+                        border=border_all(1, "#DBEAFE"),
+                        border_radius=16,
+                        padding=14,
+                        bgcolor="#F8FBFF",
+                        content=ft.Column(
+                            spacing=10,
+                            controls=[
+                                ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color=PRIMARY), ft.Text("System Updates", size=16, weight=ft.FontWeight.W_800, color=TEXT)]),
+                                ft.Text(f"Current version: {APP_VERSION}. Update checks only use internet for app updates; normal work stays offline-first.", size=12, color=MUTED),
+                                update_checks_switch,
+                                offline_mode_switch,
+                                ft.Row(spacing=10, controls=[
+                                    ft.Button("Check now", icon=ft.Icons.REFRESH, on_click=lambda _e: check_for_updates(manual=True)),
+                                    ft.Button("Version notes", icon=ft.Icons.FACT_CHECK_OUTLINED, on_click=show_version_notes),
+                                ]),
+                            ],
+                        ),
+                    ),
                     ft.Container(
                         border=border_all(1, BORDER),
                         border_radius=16,
@@ -2744,7 +3136,43 @@ def main(page: ft.Page):
                 ],
             ),
         )
-        main_body.controls = [ft.Row(spacing=18, expand=True, controls=[system_card, type_card])]
+        active_settings_tab = state.get("settings_tab", "system")
+
+        def settings_tab_button(label, icon, tab_key):
+            selected = active_settings_tab == tab_key
+            return ft.Container(
+                height=42,
+                padding=pad_sym(horizontal=14),
+                border_radius=12,
+                bgcolor=TEXT if selected else WHITE,
+                border=border_all(1, TEXT if selected else BORDER),
+                on_click=lambda _e, key=tab_key: (state.update({"settings_tab": key}), render_current()),
+                content=ft.Row(
+                    spacing=8,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(icon, size=18, color=WHITE if selected else MUTED),
+                        ft.Text(label, size=13, weight=ft.FontWeight.W_800, color=WHITE if selected else TEXT),
+                    ],
+                ),
+            )
+
+        main_body.controls = [
+            ft.Column(
+                spacing=14,
+                expand=True,
+                controls=[
+                    ft.Row(
+                        spacing=10,
+                        controls=[
+                            settings_tab_button("System & Theme", ft.Icons.TUNE_OUTLINED, "system"),
+                            settings_tab_button("File Types", ft.Icons.CATEGORY_OUTLINED, "types"),
+                        ],
+                    ),
+                    ft.Container(expand=True, content=system_card if active_settings_tab == "system" else type_card),
+                ],
+            )
+        ]
         page.update()
 
     def render_health():
@@ -2969,7 +3397,7 @@ def main(page: ft.Page):
 
             async def relink(_event):
                 if item.get("target_kind") == "folder":
-                    selected = await file_picker.get_directory_path(dialog_title="Relink folder")
+                    selected = await pick_directory("Relink folder")
                 else:
                     picked = await file_picker.pick_files(dialog_title="Relink file", allow_multiple=False)
                     selected = picked[0].path if picked else ""
@@ -3204,8 +3632,429 @@ def main(page: ft.Page):
         state["screen"] = SCREEN_HEALTH
         render_current()
 
-    def show_help(_e=None):
-        show_message(page, "Help", "Folder opens the Work browser. Task menus can open, copy, show details, and move status.")
+    def export_report(_e=None):
+        report_dir = Path.home() / "Desktop" / "SA_CHECK_REPORTS"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        csv_path = report_dir / f"SA_CHECK_Report_{stamp}.csv"
+        html_path = report_dir / f"SA_CHECK_Report_{stamp}.html"
+        rows = []
+        for task in all_tasks:
+            rows.append(
+                {
+                    "Name": task.get("name", ""),
+                    "Status": STATUS_LABELS.get(task.get("status"), task.get("status", "")),
+                    "Type": task.get("type", ""),
+                    "Date": task_calendar_date(task),
+                    "Done Date": task.get("done_date") or "",
+                    "Note": task.get("note", ""),
+                    "Target": task.get("link") or task.get("shortcut_path") or "",
+                }
+            )
+        fields = ["Name", "Status", "Type", "Date", "Done Date", "Note", "Target"]
+        with csv_path.open("w", encoding="utf-8-sig", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
+        summary = {
+            "Total": len(all_tasks),
+            "Waiting": sum(1 for task in all_tasks if task.get("status") == STATUS_PENDING),
+            "Doing": sum(1 for task in all_tasks if task.get("status") == STATUS_PROGRESS),
+            "Success": sum(1 for task in all_tasks if task.get("status") == STATUS_DONE),
+        }
+        table_rows = "\n".join(
+            "<tr>" + "".join(f"<td>{html.escape(str(row.get(field, '')))}</td>" for field in fields) + "</tr>"
+            for row in rows
+        )
+        summary_cards = "".join(f"<div class='card'><b>{html.escape(k)}</b><span>{v}</span></div>" for k, v in summary.items())
+        html_path.write_text(
+            f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>SA CHECK Report</title>
+<style>
+body{{font-family:Arial,sans-serif;margin:24px;color:#0f172a;background:#f8fafc}}
+h1{{margin:0 0 4px}} .muted{{color:#64748b}} .cards{{display:flex;gap:12px;margin:18px 0}}
+.card{{background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;min-width:110px}}
+.card span{{display:block;font-size:24px;font-weight:800;margin-top:4px}}
+table{{border-collapse:collapse;width:100%;background:white;border:1px solid #e2e8f0}}
+th,td{{border-bottom:1px solid #e2e8f0;padding:9px 10px;text-align:left;vertical-align:top;font-size:13px}}
+th{{background:#eff6ff;color:#1d4ed8}}
+</style></head><body>
+<h1>SA CHECK Report</h1><div class="muted">Generated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | Developer: HOYTURBRO</div>
+<div class="cards">{summary_cards}</div>
+<table><thead><tr>{''.join(f'<th>{html.escape(field)}</th>' for field in fields)}</tr></thead><tbody>{table_rows}</tbody></table>
+</body></html>""",
+            encoding="utf-8",
+        )
+        show_message(page, "Report exported", f"Saved CSV and HTML report to {report_dir}", kind="success")
+        try:
+            os.startfile(str(report_dir))
+        except OSError:
+            pass
+
+    def show_about(_e=None):
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=False,
+                title=ft.Row(
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        app_logo_control(52, 16),
+                        ft.Column(spacing=2, controls=[ft.Text("SA CHECK", size=24, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Desktop Work Board", size=13, color=MUTED)]),
+                    ],
+                ),
+                content=ft.Container(
+                    width=560,
+                    height=300,
+                    content=ft.Column(
+                        spacing=12,
+                        controls=[
+                            ft.Container(border=border_all(1, "#DBEAFE"), border_radius=16, bgcolor="#F8FBFF", padding=14, content=ft.Column(spacing=6, controls=[
+                                ft.Text("Developer / Creator: HOYTURBRO", size=14, weight=ft.FontWeight.W_900, color=TEXT, selectable=True),
+                                ft.Text("Alias: Hoyturbro", size=13, color=MUTED, selectable=True),
+                                ft.Text("Publisher: HOYTURBRO", size=13, color=MUTED, selectable=True),
+                                ft.Text("Version: " + APP_VERSION + " | Guide: " + MANUAL_VERSION, size=12, color=MUTED, selectable=True),
+                            ])),
+                            ft.Container(border=border_all(1, BORDER), border_radius=16, bgcolor="#FFFFFF", padding=14, content=ft.Column(spacing=6, controls=[
+                                ft.Text(f"App folder: {Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[1]}", size=12, color=MUTED, selectable=True),
+                                ft.Text(f"Data file: {DATA_FILE}", size=12, color=MUTED, selectable=True),
+                                ft.Text(f"Work folder: {root_work}", size=12, color=MUTED, selectable=True),
+                            ])),
+                        ],
+                    ),
+                ),
+                actions=[
+                    ft.TextButton("Open Guide", on_click=lambda event: (page.pop_dialog(), show_help())),
+                    ft.Button("Close", icon=ft.Icons.CHECK, on_click=lambda event: (page.pop_dialog(), page.update()), style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
+
+    def show_version_notes(_e=None):
+        current_items = [
+            ft.Container(
+                border=border_all(1, "#DBEAFE"),
+                border_radius=14,
+                bgcolor="#F8FBFF",
+                padding=12,
+                content=ft.Column(
+                    spacing=8,
+                    controls=[
+                        ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.NEW_RELEASES_OUTLINED, color=PRIMARY), ft.Text(f"Version {APP_VERSION}", size=16, weight=ft.FontWeight.W_900, color=TEXT)]),
+                        *[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, size=16, color="#16A34A"), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in CURRENT_CHANGELOG],
+                    ],
+                ),
+            )
+        ]
+        manifest = state.get("update_manifest") or {}
+        if state.get("update_available") and manifest:
+            current_items.append(
+                ft.Container(
+                    border=border_all(1, "#FED7AA"),
+                    border_radius=14,
+                    bgcolor="#FFFBEB",
+                    padding=12,
+                    content=ft.Column(
+                        spacing=8,
+                        controls=[
+                            ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color="#D97706"), ft.Text(f"Available update {manifest.get('version')}", size=16, weight=ft.FontWeight.W_900, color=TEXT)]),
+                            *[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.ARROW_RIGHT_ALT, size=16, color="#D97706"), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in (manifest.get("notes") or ["Update package is available."])],
+                        ],
+                    ),
+                )
+            )
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=False,
+                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.FACT_CHECK_OUTLINED, color=PRIMARY), ft.Text("Version Notes", size=22, weight=ft.FontWeight.W_900, color=TEXT)]),
+                content=ft.Container(width=640, height=420, content=ft.ListView(spacing=12, controls=current_items)),
+                actions=[ft.Button("Close", icon=ft.Icons.CHECK, on_click=lambda _event: (page.pop_dialog(), page.update()), style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12)))],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
+
+    def show_update_prompt(manifest=None, forced=False):
+        manifest = manifest or state.get("update_manifest") or {}
+        version = manifest.get("version", "")
+        notes = manifest.get("notes") or ["Update package is available."]
+        reason = update_force_reason(version, manifest, int(settings.get("update_dismiss_count", 0))) if version else ""
+
+        def open_update(_event=None):
+            url = manifest.get("installer_url") or ""
+            settings["last_update_prompt_version"] = version
+            settings["update_dismiss_count"] = 0
+            save_settings(settings)
+            page.pop_dialog()
+            page.update()
+            if not url:
+                show_message(page, "Update", "Update package is not ready yet. Please contact the app publisher.")
+                return
+            show_message(page, "Update", "Downloading update package...", kind="warning")
+
+            def updater_worker():
+                try:
+                    download_url = direct_download_url(url)
+                    temp_dir = Path(tempfile.gettempdir()) / "SACHECK_Update"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    installer_path = temp_dir / f"SA_CHECK_Installer_{version or 'latest'}.exe"
+                    request = urllib.request.Request(download_url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
+                    with urllib.request.urlopen(request, timeout=60) as response:
+                        installer_path.write_bytes(response.read())
+                    if installer_path.stat().st_size < 1024 * 32:
+                        raise RuntimeError("Update package was not downloaded correctly.")
+                    subprocess.Popen([str(installer_path)], cwd=str(temp_dir), close_fds=True)
+                    show_message(page, "Update", "Installer is launching. Close SA CHECK if setup asks to update files.", kind="success")
+                except Exception:
+                    show_message(page, "Update", "Could not download the update package. Please contact the app publisher.")
+
+            page.run_thread(updater_worker)
+
+        def skip_update(_event=None):
+            settings["last_update_prompt_version"] = version
+            settings["update_dismiss_count"] = int(settings.get("update_dismiss_count", 0)) + 1
+            save_settings(settings)
+            page.pop_dialog()
+            update_sidebar()
+            page.update()
+
+        actions = [ft.Button("Update now", icon=ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, on_click=open_update, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12)))]
+        if not forced:
+            actions.insert(0, ft.TextButton("Later", on_click=skip_update))
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=forced,
+                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color="#D97706"), ft.Text(f"Update available: {version}", size=21, weight=ft.FontWeight.W_900, color=TEXT)]),
+                content=ft.Container(
+                    width=620,
+                    height=360,
+                    content=ft.Column(
+                        spacing=12,
+                        controls=[
+                            ft.Text("SA CHECK is offline-first. Updating replaces app system files only and keeps user Work folders/settings/cache.", size=13, color=MUTED),
+                            ft.Container(border=border_all(1, "#FED7AA"), border_radius=14, bgcolor="#FFFBEB", padding=12, content=ft.Text(reason or "You can update now or later.", size=13, weight=ft.FontWeight.W_800, color="#92400E")),
+                            ft.Column(spacing=7, controls=[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.ARROW_RIGHT_ALT, size=16, color=PRIMARY), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in notes]),
+                        ],
+                    ),
+                ),
+                actions=actions,
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
+
+    def update_channel_url():
+        return str(settings.get("update_manifest_url") or DEFAULT_UPDATE_CHANNEL_URL).strip()
+
+    def fetch_update_manifest():
+        url = update_channel_url()
+        if not url:
+            return None, "offline"
+        payload = read_update_url(url, max_bytes=1024 * 1024)
+        data = json.loads(payload.decode("utf-8-sig"))
+        manifest = normalize_update_manifest(data)
+        return manifest or None, "online"
+
+    def check_for_updates(manual=False):
+        if state.get("update_checking"):
+            return
+        if settings.get("offline_mode", False) or not settings.get("update_checks_enabled", True):
+            state["online_status"] = "offline"
+            state["update_available"] = False
+            update_sidebar()
+            if manual:
+                show_message(page, "Updates", "Update checks are disabled. Offline mode is active.")
+            return
+        state["update_checking"] = True
+        state["online_status"] = "checking"
+        update_sidebar()
+
+        def worker():
+            try:
+                manifest, network = fetch_update_manifest()
+                state["online_status"] = network
+                state["last_update_check"] = time.time()
+                if manifest and is_newer_version(manifest.get("version")):
+                    state["update_manifest"] = manifest
+                    state["update_available"] = True
+                    dismissed = int(settings.get("update_dismiss_count", 0))
+                    forced_reason = update_force_reason(manifest.get("version"), manifest, dismissed)
+                    prompted_versions = state.setdefault("update_prompted_versions", set())
+                    if manual or forced_reason or manifest.get("version") not in prompted_versions:
+                        prompted_versions.add(manifest.get("version"))
+                        show_update_prompt(manifest, forced=bool(forced_reason))
+                else:
+                    state["update_manifest"] = manifest
+                    state["update_available"] = False
+                    if manual:
+                        show_message(page, "Updates", f"{APP_NAME} is up to date ({APP_VERSION}).")
+            except (OSError, urllib.error.URLError, TimeoutError):
+                state["online_status"] = "offline"
+                state["update_available"] = False
+                if manual:
+                    show_message(page, "Updates", "No internet connection or update channel is unreachable.")
+            except Exception as exc:
+                state["online_status"] = "offline"
+                if manual:
+                    show_message(page, "Updates", str(exc))
+            finally:
+                state["update_checking"] = False
+                update_sidebar()
+                try:
+                    page.update()
+                except Exception:
+                    pass
+
+        page.run_thread(worker)
+
+    def show_help(_e=None, auto=False):
+        def close_manual(_event=None):
+            settings["manual_seen_version"] = MANUAL_VERSION
+            save_settings(settings)
+            page.pop_dialog()
+            page.update()
+
+        def open_notes_from_manual(_event=None):
+            settings["manual_seen_version"] = MANUAL_VERSION
+            save_settings(settings)
+            page.pop_dialog()
+            page.update()
+            show_version_notes()
+
+        def guide_header(icon, title, subtitle, color=PRIMARY):
+            return ft.Container(
+                data="guide_header",
+                border=border_all(1, "#DBEAFE"),
+                border_radius=16,
+                bgcolor="#F8FBFF",
+                padding=pad_sym(horizontal=14, vertical=12),
+                content=ft.Row(
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=42, height=42, border_radius=14, bgcolor=color + "16", alignment=CENTER, content=ft.Icon(icon, color=color, size=23)),
+                        ft.Column(
+                            spacing=2,
+                            expand=True,
+                            controls=[
+                                ft.Text(title, size=16, weight=ft.FontWeight.W_900, color=TEXT),
+                                ft.Text(subtitle, size=12, color=MUTED),
+                            ],
+                        ),
+                    ],
+                ),
+            )
+
+        def step(icon, title, body, color=PRIMARY):
+            return ft.Container(
+                data="guide_step",
+                border=border_all(1, BORDER),
+                border_radius=14,
+                bgcolor=WHITE,
+                padding=pad_sym(horizontal=13, vertical=11),
+                content=ft.Row(
+                    spacing=11,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                    controls=[
+                        ft.Container(width=34, height=34, border_radius=12, bgcolor=color + "14", alignment=CENTER, content=ft.Icon(icon, color=color, size=19)),
+                        ft.Column(
+                            spacing=4,
+                            expand=True,
+                            controls=[
+                                ft.Text(title, size=13, weight=ft.FontWeight.W_900, color=TEXT),
+                                ft.Text(body, size=12, color=MUTED, selectable=True),
+                            ],
+                        ),
+                    ],
+                ),
+            )
+
+        sections = [
+            guide_header(ft.Icons.FOLDER_SPECIAL_OUTLINED, "1. เริ่มต้นเลือกคลังงาน", "ติดตั้งใหม่จะยังไม่ผูกกับ Work เก่า ให้เลือกหรือสร้างโฟลเดอร์งานเอง"),
+            step(ft.Icons.SETTINGS_OUTLINED, "เลือก Work folder", "ไปที่ Settings > Work Folder Source > Choose Work folder แล้วเลือก Work1, Work2 หรือโฟลเดอร์งานของทีม", "#2563EB"),
+            step(ft.Icons.CREATE_NEW_FOLDER_OUTLINED, "สร้างโฟลเดอร์เก็บงานใหม่", "ถ้ายังไม่มีคลังงาน ให้สร้างโฟลเดอร์ใหม่ เช่น Documents\\SA CHECK Work\\Work แล้วเลือกโฟลเดอร์นั้นเป็น Work folder", "#0F766E"),
+            step(ft.Icons.SYNC, "Sync งานเข้าระบบ", "กด Sync now เพื่อให้แอพอ่านโฟลเดอร์ Waiting, Doing, Success และไฟล์ในคลังงานขึ้นมาบนบอร์ด", "#7C3AED"),
+
+            guide_header(ft.Icons.ADD_TASK_OUTLINED, "2. วิธีเพิ่มงาน", "เพิ่มได้ทั้งไฟล์ โฟลเดอร์โปรเจค ลิงก์ เทมเพลต และงานใหม่จากในแอพ"),
+            step(ft.Icons.UPLOAD_FILE_OUTLINED, "Add file", "กด + Quick Add > Add file แล้วเลือกไฟล์ เช่น Word, Excel, PDF แอพจะคัดลอกเข้า Waiting ให้ปลอดภัย", "#DC2626"),
+            step(ft.Icons.FOLDER_OUTLINED, "Create project / Add project folder", "ใช้กับงานที่เป็นโฟลเดอร์ทั้งชุด เช่น Web, Project, Design แอพจะคัดลอกโฟลเดอร์เข้า Waiting และไม่ทับของเดิม", "#7C3AED"),
+            step(ft.Icons.LINK_ROUNDED, "Add link", "ใช้เก็บ URL เช่น Google Sheet, Miro, Web หรือระบบภายใน แอพจะสร้าง shortcut .url ให้ใน Work folder", "#0891B2"),
+            step(ft.Icons.NOTE_ADD_OUTLINED, "Create new work", "สร้างงานเปล่าจากชนิดไฟล์ที่ตั้งไว้ เช่น Word/Excel/Text แล้วให้แอพวางไว้ใน Waiting", "#0F766E"),
+            step(ft.Icons.ARTICLE_OUTLINED, "Templates", "เก็บไฟล์ต้นแบบไว้หน้า Templates แล้วกดใช้ซ้ำเพื่อสร้างงานใหม่เข้า Waiting ได้เร็ว", "#D97706"),
+
+            guide_header(ft.Icons.DASHBOARD_ROUNDED, "3. ใช้งานบอร์ดและสถานะ", "บอร์ดหลักช่วยดูงาน Waiting, Doing, Success และเลื่อนสถานะได้"),
+            step(ft.Icons.PLAY_CIRCLE_OUTLINE, "ย้ายสถานะ", "เปิดเมนูของงาน หรือเข้า Detail แล้วเลือก Move to Waiting / Doing / Success ไฟล์จะถูกย้ายโฟลเดอร์ตามสถานะ", "#D97706"),
+            step(ft.Icons.INFO_OUTLINE, "ดูรายละเอียด", "กด Detail เพื่อแก้ชื่อ, ชนิดงาน, วันที่, note, เปิดไฟล์, เปิดโฟลเดอร์ หรือคัดลอก path", "#2563EB"),
+            step(ft.Icons.SEARCH, "ค้นหาและกรอง", "ช่อง Search ใช้ค้นชื่อไฟล์ note path ประเภทงาน และสถานะ ช่วยหาไฟล์ในคลังงานเร็วขึ้น", "#0F766E"),
+
+            guide_header(ft.Icons.EVENT_OUTLINED, "4. Calendar, Health และความปลอดภัย", "ใช้ช่วยตามงาน ตรวจไฟล์หาย และย้อนการแก้ไข"),
+            step(ft.Icons.CALENDAR_TODAY_OUTLINED, "Calendar", "เพิ่ม Calendar event จาก + Quick Add หรือแก้วันที่ใน Detail เพื่อใช้เตือนงานตามวัน", "#7C3AED"),
+            step(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Health", "หน้า Health ช่วยดูไฟล์ที่ path หาย, duplicate, snapshot และ activity ล่าสุด", "#16A34A"),
+            step(ft.Icons.UNDO, "Undo / Snapshot", "ระบบเก็บ undo และ snapshot บางจังหวะ เช่น ก่อนเปลี่ยน Work folder หรือแก้รายการสำคัญ เพื่อช่วยย้อนกลับ", "#D97706"),
+
+            guide_header(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, "5. ติดตั้ง อัปเดต ถอนการติดตั้ง", "ออกแบบให้กด installer ทับเพื่ออัปเดตระบบได้"),
+            step(ft.Icons.INSTALL_DESKTOP_OUTLINED, "ติดตั้ง", "รัน SA_CHECK_Installer.exe แล้วระบบจะติดตั้งตัวแอพไว้ที่ C:\\SACHECK และสร้าง shortcut ให้", "#2563EB"),
+            step(ft.Icons.UPDATE, "อัปเดต", "ถ้ามี installer เวอร์ชันใหม่ ให้กดติดตั้งทับที่ C:\\SACHECK ได้เลย โค้ด/คู่มือจะอัปเดต แต่ Work folder ที่เลือกไว้จะไม่โดนลบ", "#0F766E"),
+            step(ft.Icons.DELETE_OUTLINE, "Uninstall", "ถอนการติดตั้งจะลบเฉพาะไฟล์ระบบแอพใน C:\\SACHECK ไม่ลบ Work1/Work2 หรือโฟลเดอร์งานที่ผู้ใช้เลือกไว้", "#DC2626"),
+            step(ft.Icons.VERIFIED_USER_OUTLINED, "Credits", "Developer / Creator: HOYTURBRO | Alias: Hoyturbro | Publisher: HOYTURBRO", "#0F766E"),
+        ]
+
+        guide_groups = []
+        current_group = []
+        for item in sections:
+            if getattr(item, "data", None) == "guide_header" and current_group:
+                guide_groups.append(current_group)
+                current_group = [item]
+            else:
+                current_group.append(item)
+        if current_group:
+            guide_groups.append(current_group)
+
+        guide_controls = [
+            ft.Container(
+                border=border_all(1, "#E2E8F0"),
+                border_radius=18,
+                bgcolor="#F8FAFC",
+                padding=12,
+                content=ft.Column(spacing=10, controls=group),
+            )
+            for group in guide_groups
+        ]
+
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=auto,
+                title=ft.Row(
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        app_logo_control(46, 14),
+                        ft.Column(spacing=2, controls=[ft.Text("SA CHECK User Guide", size=21, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("คู่มือเริ่มต้นสำหรับผู้ใช้ใหม่ กดปิดได้ทุกเมื่อ และเปิดใหม่ได้จากปุ่ม ? ซ้ายล่าง", size=12, color=MUTED)]),
+                    ],
+                ),
+                content=ft.Container(
+                    width=760,
+                    height=620,
+                    content=ft.ListView(
+                        spacing=12,
+                        controls=guide_controls,
+                    ),
+                ),
+                actions=[
+                    ft.TextButton("Open Settings", on_click=lambda _event: (close_manual(), show_settings())),
+                    ft.TextButton("Version notes", on_click=open_notes_from_manual),
+                    ft.Button("Got it", icon=ft.Icons.CHECK_CIRCLE_OUTLINE, on_click=close_manual, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
 
     def task_day(task):
         return task_calendar_date(task)
@@ -3970,6 +4819,51 @@ def main(page: ft.Page):
     search_field.on_change = on_search
 
     def build_sidebar_controls():
+        online_state = state.get("online_status", "checking")
+        status_color = "#16A34A" if online_state == "online" else "#D97706" if online_state == "checking" else "#DC2626"
+        status_text = "Online" if online_state == "online" else "Check" if online_state == "checking" else "Offline"
+        online_enabled = not settings.get("offline_mode", False)
+
+        def update_popup_button():
+            manifest = state.get("update_manifest") or {}
+            version_text = str(manifest.get("version") or "").strip()
+            return ft.Container(
+                on_click=lambda _e: show_update_prompt(manifest),
+                content=ft.Stack(
+                    width=58,
+                    height=64,
+                    controls=[
+                        ft.Container(
+                            left=6,
+                            top=14,
+                            content=nav_button(ft.Icons.DOWNLOAD_FOR_OFFLINE_OUTLINED, False),
+                        ),
+                        ft.Container(
+                            right=0,
+                            top=0,
+                            width=20,
+                            height=20,
+                            border_radius=999,
+                            bgcolor="#2563EB",
+                            border=border_all(2, NAV_BG),
+                            alignment=CENTER,
+                            content=ft.Icon(ft.Icons.ARROW_DOWNWARD_ROUNDED, size=12, color=WHITE),
+                        ),
+                        *([ft.Container(
+                            left=0,
+                            bottom=0,
+                            width=58,
+                            height=16,
+                            border_radius=999,
+                            bgcolor="#EFF6FF",
+                            border=border_all(1, "#BFDBFE"),
+                            alignment=CENTER,
+                            content=ft.Text(version_text, size=8, weight=ft.FontWeight.W_900, color="#1D4ED8", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                        )] if version_text else []),
+                    ],
+                ),
+            )
+
         return [
             ft.Container(
                 width=48,
@@ -3979,15 +4873,32 @@ def main(page: ft.Page):
                 border=border_all(1, "#334155"),
                 alignment=CENTER,
                 clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                content=ft.Image(
-                    src=APP_LOGO_SRC,
-                    width=44,
-                    height=44,
-                    fit=ft.BoxFit.COVER,
-                    error_content=ft.Text("SA", size=15, weight=ft.FontWeight.W_900, color=WHITE),
+                content=profile_media_control(44),
+            ),
+            ft.Container(
+                width=58,
+                height=22,
+                border_radius=999,
+                bgcolor="#0F172A",
+                border=border_all(1, "#334155"),
+                alignment=CENTER,
+                content=ft.Row(
+                    spacing=4,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=7, height=7, border_radius=99, bgcolor=status_color),
+                        ft.Text(status_text, size=9, weight=ft.FontWeight.W_800, color="#CBD5E1"),
+                    ],
                 ),
             ),
-            ft.Container(height=28),
+            ft.Container(
+                width=58,
+                height=22,
+                alignment=CENTER,
+                content=ft.Switch(value=online_enabled, scale=0.55, on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
+            ),
+            ft.Container(height=18),
             ft.Container(on_click=show_board, content=nav_button(ft.Icons.DASHBOARD_ROUNDED, state["screen"] == SCREEN_BOARD)),
             ft.Container(on_click=show_browser, content=nav_button(ft.Icons.FOLDER_OUTLINED, state["screen"] == SCREEN_BROWSER)),
             ft.Container(on_click=show_calendar, content=nav_button(ft.Icons.CALENDAR_TODAY_OUTLINED, state["screen"] == SCREEN_CALENDAR)),
@@ -3995,6 +4906,7 @@ def main(page: ft.Page):
             ft.Container(on_click=show_health, content=nav_button(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, state["screen"] == SCREEN_HEALTH)),
             ft.Container(on_click=show_settings, content=nav_button(ft.Icons.SETTINGS_OUTLINED, state["screen"] == SCREEN_SETTINGS)),
             ft.Container(expand=True),
+            *([update_popup_button()] if state.get("update_available") else []),
             ft.Container(on_click=show_help, content=nav_button(ft.Icons.HELP_OUTLINE, False)),
         ]
 
@@ -4035,11 +4947,15 @@ def main(page: ft.Page):
             ft.PopupMenuItem(content="Create project", icon=ft.Icons.CREATE_NEW_FOLDER_OUTLINED, on_click=lambda _e: add_task_dialog("project")),
             ft.PopupMenuItem(content="Calendar event", icon=ft.Icons.ADD_ALERT_OUTLINED, on_click=lambda _e: show_calendar_event_dialog(selected_date=calendar_state["selected"])),
             ft.PopupMenuItem(content="Templates", icon=ft.Icons.ARTICLE_OUTLINED, on_click=show_templates),
+            ft.PopupMenuItem(content="Export report", icon=ft.Icons.IOS_SHARE_OUTLINED, on_click=export_report),
+            ft.PopupMenuItem(content="About SA CHECK", icon=ft.Icons.INFO_OUTLINED, on_click=show_about),
             ft.PopupMenuItem(content="Sync now", icon=ft.Icons.SYNC, on_click=sync_now),
         ],
     )
 
     sync_button = ft.IconButton(icon=ft.Icons.SYNC, tooltip="Sync Work folders", icon_color=MUTED, on_click=sync_now)
+    export_button = ft.IconButton(icon=ft.Icons.IOS_SHARE_OUTLINED, tooltip="Export report", icon_color=MUTED, on_click=export_report)
+    about_button = ft.IconButton(icon=ft.Icons.INFO_OUTLINED, tooltip="About SA CHECK", icon_color=MUTED, on_click=show_about)
 
     header = ft.Container(
         height=96,
@@ -4064,7 +4980,7 @@ def main(page: ft.Page):
                         ),
                     ],
                 ),
-                ft.Row(spacing=10, controls=[sync_button, quick_add]),
+                ft.Row(spacing=10, controls=[about_button, export_button, sync_button, quick_add]),
             ],
         ),
     )
@@ -4077,6 +4993,9 @@ def main(page: ft.Page):
 
     page.add(ft.Row(spacing=0, expand=True, controls=[sidebar, content]))
     render_current()
+    if settings.get("manual_seen_version") != MANUAL_VERSION:
+        show_help(auto=True)
+    check_for_updates(manual=False)
 
     def show_event_reminder_popup(events, reminder_day, title="Today's reminders", alert_time="09:00"):
         if not events:
@@ -4186,6 +5105,14 @@ def main(page: ft.Page):
                 check_calendar_event_reminders()
                 if settings.get("realtime_sync_enabled", True) and auto_sync_from_work():
                     render_current()
+                now = datetime.now()
+                update_day_key = now.date().isoformat()
+                if now.strftime("%H:%M") >= "09:00" and settings.get("last_0900_update_check") != update_day_key and not settings.get("offline_mode", False):
+                    settings["last_0900_update_check"] = update_day_key
+                    save_settings(settings)
+                    check_for_updates(manual=False)
+                if time.time() - float(state.get("last_update_check") or 0) > UPDATE_CHECK_INTERVAL_SECONDS:
+                    check_for_updates(manual=False)
             except Exception:
                 state["syncing"] = False
 

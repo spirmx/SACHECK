@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "release_date": "2026-06-20",
+  "required": false,
+  "installer_url": "",
+  "notes": [
+    "Initial SA CHECK production release.",
+    "Offline-first work board with Work folder picker.",
+    "User guide, About/Credits, report export, and status theme presets.",
+    "Online update notification channel is ready for future releases."
+  ]
+}

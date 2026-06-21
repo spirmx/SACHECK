@@ -1,6 +1,7 @@
 import shutil
 import sys
 import json
+import os
 from pathlib import Path
 
 
@@ -8,6 +9,13 @@ def app_folder() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[1]
+
+
+def user_data_folder() -> Path:
+    root = os.environ.get("APPDATA")
+    if root:
+        return Path(root) / "SA CHECK"
+    return Path.home() / "AppData" / "Roaming" / "SA CHECK"
 
 
 def resource_path(relative_path: str) -> Path:
@@ -24,11 +32,13 @@ def editable_resource_path(relative_path: str) -> Path:
 
 
 def ensure_project_layout():
-    folders = ["config", "data", "data/snapshots", "cache/icons", "assets/app", "assets/category_icons"]
+    folders = ["config", "assets/app", "assets/category_icons"]
     if not getattr(sys, "frozen", False):
-        folders.append("release")
+        folders.extend(["data", "data/snapshots", "cache/icons", "release"])
     for folder in folders:
         (app_folder() / folder).mkdir(parents=True, exist_ok=True)
+    for folder in ["data", "data/snapshots", "cache/icons"]:
+        (user_data_folder() / folder).mkdir(parents=True, exist_ok=True)
 
 
 def migrate_file_if_needed(old_relative: str, new_relative: str):
@@ -57,17 +67,11 @@ def migrate_folder_contents_if_needed(old_relative: str, new_relative: str):
 
 
 def work_root() -> Path:
-    for path in [app_folder(), *app_folder().parents]:
-        if path.name == "TQM Work Inside":
-            return path
-    desktop_root = Path.home() / "Desktop" / "TQM Work Inside"
-    if desktop_root.exists() or (Path.home() / "Desktop").exists():
-        return desktop_root
-    return app_folder()
+    return Path.home() / "Documents" / "SA CHECK Work"
 
 
 def _settings_file() -> Path:
-    return app_folder() / "data" / "app_settings.json"
+    return user_data_folder() / "data" / "app_settings.json"
 
 
 def configured_work_folder() -> Path | None:
@@ -95,13 +99,28 @@ migrate_file_if_needed("app.ico", "assets/app/app.ico")
 migrate_file_if_needed("assets/app_logo.png", "assets/app/app_logo.png")
 migrate_folder_contents_if_needed("Icon_Cache", "cache/icons")
 
-DATA_FILE = app_folder() / "data" / "tasks.json"
-TEMPLATE_FILE = app_folder() / "data" / "templates.json"
+def migrate_user_file_if_needed(old_relative: str, new_relative: str):
+    old_path = app_folder() / old_relative
+    new_path = user_data_folder() / new_relative
+    if old_path.exists() and not new_path.exists():
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(old_path), str(new_path))
+
+
+migrate_user_file_if_needed("data/tasks.json", "data/tasks.json")
+migrate_user_file_if_needed("data/templates.json", "data/templates.json")
+migrate_user_file_if_needed("data/app_settings.json", "data/app_settings.json")
+migrate_user_file_if_needed("data/settings_log.json", "data/settings_log.json")
+migrate_user_file_if_needed("data/activity_log.json", "data/activity_log.json")
+migrate_user_file_if_needed("data/undo_stack.json", "data/undo_stack.json")
+
+DATA_FILE = user_data_folder() / "data" / "tasks.json"
+TEMPLATE_FILE = user_data_folder() / "data" / "templates.json"
 APP_SETTINGS_FILE = _settings_file()
-SETTINGS_LOG_FILE = app_folder() / "data" / "settings_log.json"
-ACTIVITY_LOG_FILE = app_folder() / "data" / "activity_log.json"
-UNDO_STACK_FILE = app_folder() / "data" / "undo_stack.json"
-SNAPSHOT_DIR = app_folder() / "data" / "snapshots"
-ICON_CACHE_DIR = app_folder() / "cache" / "icons"
+SETTINGS_LOG_FILE = user_data_folder() / "data" / "settings_log.json"
+ACTIVITY_LOG_FILE = user_data_folder() / "data" / "activity_log.json"
+UNDO_STACK_FILE = user_data_folder() / "data" / "undo_stack.json"
+SNAPSHOT_DIR = user_data_folder() / "data" / "snapshots"
+ICON_CACHE_DIR = user_data_folder() / "cache" / "icons"
 APP_ICON_FILE = app_folder() / "assets" / "app" / "app.ico"
 APP_LOGO_FILE = editable_resource_path("assets/app/app_logo.png")

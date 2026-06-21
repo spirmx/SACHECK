@@ -1,51 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+﻿__pycache__/
 *.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
+*.pyo
 .venv/
 venv/
-env/
-
-# Build outputs
 build/
 dist/
-release/
-*.spec.bak
+*.spec
 *.log
-
-# Installed/runtime copy
-app/
-
-# Runtime data and user work state
-data/*.json
-data/snapshots/
-cache/
-
-# Keep optional placeholder files if added later
-!data/.gitkeep
-!cache/.gitkeep
-
-# Local OS/editor files
 .DS_Store
 Thumbs.db
-desktop.ini
-.idea/
-.vscode/
-
-# Flet / Flutter generated outputs
-flet_release/
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-
-# Temporary files
-*.tmp
-*.temp
-~$*
+data/*.json
+!data/.gitkeep
