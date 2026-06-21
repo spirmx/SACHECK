@@ -2,15 +2,16 @@
 
 ## Current Release
 
-Version: `1.0.3-02 Build 2`
+Version: `1.0.3-03 Build 3`
 
-This is a small platform update for testing the GitHub in-app updater notification flow.
+This is a small platform update for fixing the in-app updater download progress.
 
 Changes in this build:
 
-- Update prompt appears every time SA CHECK detects a newer uploaded platform.
-- GitHub update manifest is fetched with a cachebuster on every check.
-- Removed same-session duplicate blocking so every update upload is visible during testing.
+- Fixed the update download page staying at 0 percent.
+- Update download now checks package size before downloading.
+- Progress updates are finer and show downloaded bytes while loading.
+- Installer download URL now uses a cachebuster.
 - Work folders, user settings, and cache are not cleared by this update.
 
 Update channel:

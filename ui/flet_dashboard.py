@@ -87,16 +87,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-02 Build 2"
+APP_VERSION = "1.0.3-03 Build 3"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 VERSION_HISTORY = [
     {
+        "version": "1.0.3-03 Build 3",
+        "date": "2026-06-22",
+        "latest": True,
+        "items": [
+            "แก้หน้า Download Update ค้าง 0% ให้เห็น progress เร็วขึ้น",
+            "เช็กขนาดไฟล์ด้วย HEAD ก่อนโหลดจริง",
+            "ใส่ cachebuster ให้ installer URL และลด chunk download ให้ progress ถี่ขึ้น",
+        ],
+    },
+    {
         "version": "1.0.3-02 Build 2",
         "date": "2026-06-21",
-        "latest": True,
+        "latest": False,
         "items": [
             "แก้ระบบอัปเดตให้แจ้งเตือนทุกครั้งที่มีแพลตใหม่",
             "ถอดตัวกัน popup ซ้ำใน session เพื่อให้เทสอัปเดตเห็นชัด",
@@ -146,6 +156,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-03 Build 3: Fixed update download staying at 0% by adding size precheck and finer progress updates.",
     "V1.0.3-02 Build 2: Update prompt now appears every time the app detects a newer platform.",
     "V1.0.3-01 Build 1: Fixed DarkMode text/background contrast and applied dark colors across the app surface.",
     "V1.0.3 BigUp: เพิ่มกฎบังคับอัปเดตตามแพลตหลัก/แพลตย่อยและเพิ่ม Version Remark ล่าสุด.",
@@ -397,6 +408,23 @@ def normalize_update_manifest(raw):
 
 def direct_download_url(url):
     return str(url or "").strip()
+
+
+def cachebusted_url(url):
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}t={int(time.time())}"
+
+
+def remote_file_size(url, timeout=12):
+    try:
+        request = urllib.request.Request(cachebusted_url(url), method="HEAD", headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return int(response.headers.get("content-length") or 0)
+    except Exception:
+        return 0
 
 
 def read_update_url(url, max_bytes=2 * 1024 * 1024, timeout=7):
@@ -4277,7 +4305,10 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     if total and total > 0:
                         value = min(1, max(0, downloaded / total))
                         progress_bar.value = value
-                        percent_text.value = f"{int(value * 100)}%"
+                        percent = int(value * 100)
+                        if downloaded > 0 and not done:
+                            percent = max(1, percent)
+                        percent_text.value = f"{percent}%"
                     else:
                         progress_bar.value = None
                         percent_text.value = "--%"
@@ -4316,28 +4347,30 @@ th{{background:#eff6ff;color:#1d4ed8}}
             def updater_worker():
                 part_path = None
                 try:
-                    download_url = direct_download_url(url)
+                    download_url = cachebusted_url(direct_download_url(url))
                     temp_dir = Path(tempfile.gettempdir()) / "SACHECK_Update"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     installer_path = temp_dir / f"SA_CHECK_Installer_{version or 'latest'}.exe"
                     part_path = installer_path.with_suffix(installer_path.suffix + ".part")
                     if part_path.exists():
                         part_path.unlink()
+                    expected_total = remote_file_size(url)
+                    update_progress(0, expected_total, "Checking update package size...")
                     request = urllib.request.Request(download_url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
-                    with urllib.request.urlopen(request, timeout=60) as response:
-                        total = int(response.headers.get("content-length") or 0)
+                    with urllib.request.urlopen(request, timeout=25) as response:
+                        total = int(response.headers.get("content-length") or 0) or expected_total
                         downloaded = 0
                         update_progress(0, total, "Downloading update package...")
                         with part_path.open("wb") as file:
                             while True:
                                 if cancel_download["value"]:
                                     raise RuntimeError("Update download was cancelled.")
-                                chunk = response.read(256 * 1024)
+                                chunk = response.read(64 * 1024)
                                 if not chunk:
                                     break
                                 file.write(chunk)
                                 downloaded += len(chunk)
-                                update_progress(downloaded, total, "Downloading update package...")
+                                update_progress(downloaded, total, f"Downloading update package... {bytes_label(downloaded)}")
                     if total and downloaded != total:
                         raise RuntimeError("Update package size did not match the server response.")
                     if part_path.stat().st_size < 1024 * 32:

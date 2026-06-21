@@ -1,13 +1,14 @@
 {
-  "version": "1.0.3-02 Build 2",
-  "release_date": "2026-06-21",
+  "version": "1.0.3-03 Build 3",
+  "release_date": "2026-06-22",
   "required": false,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small update for V1.0.3 Build 2.",
-    "Update prompt now appears every time SA CHECK detects a newer platform.",
-    "GitHub update manifest is fetched with a cachebuster on every check.",
-    "Removed same-session duplicate blocking so every uploaded update can be tested clearly.",
+    "Small update for V1.0.3 Build 3.",
+    "Fixed update download page staying at 0 percent.",
+    "Update download now checks package size before downloading.",
+    "Progress updates are finer and show downloaded bytes while loading.",
+    "Installer download URL now uses a cachebuster.",
     "This update keeps Work folders, settings, and cache safe."
   ]
 }
