@@ -1,14 +1,14 @@
 {
-  "version": "1.0.3 BigUp",
+  "version": "1.0.3-01 Build 1",
   "release_date": "2026-06-21",
   "required": false,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "V1.0.3 BigUp adds clearer update rules for core, patch, and small build releases.",
-    "Core platform jumps such as 1.1.0 or 2.0.0 can start the update automatically when online.",
-    "Small patch/build updates can be postponed first, then become required after the safe limit.",
-    "Update download now shows file size, progress percent, and safer error handling.",
-    "Version Notes now highlights the latest remark in green.",
-    "Settings includes a TH/EN language foundation and cleaner grouped layout."
+    "Small update for V1.0.3 Build 1.",
+    "Fixed DarkMode text/background contrast.",
+    "DarkMode now applies app surface colors, not only the window chrome.",
+    "Changing TH/EN language and applying theme reloads visible UI text.",
+    "Theme contrast guard keeps preset text readable.",
+    "This update keeps Work folders, settings, and cache safe."
   ]
 }

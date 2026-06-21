@@ -77,22 +77,36 @@ APP_THEME_PRESETS = {
 }
 
 
+DARK_UI = False
+UI_LANGUAGE = "en"
+
+
 def bundled_asset_path(*parts):
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
     return str(base.joinpath("assets", *parts))
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3 BigUp"
+APP_VERSION = "1.0.3-01 Build 1"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 VERSION_HISTORY = [
     {
-        "version": "1.0.3 BigUp",
+        "version": "1.0.3-01 Build 1",
         "date": "2026-06-21",
         "latest": True,
+        "items": [
+            "แก้ DarkMode ให้สีพื้นหลังและตัวอักษรไม่กลืนกัน",
+            "ปรับ DarkMode ให้ระบบเปลี่ยนโทนทั้งแอพ ไม่ใช่เฉพาะกรอบหน้าต่าง",
+            "ปล่อยเป็นแพลตเล็กสำหรับทดสอบระบบอัปเดตผ่าน GitHub",
+        ],
+    },
+    {
+        "version": "1.0.3 BigUp",
+        "date": "2026-06-21",
+        "latest": False,
         "items": [
             "เพิ่มกฎบังคับอัปเดตแบบแพลตหลัก/แพลตย่อยให้ชัดขึ้น",
             "เพิ่มโครงภาษา TH/EN ใน Settings",
@@ -122,6 +136,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-01 Build 1: Fixed DarkMode text/background contrast and applied dark colors across the app surface.",
     "V1.0.3 BigUp: เพิ่มกฎบังคับอัปเดตตามแพลตหลัก/แพลตย่อยและเพิ่ม Version Remark ล่าสุด.",
     "V1.0.3 BigUp: เพิ่มโครงภาษา TH/EN และ safety guard สำหรับหน้า render หลัก.",
     "V1.0.2: Update channel now uses GitHub repo spirmx/SACHECK and Drive fallback was removed from the app flow.",
@@ -158,6 +173,122 @@ UI_TEXT = {
         "updates": "อัปเดตระบบ",
     },
 }
+
+TH_TEXT = {
+    "Project Overview": "ภาพรวมงาน",
+    "Work Board": "บอร์ดงาน",
+    "Settings": "ตั้งค่า",
+    "System Setup": "ตั้งค่าระบบ",
+    "System": "ระบบ",
+    "Credits": "เครดิต",
+    "Desktop Work Board": "บอร์ดงานเดสก์ท็อป",
+    "Developer / Creator: HOYTURBRO": "ผู้พัฒนา / ผู้สร้าง: HOYTURBRO",
+    "Publisher: HOYTURBRO": "ผู้เผยแพร่: HOYTURBRO",
+    "About SA CHECK": "เกี่ยวกับ SA CHECK",
+    "User guide": "คู่มือ",
+    "Work Folder Source": "แหล่งโฟลเดอร์งาน",
+    "Choose Work folder": "เลือกโฟลเดอร์งาน",
+    "Open Work folder": "เปิดโฟลเดอร์งาน",
+    "Data file": "ไฟล์ข้อมูล",
+    "Appearance": "หน้าตาแอพ",
+    "Dark mode": "โหมดมืด",
+    "Sidebar profile media": "รูปโปรไฟล์แถบข้าง",
+    "Upload media": "อัปโหลดรูป",
+    "App theme": "ธีมแอพ",
+    "Status theme": "ธีมสถานะ",
+    "Apply theme": "ใช้ธีมนี้",
+    "System Updates": "อัปเดตระบบ",
+    "Current version": "เวอร์ชันปัจจุบัน",
+    "Online update checks": "เช็กอัปเดตออนไลน์",
+    "Offline mode": "โหมดออฟไลน์",
+    "Check now": "เช็กตอนนี้",
+    "Version notes": "บันทึกเวอร์ชัน",
+    "Sync & Safety Policy": "ซิงก์และความปลอดภัย",
+    "Realtime sync": "ซิงก์แบบทันที",
+    "Sync interval": "รอบซิงก์",
+    "Snapshots kept": "จำนวนสำรองที่เก็บ",
+    "Move files when status changes": "ย้ายไฟล์เมื่อเปลี่ยนสถานะ",
+    "Confirm risky actions": "ยืนยันก่อนทำรายการเสี่ยง",
+    "Smart Features": "ฟีเจอร์ช่วยคิด",
+    "Smart Search parser": "ค้นหาอัจฉริยะ",
+    "Smart Health insights": "วิเคราะห์สุขภาพงาน",
+    "Workload & zombie hints": "แจ้งเตือนงานค้าง/งานล้น",
+    "Smart Template ranking": "จัดอันดับ Template อัตโนมัติ",
+    "Smart thresholds": "เกณฑ์วิเคราะห์งาน",
+    "Stale Doing": "Doing ค้าง",
+    "Zombie Waiting": "Waiting ค้างนาน",
+    "Overload Doing": "Doing ล้น",
+    "Overload Total": "งานรวมล้น",
+    "Reset Defaults": "คืนค่าเริ่มต้น",
+    "Reset smart": "รีเซ็ตตัวช่วย",
+    "Reset sync": "รีเซ็ตซิงก์",
+    "Reset UI": "รีเซ็ตหน้าตา",
+    "Save settings": "บันทึกตั้งค่า",
+    "Work browser": "คลังงาน",
+    "Sync now": "ซิงก์ตอนนี้",
+    "Reload data": "โหลดข้อมูลใหม่",
+    "Create folders": "สร้างโฟลเดอร์",
+    "Open data folder": "เปิดโฟลเดอร์ข้อมูล",
+    "Type Library": "คลังประเภทงาน",
+    "+ Add custom type": "+ เพิ่มประเภทเอง",
+    "System type": "ประเภทระบบ",
+    "My type": "ประเภทของฉัน",
+    "Smart classify": "จัดประเภทอัตโนมัติ",
+    "Waiting": "รอทำ",
+    "Doing": "กำลังทำ",
+    "Success": "สำเร็จ",
+    "Completed": "เสร็จแล้ว",
+    "Waiting List": "รายการรอทำ",
+    "Active Work": "กำลังทำ",
+    "Complete": "เสร็จแล้ว",
+    "TOTAL": "ทั้งหมด",
+    "WAITING": "รอทำ",
+    "DOING": "กำลังทำ",
+    "COMPLETED": "เสร็จแล้ว",
+    "All work": "งานทั้งหมด",
+    "All types": "ทุกประเภท",
+    "Newest": "ใหม่สุด",
+    "Oldest": "เก่าสุด",
+    "Name": "ชื่อ",
+    "Reset": "รีเซ็ต",
+    "Smart Search:": "ค้นหาอัจฉริยะ:",
+    "Create New Work": "สร้างงานใหม่",
+    "Task name": "ชื่องาน",
+    "File type": "ประเภทไฟล์",
+    "Link type": "ประเภทลิงก์",
+    "Note / description": "โน้ต / รายละเอียด",
+    "Browse": "เลือกไฟล์",
+    "Browse folder": "เลือกโฟลเดอร์",
+    "Paste URL": "วาง URL",
+    "Save": "บันทึก",
+    "Save link": "บันทึกลิงก์",
+    "Cancel": "ยกเลิก",
+    "Close": "ปิด",
+    "Open": "เปิด",
+    "Detail": "รายละเอียด",
+    "Copy path": "คัดลอก path",
+    "Rename": "เปลี่ยนชื่อ",
+    "Delete": "ลบ",
+    "Templates": "Template",
+    "Template Library": "คลัง Template",
+    "Health": "สุขภาพระบบ",
+    "Calendar": "ปฏิทิน",
+    "Version Notes": "บันทึกเวอร์ชัน",
+    "Latest Remark": "ล่าสุด",
+    "Update Ready": "มีอัปเดตพร้อมใช้",
+    "Update now": "อัปเดตตอนนี้",
+    "Later": "ไว้ทีหลัง",
+    "Downloading Update": "กำลังดาวน์โหลดอัปเดต",
+    "Language": "ภาษา",
+    "English": "อังกฤษ",
+    "ไทย": "ไทย",
+}
+
+
+def localize_text(value):
+    if UI_LANGUAGE != "th" or not isinstance(value, str):
+        return value
+    return TH_TEXT.get(value, value)
 
 
 def pad_sym(horizontal=0, vertical=0):
@@ -796,6 +927,23 @@ def install_pointer_feedback():
         return
     ft._sacheck_pointer_feedback = True
 
+    def localize_args(args, kwargs, keys=("text", "value", "label", "hint_text", "tooltip")):
+        args = list(args)
+        if args and isinstance(args[0], str):
+            args[0] = localize_text(args[0])
+        for key in keys:
+            if isinstance(kwargs.get(key), str):
+                kwargs[key] = localize_text(kwargs[key])
+        return tuple(args), kwargs
+
+    original_text_init = ft.Text.__init__
+
+    def patched_text_init(self, *args, **kwargs):
+        args, kwargs = localize_args(args, kwargs, keys=("value",))
+        original_text_init(self, *args, **kwargs)
+
+    ft.Text.__init__ = patched_text_init
+
     def clickable_style(style=None, overlay="#E2E8F0"):
         style = style or ft.ButtonStyle()
         if getattr(style, "mouse_cursor", None) is None:
@@ -811,6 +959,7 @@ def install_pointer_feedback():
         original_init = control_class.__init__
 
         def patched_init(self, *args, _original_init=original_init, **kwargs):
+            args, kwargs = localize_args(args, kwargs)
             kwargs["style"] = clickable_style(kwargs.get("style"))
             _original_init(self, *args, **kwargs)
 
@@ -819,6 +968,7 @@ def install_pointer_feedback():
     original_icon_init = ft.IconButton.__init__
 
     def patched_icon_init(self, *args, **kwargs):
+        args, kwargs = localize_args(args, kwargs)
         kwargs.setdefault("mouse_cursor", ft.MouseCursor.CLICK)
         kwargs.setdefault("hover_color", "#E2E8F0")
         kwargs.setdefault("splash_color", "#CBD5E1")
@@ -826,9 +976,39 @@ def install_pointer_feedback():
 
     ft.IconButton.__init__ = patched_icon_init
 
+    original_text_field_init = ft.TextField.__init__
+
+    def patched_text_field_init(self, *args, **kwargs):
+        args, kwargs = localize_args(args, kwargs)
+        if DARK_UI:
+            kwargs["bgcolor"] = adapt_theme_color(kwargs.get("bgcolor", WHITE))
+            kwargs["border_color"] = adapt_theme_color(kwargs.get("border_color", BORDER))
+            kwargs["focused_border_color"] = adapt_theme_color(kwargs.get("focused_border_color", PRIMARY))
+            kwargs.setdefault("color", TEXT)
+            kwargs.setdefault("hint_style", ft.TextStyle(color=MUTED_2))
+        original_text_field_init(self, *args, **kwargs)
+
+    ft.TextField.__init__ = patched_text_field_init
+
+    if hasattr(ft, "Dropdown"):
+        original_dropdown_init = ft.Dropdown.__init__
+
+        def patched_dropdown_init(self, *args, **kwargs):
+            args, kwargs = localize_args(args, kwargs)
+            if DARK_UI:
+                kwargs["bgcolor"] = adapt_theme_color(kwargs.get("bgcolor", WHITE))
+                kwargs["border_color"] = adapt_theme_color(kwargs.get("border_color", BORDER))
+                kwargs["focused_border_color"] = adapt_theme_color(kwargs.get("focused_border_color", PRIMARY))
+                kwargs.setdefault("color", TEXT)
+            original_dropdown_init(self, *args, **kwargs)
+
+        ft.Dropdown.__init__ = patched_dropdown_init
+
     original_container_init = ft.Container.__init__
 
     def patched_container_init(self, *args, **kwargs):
+        if DARK_UI and "bgcolor" in kwargs:
+            kwargs["bgcolor"] = adapt_theme_color(kwargs.get("bgcolor"))
         if kwargs.get("on_click") and kwargs.get("ink") is None:
             kwargs["ink"] = True
             kwargs.setdefault("ink_color", "#E2E8F0")
@@ -842,9 +1022,87 @@ def selected_app_theme(settings):
     return name if name in APP_THEME_PRESETS else "Ocean Pro"
 
 
+def adapt_theme_color(color):
+    if not DARK_UI or not isinstance(color, str):
+        return color
+    value = color.strip().lower()
+    dark_map = {
+        "#ffffff": "#111827",
+        "#fff": "#111827",
+        "#f8fafc": "#0B1220",
+        "#f8fbff": "#111827",
+        "#eff6ff": "#172554",
+        "#eef2ff": "#1E1B4B",
+        "#f1f5f9": "#1F2937",
+        "#f0fdf4": "#052E1A",
+        "#ecfdf5": "#052E1A",
+        "#fffbeb": "#422006",
+        "#fff7ed": "#431407",
+        "#fef2f2": "#450A0A",
+        "#fff1f2": "#4C0519",
+        "#fdf2f8": "#500724",
+        "#f5f3ff": "#2E1065",
+    }
+    return dark_map.get(value, color)
+
+
+def color_luminance(color):
+    text = str(color or "").strip().lstrip("#")
+    if len(text) == 3:
+        text = "".join(part * 2 for part in text)
+    if len(text) != 6:
+        return 1.0
+    try:
+        channels = [int(text[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+    except ValueError:
+        return 1.0
+    adjusted = [value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4 for value in channels]
+    return 0.2126 * adjusted[0] + 0.7152 * adjusted[1] + 0.0722 * adjusted[2]
+
+
+def contrast_ratio(foreground, background):
+    light = max(color_luminance(foreground), color_luminance(background))
+    dark = min(color_luminance(foreground), color_luminance(background))
+    return (light + 0.05) / (dark + 0.05)
+
+
+def readable_text_for(background):
+    return "#0F172A" if contrast_ratio("#0F172A", background) >= contrast_ratio("#F8FAFC", background) else "#F8FAFC"
+
+
+def ensure_palette_contrast(palette):
+    palette = dict(palette)
+    surface = palette.get("surface", "#FFFFFF")
+    bg = palette.get("bg", surface)
+    if contrast_ratio(palette.get("text", "#0F172A"), surface) < 4.5:
+        palette["text"] = readable_text_for(surface)
+    if contrast_ratio(palette.get("muted", "#64748B"), surface) < 3.2:
+        palette["muted"] = "#CBD5E1" if color_luminance(surface) < 0.35 else "#475569"
+    if contrast_ratio(palette.get("muted_2", "#94A3B8"), surface) < 2.6:
+        palette["muted_2"] = "#94A3B8" if color_luminance(surface) < 0.35 else "#64748B"
+    if contrast_ratio(palette.get("border", "#E2E8F0"), bg) < 1.25:
+        palette["border"] = "#334155" if color_luminance(bg) < 0.35 else "#CBD5E1"
+    return palette
+
+
 def apply_app_theme(settings):
-    global BG, WHITE, TEXT, MUTED, MUTED_2, BORDER, PRIMARY, NAV_BG, NAV_ACTIVE
-    palette = APP_THEME_PRESETS[selected_app_theme(settings)]
+    global BG, WHITE, TEXT, MUTED, MUTED_2, BORDER, PRIMARY, NAV_BG, NAV_ACTIVE, DARK_UI
+    DARK_UI = settings.get("theme") == "Dark"
+    palette = dict(APP_THEME_PRESETS[selected_app_theme(settings)])
+    if DARK_UI:
+        palette.update(
+            {
+                "bg": "#0B1220",
+                "surface": "#111827",
+                "text": "#E5E7EB",
+                "muted": "#CBD5E1",
+                "muted_2": "#94A3B8",
+                "border": "#334155",
+                "nav": "#020617",
+                "soft": "#172554",
+            }
+        )
+    palette = ensure_palette_contrast(palette)
     BG = palette["bg"]
     WHITE = palette["surface"]
     TEXT = palette["text"]
@@ -878,9 +1136,11 @@ def app_logo_control(size=44, radius=14):
 
 
 def main(page: ft.Page):
+    global UI_LANGUAGE
     install_pointer_feedback()
     all_tasks = load_tasks()
     settings = load_settings()
+    UI_LANGUAGE = str(settings.get("language") or "en").lower()
     apply_app_theme(settings)
     root_work = work_folder()
     current_browser_path = {"path": root_work}
@@ -2623,7 +2883,7 @@ def main(page: ft.Page):
             custom_types = []
             settings["custom_file_types"] = custom_types
 
-        theme_switch = ft.Switch(label="Dark window chrome", value=settings.get("theme") == "Dark")
+        theme_switch = ft.Switch(label="Dark mode", value=settings.get("theme") == "Dark")
         language_select = dropdown(170, app_language(), list(LANGUAGE_LABELS.keys()))
         app_theme_select = dropdown(220, selected_app_theme(settings), list(APP_THEME_PRESETS.keys()))
         status_theme_select = dropdown(220, settings.get("status_theme_preset") or "Classic Blue", list(STATUS_THEME_PRESETS.keys()))
@@ -2795,8 +3055,10 @@ def main(page: ft.Page):
             )
 
         def save_theme(_event):
+            global UI_LANGUAGE
             settings["theme"] = "Dark" if theme_switch.value else "Light"
             settings["language"] = language_select.value or "en"
+            UI_LANGUAGE = settings["language"]
             settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
             settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             save_settings(settings)
@@ -2826,8 +3088,10 @@ def main(page: ft.Page):
             show_message(page, "Settings", "Sync and safety policy saved.")
 
         def save_all_settings(_event):
+            global UI_LANGUAGE
             settings["theme"] = "Dark" if theme_switch.value else "Light"
             settings["language"] = language_select.value or "en"
+            UI_LANGUAGE = settings["language"]
             settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
             settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             settings["realtime_sync_enabled"] = bool(realtime_switch.value)
@@ -2884,8 +3148,10 @@ def main(page: ft.Page):
             render_current()
 
         def reset_ui_defaults(_event):
+            global UI_LANGUAGE
             settings["theme"] = "Light"
             settings["language"] = "en"
+            UI_LANGUAGE = "en"
             settings["app_theme_preset"] = "Ocean Pro"
             settings["status_theme_preset"] = "Classic Blue"
             save_settings(settings)

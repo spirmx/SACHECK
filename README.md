@@ -1,5 +1,25 @@
 # SA CHECK
 
+## Current Release
+
+Version: `1.0.3-01 Build 1`
+
+This is a small platform update for testing the GitHub in-app updater.
+
+Changes in this build:
+
+- Fixed DarkMode contrast so text and app surfaces no longer blend together.
+- DarkMode now applies to app panels and form controls, not only the window frame.
+- Added a language refresh layer so changing TH/EN and applying the theme reloads visible UI text.
+- Added a theme contrast guard to keep theme text readable across presets.
+- Work folders, user settings, and cache are not cleared by this update.
+
+Update channel:
+
+- Manifest: `sacheck_update.json`
+- Installer payload: `release/SA_CHECK_Installer.exe`
+- Repository: `https://github.com/spirmx/SACHECK`
+
 SA CHECK เป็นแอพ Desktop สำหรับจัดบอร์ดงาน SA/IT บน Windows ทำงานแบบ offline-first และอ่านไฟล์จากโฟลเดอร์ Work ที่ผู้ใช้เลือกได้เอง เหมาะกับงานที่แยกหลายคลัง เช่น Work1, Work2 หรือโฟลเดอร์งานของแต่ละทีม
 
 ## ตำแหน่งระบบ
