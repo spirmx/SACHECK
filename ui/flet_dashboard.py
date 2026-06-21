@@ -87,16 +87,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-01 Build 1"
+APP_VERSION = "1.0.3-02 Build 2"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 VERSION_HISTORY = [
     {
-        "version": "1.0.3-01 Build 1",
+        "version": "1.0.3-02 Build 2",
         "date": "2026-06-21",
         "latest": True,
+        "items": [
+            "แก้ระบบอัปเดตให้แจ้งเตือนทุกครั้งที่มีแพลตใหม่",
+            "ถอดตัวกัน popup ซ้ำใน session เพื่อให้เทสอัปเดตเห็นชัด",
+            "เพิ่ม cachebuster ตอนอ่าน manifest จาก GitHub API/Raw",
+        ],
+    },
+    {
+        "version": "1.0.3-01 Build 1",
+        "date": "2026-06-21",
+        "latest": False,
         "items": [
             "แก้ DarkMode ให้สีพื้นหลังและตัวอักษรไม่กลืนกัน",
             "ปรับ DarkMode ให้ระบบเปลี่ยนโทนทั้งแอพ ไม่ใช่เฉพาะกรอบหน้าต่าง",
@@ -136,6 +146,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-02 Build 2: Update prompt now appears every time the app detects a newer platform.",
     "V1.0.3-01 Build 1: Fixed DarkMode text/background contrast and applied dark colors across the app surface.",
     "V1.0.3 BigUp: เพิ่มกฎบังคับอัปเดตตามแพลตหลัก/แพลตย่อยและเพิ่ม Version Remark ล่าสุด.",
     "V1.0.3 BigUp: เพิ่มโครงภาษา TH/EN และ safety guard สำหรับหน้า render หลัก.",
@@ -389,8 +400,9 @@ def direct_download_url(url):
 
 
 def read_update_url(url, max_bytes=2 * 1024 * 1024, timeout=7):
-    if "raw.githubusercontent.com" in str(url) and "?" not in str(url):
-        url = f"{url}?t={int(time.time())}"
+    url = str(url or "").strip()
+    separator = "&" if "?" in url else "?"
+    url = f"{url}{separator}t={int(time.time())}"
     request = urllib.request.Request(url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}", "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read(max_bytes)
@@ -4435,10 +4447,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     dismissed = int(settings.get("update_dismiss_count", 0)) if settings.get("last_update_prompt_version") == manifest.get("version") else 0
                     forced_reason = update_force_reason(manifest.get("version"), manifest, dismissed)
                     auto_start = bool(forced_reason and is_core_platform_update(manifest.get("version")))
-                    prompted_versions = state.setdefault("update_prompted_versions", set())
-                    if manual or forced_reason or manifest.get("version") not in prompted_versions:
-                        prompted_versions.add(manifest.get("version"))
-                        show_update_prompt(manifest, forced=bool(forced_reason), auto_start=auto_start)
+                    show_update_prompt(manifest, forced=bool(forced_reason), auto_start=auto_start)
                 else:
                     state["update_manifest"] = manifest
                     state["update_available"] = False

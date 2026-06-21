@@ -1,14 +1,13 @@
 {
-  "version": "1.0.3-01 Build 1",
+  "version": "1.0.3-02 Build 2",
   "release_date": "2026-06-21",
   "required": false,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small update for V1.0.3 Build 1.",
-    "Fixed DarkMode text/background contrast.",
-    "DarkMode now applies app surface colors, not only the window chrome.",
-    "Changing TH/EN language and applying theme reloads visible UI text.",
-    "Theme contrast guard keeps preset text readable.",
+    "Small update for V1.0.3 Build 2.",
+    "Update prompt now appears every time SA CHECK detects a newer platform.",
+    "GitHub update manifest is fetched with a cachebuster on every check.",
+    "Removed same-session duplicate blocking so every uploaded update can be tested clearly.",
     "This update keeps Work folders, settings, and cache safe."
   ]
 }

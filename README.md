@@ -2,16 +2,15 @@
 
 ## Current Release
 
-Version: `1.0.3-01 Build 1`
+Version: `1.0.3-02 Build 2`
 
-This is a small platform update for testing the GitHub in-app updater.
+This is a small platform update for testing the GitHub in-app updater notification flow.
 
 Changes in this build:
 
-- Fixed DarkMode contrast so text and app surfaces no longer blend together.
-- DarkMode now applies to app panels and form controls, not only the window frame.
-- Added a language refresh layer so changing TH/EN and applying the theme reloads visible UI text.
-- Added a theme contrast guard to keep theme text readable across presets.
+- Update prompt appears every time SA CHECK detects a newer uploaded platform.
+- GitHub update manifest is fetched with a cachebuster on every check.
+- Removed same-session duplicate blocking so every update upload is visible during testing.
 - Work folders, user settings, and cache are not cleared by this update.
 
 Update channel:
