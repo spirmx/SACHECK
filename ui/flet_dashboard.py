@@ -131,13 +131,11 @@ def load_json(path, fallback):
 
 
 def parse_version(value):
-    parts = []
-    for part in str(value or "0").split("."):
-        try:
-            parts.append(int("".join(ch for ch in part if ch.isdigit()) or "0"))
-        except ValueError:
-            parts.append(0)
-    return tuple((parts + [0, 0, 0])[:3])
+    text = str(value or "0").strip()
+    match = re.search(r"(\d+)\.(\d+)\.(\d+)(?:[-._ ]+(\d+))?", text)
+    if not match:
+        return (0, 0, 0, 0)
+    return tuple(int(part or 0) for part in match.groups())
 
 
 def is_newer_version(candidate, current=APP_VERSION):

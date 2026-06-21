@@ -1,9 +1,12 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.2-01",
   "release_date": "2026-06-21",
   "required": false,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
+    "SA CHECK V1.0.2-01 small update platform test.",
+    "This test release verifies that the in-app update prompt appears for build-suffix versions.",
+    "No user Work folder, settings, or cache will be cleared.",
     "SA CHECK V1.0.2 Git update platform and theme apply update.",
     "Update checks now read sacheck_update.json from https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json.",
     "Installer downloads from the repository release folder.",
