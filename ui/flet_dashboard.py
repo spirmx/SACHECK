@@ -592,6 +592,27 @@ def file_meta(path):
         return "Unavailable"
 
 
+def bytes_label(size):
+    try:
+        value = float(size or 0)
+    except (TypeError, ValueError):
+        value = 0.0
+    units = ["B", "KB", "MB", "GB", "TB"]
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(value)} B"
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} TB"
+
+
+def update_size_label(downloaded, total=None):
+    if total and total > 0:
+        return f"{bytes_label(downloaded)} / {bytes_label(total)}"
+    return f"{bytes_label(downloaded)} downloaded"
+
+
 def list_work_items(path):
     items = []
     try:
@@ -3806,23 +3827,103 @@ th{{background:#eff6ff;color:#1d4ed8}}
             if not url:
                 show_message(page, "Update", "Update package is not ready yet. Please contact the app publisher.")
                 return
-            show_message(page, "Update", "Downloading update package...", kind="warning")
+            cancel_download = {"value": False}
+            progress_bar = ft.ProgressBar(value=0, color=PRIMARY, bgcolor="#DBEAFE")
+            percent_text = ft.Text("0%", size=18, weight=ft.FontWeight.W_900, color=TEXT)
+            size_text = ft.Text("Preparing download...", size=12, color=MUTED)
+            status_text = ft.Text("Connecting to update server...", size=13, color=MUTED)
+            file_text = ft.Text(f"SA CHECK {version}", size=12, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+            cancel_button = ft.TextButton("Cancel", on_click=lambda _e: cancel_download.update({"value": True}))
+
+            def update_progress(downloaded=0, total=0, status="Downloading update package...", done=False, error=False):
+                try:
+                    if total and total > 0:
+                        value = min(1, max(0, downloaded / total))
+                        progress_bar.value = value
+                        percent_text.value = f"{int(value * 100)}%"
+                    else:
+                        progress_bar.value = None
+                        percent_text.value = "--%"
+                    size_text.value = update_size_label(downloaded, total)
+                    status_text.value = status
+                    status_text.color = "#DC2626" if error else "#16A34A" if done else MUTED
+                    cancel_button.disabled = done or error
+                    page.update()
+                except Exception:
+                    pass
+
+            page.show_dialog(
+                ft.AlertDialog(
+                    modal=True,
+                    title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.DOWNLOAD_FOR_OFFLINE_OUTLINED, color=PRIMARY), ft.Text("Downloading Update", size=21, weight=ft.FontWeight.W_900, color=TEXT)]),
+                    content=ft.Container(
+                        width=540,
+                        height=235,
+                        content=ft.Column(
+                            spacing=14,
+                            controls=[
+                                ft.Container(border=border_all(1, "#DBEAFE"), border_radius=14, bgcolor="#F8FBFF", padding=12, content=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SHIELD_OUTLINED, color=PRIMARY), ft.Text("Only app system files will be replaced. Work folders, settings, and cache stay safe.", size=12, color=MUTED, expand=True)])),
+                                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[file_text, percent_text]),
+                                progress_bar,
+                                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[size_text, status_text]),
+                            ],
+                        ),
+                    ),
+                    actions=[cancel_button],
+                    bgcolor=WHITE,
+                    shape=ft.RoundedRectangleBorder(radius=18),
+                )
+            )
+            page.update()
 
             def updater_worker():
+                part_path = None
                 try:
                     download_url = direct_download_url(url)
                     temp_dir = Path(tempfile.gettempdir()) / "SACHECK_Update"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     installer_path = temp_dir / f"SA_CHECK_Installer_{version or 'latest'}.exe"
+                    part_path = installer_path.with_suffix(installer_path.suffix + ".part")
+                    if part_path.exists():
+                        part_path.unlink()
                     request = urllib.request.Request(download_url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
                     with urllib.request.urlopen(request, timeout=60) as response:
-                        installer_path.write_bytes(response.read())
-                    if installer_path.stat().st_size < 1024 * 32:
+                        total = int(response.headers.get("content-length") or 0)
+                        downloaded = 0
+                        update_progress(0, total, "Downloading update package...")
+                        with part_path.open("wb") as file:
+                            while True:
+                                if cancel_download["value"]:
+                                    raise RuntimeError("Update download was cancelled.")
+                                chunk = response.read(256 * 1024)
+                                if not chunk:
+                                    break
+                                file.write(chunk)
+                                downloaded += len(chunk)
+                                update_progress(downloaded, total, "Downloading update package...")
+                    if total and downloaded != total:
+                        raise RuntimeError("Update package size did not match the server response.")
+                    if part_path.stat().st_size < 1024 * 32:
                         raise RuntimeError("Update package was not downloaded correctly.")
+                    if installer_path.exists():
+                        installer_path.unlink()
+                    part_path.replace(installer_path)
+                    update_progress(installer_path.stat().st_size, total or installer_path.stat().st_size, "Download complete. Launching installer...", done=True)
                     subprocess.Popen([str(installer_path)], cwd=str(temp_dir), close_fds=True)
                     show_message(page, "Update", "Installer is launching. Close SA CHECK if setup asks to update files.", kind="success")
-                except Exception:
-                    show_message(page, "Update", "Could not download the update package. Please contact the app publisher.")
+                    try:
+                        page.pop_dialog()
+                        page.update()
+                    except Exception:
+                        pass
+                except Exception as exc:
+                    try:
+                        if part_path and part_path.exists():
+                            part_path.unlink()
+                    except OSError:
+                        pass
+                    update_progress(0, 0, str(exc) or "Could not download the update package.", error=True)
+                    show_message(page, "Update", "Could not download the update package. Please try again or contact the app publisher.")
 
             page.run_thread(updater_worker)
 

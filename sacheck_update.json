@@ -6,6 +6,7 @@
   "notes": [
     "Small update prompt test for V1.0.2-01.",
     "Cleaner update window layout.",
+    "Update download shows file size and percent progress.",
     "Theme changes use the Apply theme button.",
     "Work folders, settings, and cache stay safe."
   ]
