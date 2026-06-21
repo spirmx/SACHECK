@@ -1,14 +1,13 @@
 {
-  "version": "1.0.4 Stable",
+  "version": "1.0.4-01 Stable Hotfix",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/5ba094a653f01f73d0f0d3e81f7c20f9722b9698/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Required stability update for V1.0.4.",
-    "ทำให้แอพเสถียรมากที่สุดใน update flow ปัจจุบัน",
-    "Prevent duplicate update installer launches.",
-    "Required updates can start automatically while Online mode is enabled.",
-    "SA CHECK closes before installing and reopens after setup finishes.",
+    "Required hotfix for V1.0.4 update finish behavior.",
+    "After an in-app update finishes, SA CHECK stays closed.",
+    "Users should open SA CHECK manually from the desktop or Start Menu shortcut.",
+    "This avoids black-screen or empty-data states caused by relaunching too quickly.",
     "No Setup wizard is shown during in-app silent updates.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]

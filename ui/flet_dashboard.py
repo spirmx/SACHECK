@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.4 Stable"
+APP_VERSION = "1.0.4-01 Stable Hotfix"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.4 Stable",
+        "version": "1.0.4-01 Stable Hotfix",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Changed update finish behavior so SA CHECK stays closed after installation.",
+            "Users should open SA CHECK manually after the installer finishes.",
+            "Avoids black-screen or empty-data states caused by relaunching too quickly.",
+            "Keeps Work folders, settings, cache, and user data safe.",
+        ],
+    },
+    {
+        "version": "1.0.4 Stable",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Required stability update for SA CHECK.",
             "Hardened update flow to prevent duplicate installer launches.",
@@ -197,6 +208,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.4-01 Stable Hotfix: Update install now leaves SA CHECK closed so users reopen it manually after setup finishes.",
     "V1.0.4 Stable: Required stability update with safer forced-update flow and duplicate-launch protection.",
     "V1.0.3-06 Build 6: Auto update checks can run every minute and are configurable in Settings.",
     "V1.0.3-05 Build 5: Small Git update notification test patch.",
@@ -4465,7 +4477,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         "/FORCECLOSEAPPLICATIONS",
                     ]
                     subprocess.Popen(silent_args, cwd=str(temp_dir), close_fds=True)
-                    show_message(page, "Update", "Silent installer is running. SA CHECK will close and reopen after the update.", kind="success")
+                    show_message(page, "Update", "Silent installer is running. SA CHECK will close after the update. Please open it again from the shortcut.", kind="success")
                     try:
                         page.pop_dialog()
                         page.update()

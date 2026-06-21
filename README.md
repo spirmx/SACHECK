@@ -8,17 +8,16 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.4 Stable`
+Version: `1.0.4-01 Stable Hotfix`
 
-This is a required stability update.
+This is a required hotfix for the update finish flow.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- ทำให้แอพเสถียรมากที่สุดใน update flow ปัจจุบัน
-- Prevents duplicate update installer launches.
-- Required updates can start automatically while Online mode is enabled.
-- In-app updates close SA CHECK before installing and relaunch the app after setup finishes.
+- After an in-app update finishes, SA CHECK stays closed.
+- Users should open SA CHECK manually from the desktop or Start Menu shortcut.
+- Avoids black-screen or empty-data states caused by relaunching too quickly.
 - Silent update installs do not show the Setup wizard.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
@@ -82,4 +81,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.4 Stable` is a required stability update for the updater and relaunch flow.
+`1.0.4-01 Stable Hotfix` changes the update finish flow so the app stays closed after setup finishes.
