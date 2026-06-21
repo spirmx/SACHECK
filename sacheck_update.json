@@ -2,7 +2,7 @@
   "version": "1.0.3-05 Build 5",
   "release_date": "2026-06-22",
   "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/23ef3d4e7ea58d0d586235e69e3e8d9973c96097/release/SA_CHECK_Installer.exe",
   "notes": [
     "Small update for V1.0.3 Build 5.",
     "This patch is for testing the GitHub update notification popup.",
