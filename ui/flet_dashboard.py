@@ -87,16 +87,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-03 Build 3"
+APP_VERSION = "1.0.3-04 Build 4"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 VERSION_HISTORY = [
     {
-        "version": "1.0.3-03 Build 3",
+        "version": "1.0.3-04 Build 4",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "ซ่อนหน้าต่าง Setup wizard ตอนอัปเดตจากในแอพ",
+            "รัน installer แบบ silent พร้อมปิดกล่องถาม task/shortcut/startup",
+            "ใช้ Inno Setup silent flags สำหรับ update flow เท่านั้น",
+        ],
+    },
+    {
+        "version": "1.0.3-03 Build 3",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "แก้หน้า Download Update ค้าง 0% ให้เห็น progress เร็วขึ้น",
             "เช็กขนาดไฟล์ด้วย HEAD ก่อนโหลดจริง",
@@ -156,6 +166,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-04 Build 4: In-app updates now launch the installer silently without showing the setup wizard.",
     "V1.0.3-03 Build 3: Fixed update download staying at 0% by adding size precheck and finer progress updates.",
     "V1.0.3-02 Build 2: Update prompt now appears every time the app detects a newer platform.",
     "V1.0.3-01 Build 1: Fixed DarkMode text/background contrast and applied dark colors across the app surface.",
@@ -4379,8 +4390,16 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         installer_path.unlink()
                     part_path.replace(installer_path)
                     update_progress(installer_path.stat().st_size, total or installer_path.stat().st_size, "Download complete. Launching installer...", done=True)
-                    subprocess.Popen([str(installer_path)], cwd=str(temp_dir), close_fds=True)
-                    show_message(page, "Update", "Installer is launching. Close SA CHECK if setup asks to update files.", kind="success")
+                    silent_args = [
+                        str(installer_path),
+                        "/VERYSILENT",
+                        "/SUPPRESSMSGBOXES",
+                        "/NORESTART",
+                        "/CLOSEAPPLICATIONS",
+                        "/FORCECLOSEAPPLICATIONS",
+                    ]
+                    subprocess.Popen(silent_args, cwd=str(temp_dir), close_fds=True)
+                    show_message(page, "Update", "Silent installer is running. SA CHECK may close and reopen during the update.", kind="success")
                     try:
                         page.pop_dialog()
                         page.update()

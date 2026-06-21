@@ -1,14 +1,14 @@
 {
-  "version": "1.0.3-03 Build 3",
+  "version": "1.0.3-04 Build 4",
   "release_date": "2026-06-22",
   "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/b34b23d4f661fe3a46d64e661733419f0c58df7b/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small update for V1.0.3 Build 3.",
-    "Fixed update download page staying at 0 percent.",
-    "Update download now checks package size before downloading.",
-    "Progress updates are finer and show downloaded bytes while loading.",
-    "Installer download URL now uses a commit-pinned URL plus cachebuster.",
+    "Small update for V1.0.3 Build 4.",
+    "In-app updates now launch the installer silently.",
+    "The installer no longer shows the Additional Tasks page.",
+    "Desktop shortcut is created automatically without asking during setup.",
+    "Startup checkbox was removed from the installer to keep updates clean.",
     "This update keeps Work folders, settings, and cache safe."
   ]
 }
