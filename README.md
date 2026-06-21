@@ -8,16 +8,15 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.3-04 Build 4`
+Version: `1.0.3-05 Build 5`
 
-This build focuses on the in-app update flow.
+This is a small update notification test patch.
 
 Latest changes:
 
-- In-app updates launch the installer silently.
-- The installer no longer shows the Additional Tasks page.
-- Desktop shortcut is created automatically during install/update.
-- Startup checkbox was removed from the installer to keep updates clean.
+- Tests GitHub manifest update alerts from installed apps.
+- Keeps the silent installer behavior from Build 4.
+- Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
 
 ## App Concept
@@ -79,4 +78,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.3-04 Build 4` is a small hotfix after Build 3. Build 3 fixed updater progress staying at 0 percent. Build 4 hides the setup wizard/task page during in-app update.
+`1.0.3-05 Build 5` is a small Git update notification test patch after Build 4.

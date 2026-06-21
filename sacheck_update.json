@@ -1,14 +1,12 @@
 {
-  "version": "1.0.3-04 Build 4",
+  "version": "1.0.3-05 Build 5",
   "release_date": "2026-06-22",
   "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/2992ee1a67c91571e1aeab00662da4d2afe6f6b2/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small update for V1.0.3 Build 4.",
-    "In-app updates now launch the installer silently.",
-    "The installer no longer shows the Additional Tasks page.",
-    "Desktop shortcut is created automatically without asking during setup.",
-    "Startup checkbox was removed from the installer to keep updates clean.",
-    "This update keeps Work folders, settings, and cache safe."
+    "Small update for V1.0.3 Build 5.",
+    "This patch is for testing the GitHub update notification popup.",
+    "If your installed app is older than Build 5 and Online mode is enabled, SA CHECK should show an update alert.",
+    "No user Work folders, settings, or cache are cleared by this update."
   ]
 }

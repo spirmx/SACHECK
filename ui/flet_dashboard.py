@@ -87,16 +87,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-04 Build 4"
+APP_VERSION = "1.0.3-05 Build 5"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 VERSION_HISTORY = [
     {
-        "version": "1.0.3-04 Build 4",
+        "version": "1.0.3-05 Build 5",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "แพตเล็กสำหรับทดสอบระบบแจ้งเตือนอัพเดทจาก GitHub",
+            "ใช้ทดสอบว่าแอพเด้งเตือนเมื่อ manifest มีเวอร์ชันใหม่",
+            "ไม่เปลี่ยนข้อมูลผู้ใช้ Work folder settings หรือ cache",
+        ],
+    },
+    {
+        "version": "1.0.3-04 Build 4",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "ซ่อนหน้าต่าง Setup wizard ตอนอัปเดตจากในแอพ",
             "รัน installer แบบ silent พร้อมปิดกล่องถาม task/shortcut/startup",
@@ -166,6 +176,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-05 Build 5: Small Git update notification test patch.",
     "V1.0.3-04 Build 4: In-app updates now launch the installer silently without showing the setup wizard.",
     "V1.0.3-03 Build 3: Fixed update download staying at 0% by adding size precheck and finer progress updates.",
     "V1.0.3-02 Build 2: Update prompt now appears every time the app detects a newer platform.",
