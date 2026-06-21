@@ -83,12 +83,47 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3 BigUp"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
+VERSION_HISTORY = [
+    {
+        "version": "1.0.3 BigUp",
+        "date": "2026-06-21",
+        "latest": True,
+        "items": [
+            "เพิ่มกฎบังคับอัปเดตแบบแพลตหลัก/แพลตย่อยให้ชัดขึ้น",
+            "เพิ่มโครงภาษา TH/EN ใน Settings",
+            "เพิ่ม safety guard ให้หน้า render หลักไม่ล่มทั้งแอพง่ายๆ",
+            "ปรับ Version Notes ให้มี Remark สีเขียวสำหรับเวอร์ชันล่าสุด",
+        ],
+    },
+    {
+        "version": "1.0.2",
+        "date": "2026-06-21",
+        "latest": False,
+        "items": [
+            "เปลี่ยน update channel ไป GitHub spirmx/SACHECK",
+            "เพิ่มปุ่ม Apply theme และถอดการเปลี่ยนธีมทันที",
+            "เพิ่มหน้าดาวน์โหลด update พร้อมขนาดไฟล์และเปอร์เซ็นต์",
+        ],
+    },
+    {
+        "version": "1.0.1 Finally",
+        "date": "2026-06-20",
+        "latest": False,
+        "items": [
+            "แก้ FilePicker packaged runtime",
+            "เพิ่ม fallback เลือกโฟลเดอร์แบบ Windows native",
+            "เพิ่ม theme presets, sidebar media, และ online/offline switch",
+        ],
+    },
+]
 CURRENT_CHANGELOG = [
+    "V1.0.3 BigUp: เพิ่มกฎบังคับอัปเดตตามแพลตหลัก/แพลตย่อยและเพิ่ม Version Remark ล่าสุด.",
+    "V1.0.3 BigUp: เพิ่มโครงภาษา TH/EN และ safety guard สำหรับหน้า render หลัก.",
     "V1.0.2: Update channel now uses GitHub repo spirmx/SACHECK and Drive fallback was removed from the app flow.",
     "V1.0.2: Theme changes now wait for the Apply theme button, so users can choose before committing.",
     "Added App Theme presets for the whole workspace look.",
@@ -102,6 +137,27 @@ APP_ICON_PATH = bundled_asset_path("app", "app.ico")
 PROFILE_MEDIA_DIR = APP_SETTINGS_FILE.parent / "profile_media"
 PROFILE_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 PROFILE_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
+LANGUAGE_LABELS = {"en": "English", "th": "ไทย"}
+UI_TEXT = {
+    "en": {
+        "settings": "Settings",
+        "system_setup": "System Setup",
+        "language": "Language",
+        "language_hint": "Choose the app language. Some technical terms stay short so teams can understand them.",
+        "apply_theme": "Apply theme",
+        "theme_apply_hint": "Theme changes apply after pressing this button.",
+        "updates": "System Updates",
+    },
+    "th": {
+        "settings": "ตั้งค่า",
+        "system_setup": "ตั้งค่าระบบ",
+        "language": "ภาษา",
+        "language_hint": "เลือกภาษาของแอพ คำเทคนิคบางคำจะคงไว้ให้อ่านเข้าใจง่ายในทีม",
+        "apply_theme": "ใช้ธีมนี้",
+        "theme_apply_hint": "ธีมจะเปลี่ยนหลังจากกดปุ่มนี้",
+        "updates": "อัปเดตระบบ",
+    },
+}
 
 
 def pad_sym(horizontal=0, vertical=0):
@@ -143,15 +199,35 @@ def is_newer_version(candidate, current=APP_VERSION):
     return parse_version(candidate) > parse_version(current)
 
 
+def is_core_platform_update(candidate, current=APP_VERSION):
+    target = parse_version(candidate)
+    installed = parse_version(current)
+    return target[:2] > installed[:2]
+
+
+def is_forced_platform_update(candidate, current=APP_VERSION):
+    target = parse_version(candidate)
+    installed = parse_version(current)
+    if target[:2] > installed[:2]:
+        return True
+    if target[:2] == installed[:2] and target[2] - installed[2] >= 2:
+        return True
+    if target[:3] == installed[:3] and target[3] - installed[3] >= 3:
+        return True
+    return False
+
+
 def update_force_reason(candidate, manifest, dismissed_count):
     if bool(manifest.get("required")):
         return "This update is marked as required."
     current = parse_version(APP_VERSION)
     target = parse_version(candidate)
-    if target[0] > current[0] or target[1] > current[1]:
-        return "This is a major app update."
-    if target[2] - current[2] >= 3:
-        return "This machine is 3 patch versions behind."
+    if target[:2] > current[:2]:
+        return "This is a core platform update and will install automatically."
+    if target[:2] == current[:2] and target[2] - current[2] >= 2:
+        return "This machine is behind by 2 platform patch releases."
+    if target[:3] == current[:3] and target[3] - current[3] >= 3:
+        return "This machine is 3 small update builds behind."
     if dismissed_count >= 3:
         return "This update was skipped 3 times."
     return ""
@@ -883,6 +959,14 @@ def main(page: ft.Page):
         if value and Path(value).exists():
             return value
         return APP_LOGO_PATH
+
+    def app_language():
+        value = str(settings.get("language") or "en").lower()
+        return value if value in UI_TEXT else "en"
+
+    def t(key):
+        lang = app_language()
+        return UI_TEXT.get(lang, UI_TEXT["en"]).get(key, UI_TEXT["en"].get(key, key))
 
     def profile_media_control(size=48):
         source = profile_media_path()
@@ -1925,20 +2009,61 @@ def main(page: ft.Page):
         finally:
             state["syncing"] = False
 
+    def render_error_view(exc):
+        header_title.value = "System Guard"
+        header_subtitle.value = f"{APP_NAME} / Recovery"
+        progress_badge.value = "Recovery"
+        main_body.spacing = 16
+        main_body.controls = [
+            ft.Container(
+                border=border_all(1, "#FECACA"),
+                border_radius=18,
+                bgcolor="#FEF2F2",
+                padding=22,
+                content=ft.Column(
+                    spacing=14,
+                    controls=[
+                        ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SHIELD_OUTLINED, color="#DC2626"), ft.Text("Something failed, but the app is still running.", size=20, weight=ft.FontWeight.W_900, color=TEXT)]),
+                        ft.Text("This recovery screen prevents one broken page from closing SA CHECK. Try returning to the board or opening Settings.", size=13, color=MUTED),
+                        ft.Container(border=border_all(1, "#FCA5A5"), border_radius=12, bgcolor=WHITE, padding=12, content=ft.Text(str(exc), size=12, color="#991B1B", selectable=True)),
+                        ft.Row(
+                            spacing=10,
+                            controls=[
+                                ft.Button("Back to board", icon=ft.Icons.DASHBOARD_OUTLINED, on_click=lambda _e: (state.update({"screen": SCREEN_BOARD}), render_current()), style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                                ft.Button("Open Settings", icon=ft.Icons.SETTINGS_OUTLINED, on_click=lambda _e: (state.update({"screen": SCREEN_SETTINGS}), render_current())),
+                                ft.Button("Reload data", icon=ft.Icons.REFRESH, on_click=lambda _e: (all_tasks.clear(), all_tasks.extend(load_tasks()), state.update({"screen": SCREEN_BOARD}), render_current())),
+                            ],
+                        ),
+                    ],
+                ),
+            )
+        ]
+        try:
+            page.update()
+        except Exception:
+            pass
+
     def render_current():
-        update_sidebar()
-        if state["screen"] == SCREEN_BROWSER:
-            render_browser()
-        elif state["screen"] == SCREEN_CALENDAR:
-            render_calendar()
-        elif state["screen"] == SCREEN_TEMPLATES:
-            render_templates()
-        elif state["screen"] == SCREEN_SETTINGS:
-            render_settings()
-        elif state["screen"] == SCREEN_HEALTH:
-            render_health()
-        else:
-            render_board()
+        try:
+            update_sidebar()
+            if state["screen"] == SCREEN_BROWSER:
+                render_browser()
+            elif state["screen"] == SCREEN_CALENDAR:
+                render_calendar()
+            elif state["screen"] == SCREEN_TEMPLATES:
+                render_templates()
+            elif state["screen"] == SCREEN_SETTINGS:
+                render_settings()
+            elif state["screen"] == SCREEN_HEALTH:
+                render_health()
+            else:
+                render_board()
+        except Exception as exc:
+            try:
+                log_activity("System guard", str(exc), {"screen": state.get("screen")})
+            except Exception:
+                pass
+            render_error_view(exc)
 
     def show_board(_e=None):
         reset_filters(render=False)
@@ -2489,8 +2614,8 @@ def main(page: ft.Page):
         page.update()
 
     def render_settings():
-        header_title.value = "Settings"
-        header_subtitle.value = f"{APP_NAME} / System Setup"
+        header_title.value = t("settings")
+        header_subtitle.value = f"{APP_NAME} / {t('system_setup')}"
         progress_badge.value = f"{len(file_types())} file types"
 
         custom_types = settings.setdefault("custom_file_types", [])
@@ -2499,6 +2624,7 @@ def main(page: ft.Page):
             settings["custom_file_types"] = custom_types
 
         theme_switch = ft.Switch(label="Dark window chrome", value=settings.get("theme") == "Dark")
+        language_select = dropdown(170, app_language(), list(LANGUAGE_LABELS.keys()))
         app_theme_select = dropdown(220, selected_app_theme(settings), list(APP_THEME_PRESETS.keys()))
         status_theme_select = dropdown(220, settings.get("status_theme_preset") or "Classic Blue", list(STATUS_THEME_PRESETS.keys()))
         realtime_switch = ft.Switch(label="Realtime sync", value=settings.get("realtime_sync_enabled", True))
@@ -2670,6 +2796,7 @@ def main(page: ft.Page):
 
         def save_theme(_event):
             settings["theme"] = "Dark" if theme_switch.value else "Light"
+            settings["language"] = language_select.value or "en"
             settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
             settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             save_settings(settings)
@@ -2700,6 +2827,7 @@ def main(page: ft.Page):
 
         def save_all_settings(_event):
             settings["theme"] = "Dark" if theme_switch.value else "Light"
+            settings["language"] = language_select.value or "en"
             settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
             settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
             settings["realtime_sync_enabled"] = bool(realtime_switch.value)
@@ -2757,6 +2885,7 @@ def main(page: ft.Page):
 
         def reset_ui_defaults(_event):
             settings["theme"] = "Light"
+            settings["language"] = "en"
             settings["app_theme_preset"] = "Ocean Pro"
             settings["status_theme_preset"] = "Classic Blue"
             save_settings(settings)
@@ -2989,7 +3118,6 @@ def main(page: ft.Page):
                     ),
                     ft.Text(f"Data file\n{DATA_FILE}", size=13, color=MUTED, selectable=True),
                     ft.Row(spacing=10, controls=[settings_stat(*row) for row in status_rows]),
-                    theme_switch,
                     ft.Container(
                         border=border_all(1, "#E2E8F0"),
                         border_radius=16,
@@ -2999,6 +3127,22 @@ def main(page: ft.Page):
                             spacing=10,
                             controls=[
                                 ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.PALETTE_OUTLINED, color=PRIMARY), ft.Text("Appearance", size=16, weight=ft.FontWeight.W_800, color=TEXT)]),
+                                ft.Container(
+                                    border=border_all(1, "#DBEAFE"),
+                                    border_radius=14,
+                                    bgcolor="#F8FBFF",
+                                    padding=12,
+                                    content=ft.Row(
+                                        spacing=12,
+                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                        controls=[
+                                            ft.Container(width=40, height=40, border_radius=12, bgcolor="#EFF6FF", alignment=CENTER, content=ft.Icon(ft.Icons.TRANSLATE, color=PRIMARY, size=21)),
+                                            ft.Column(spacing=3, expand=True, controls=[ft.Text(t("language"), size=13, weight=ft.FontWeight.W_900, color=TEXT), ft.Text(t("language_hint"), size=11, color=MUTED)]),
+                                            language_select,
+                                        ],
+                                    ),
+                                ),
+                                theme_switch,
                                 ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[profile_media_control(52), ft.Column(spacing=4, expand=True, controls=[ft.Text("Sidebar profile media", size=13, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Use PNG, JPG, WEBP, BMP, or animated GIF. Video support needs a video runtime in a later build.", size=11, color=MUTED)]), ft.Button("Upload media", icon=ft.Icons.ADD_PHOTO_ALTERNATE_OUTLINED, on_click=choose_profile_media)]),
                                 ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text("App theme", size=13, weight=ft.FontWeight.W_800, color=MUTED), app_theme_select, app_theme_preview()]),
                                 app_theme_mockup(),
@@ -3008,7 +3152,7 @@ def main(page: ft.Page):
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                     controls=[
                                         ft.Button("Apply theme", icon=ft.Icons.CHECK_CIRCLE_OUTLINE, on_click=save_theme, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
-                                        ft.Text("Theme changes apply after pressing this button.", size=11, color=MUTED),
+                                        ft.Text(t("theme_apply_hint"), size=11, color=MUTED),
                                     ],
                                 ),
                                 ft.Row(
@@ -3756,21 +3900,36 @@ th{{background:#eff6ff;color:#1d4ed8}}
         page.update()
 
     def show_version_notes(_e=None):
-        current_items = [
-            ft.Container(
-                border=border_all(1, "#DBEAFE"),
+        def note_row(item, color="#16A34A"):
+            return ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, size=16, color=color), ft.Text(item, size=12, color=MUTED, expand=True)])
+
+        def history_card(entry):
+            latest = bool(entry.get("latest"))
+            color = "#16A34A" if latest else PRIMARY
+            return ft.Container(
+                border=border_all(1, "#BBF7D0" if latest else "#DBEAFE"),
                 border_radius=14,
-                bgcolor="#F8FBFF",
+                bgcolor="#F0FDF4" if latest else "#F8FBFF",
                 padding=12,
                 content=ft.Column(
                     spacing=8,
                     controls=[
-                        ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.NEW_RELEASES_OUTLINED, color=PRIMARY), ft.Text(f"Version {APP_VERSION}", size=16, weight=ft.FontWeight.W_900, color=TEXT)]),
-                        *[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, size=16, color="#16A34A"), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in CURRENT_CHANGELOG],
+                        ft.Row(
+                            spacing=8,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Icon(ft.Icons.NEW_RELEASES_OUTLINED if latest else ft.Icons.HISTORY, color=color),
+                                ft.Text(f"Version {entry.get('version', '-')}", size=16, weight=ft.FontWeight.W_900, color=TEXT, expand=True),
+                                ft.Container(visible=latest, padding=pad_sym(horizontal=10, vertical=5), border_radius=999, bgcolor="#DCFCE7", border=border_all(1, "#86EFAC"), content=ft.Text("Latest Remark", size=11, weight=ft.FontWeight.W_900, color="#166534")),
+                                ft.Text(str(entry.get("date", "")), size=11, color=MUTED),
+                            ],
+                        ),
+                        *[note_row(item, color) for item in entry.get("items", [])],
                     ],
                 ),
             )
-        ]
+
+        current_items = [history_card(entry) for entry in VERSION_HISTORY]
         manifest = state.get("update_manifest") or {}
         if state.get("update_available") and manifest:
             current_items.append(
@@ -3800,7 +3959,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
         )
         page.update()
 
-    def show_update_prompt(manifest=None, forced=False):
+    def show_update_prompt(manifest=None, forced=False, auto_start=False):
         manifest = manifest or state.get("update_manifest") or {}
         version = manifest.get("version", "")
         raw_notes = manifest.get("notes") or ["Update package is available."]
@@ -3928,6 +4087,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             page.run_thread(updater_worker)
 
         def skip_update(_event=None):
+            if settings.get("last_update_prompt_version") != version:
+                settings["update_dismiss_count"] = 0
             settings["last_update_prompt_version"] = version
             settings["update_dismiss_count"] = int(settings.get("update_dismiss_count", 0)) + 1
             save_settings(settings)
@@ -3965,6 +4126,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             )
         )
         page.update()
+        if auto_start:
+            page.run_thread(lambda: (time.sleep(1.2), open_update()))
 
     def update_channel_url():
         return str(settings.get("update_manifest_url") or DEFAULT_UPDATE_CHANNEL_URL).strip()
@@ -4003,12 +4166,13 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 if manifest and is_newer_version(manifest.get("version")):
                     state["update_manifest"] = manifest
                     state["update_available"] = True
-                    dismissed = int(settings.get("update_dismiss_count", 0))
+                    dismissed = int(settings.get("update_dismiss_count", 0)) if settings.get("last_update_prompt_version") == manifest.get("version") else 0
                     forced_reason = update_force_reason(manifest.get("version"), manifest, dismissed)
+                    auto_start = bool(forced_reason and is_core_platform_update(manifest.get("version")))
                     prompted_versions = state.setdefault("update_prompted_versions", set())
                     if manual or forced_reason or manifest.get("version") not in prompted_versions:
                         prompted_versions.add(manifest.get("version"))
-                        show_update_prompt(manifest, forced=bool(forced_reason))
+                        show_update_prompt(manifest, forced=bool(forced_reason), auto_start=auto_start)
                 else:
                     state["update_manifest"] = manifest
                     state["update_available"] = False
