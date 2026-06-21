@@ -8,14 +8,16 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.3-05 Build 5`
+Version: `1.0.3-06 Build 6`
 
-This is a small update notification test patch.
+This is a small update flow and auto-check patch.
 
 Latest changes:
 
-- Tests GitHub manifest update alerts from installed apps.
-- Keeps the silent installer behavior from Build 4.
+- Auto update checks can run every minute.
+- Settings can choose update checks every 1, 5, 15, 30, or 60 minutes.
+- In-app updates close SA CHECK before installing and relaunch the app after setup finishes.
+- Silent update installs do not show the Setup wizard.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
 
@@ -78,4 +80,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.3-05 Build 5` is a small Git update notification test patch after Build 4.
+`1.0.3-06 Build 6` adds configurable auto update checks and improves the silent update restart flow.

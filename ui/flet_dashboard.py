@@ -87,16 +87,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-05 Build 5"
+APP_VERSION = "1.0.3-06 Build 6"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
-UPDATE_CHECK_INTERVAL_SECONDS = 1800
+DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
+    {
+        "version": "1.0.3-06 Build 6",
+        "date": "2026-06-22",
+        "latest": True,
+        "items": [
+            "Added configurable automatic update check interval.",
+            "Default update check interval is now 1 minute for easier update testing.",
+            "Settings can choose 1, 5, 15, 30, or 60 minutes.",
+        ],
+    },
     {
         "version": "1.0.3-05 Build 5",
         "date": "2026-06-22",
-        "latest": True,
+        "latest": False,
         "items": [
             "แพตเล็กสำหรับทดสอบระบบแจ้งเตือนอัพเดทจาก GitHub",
             "ใช้ทดสอบว่าแอพเด้งเตือนเมื่อ manifest มีเวอร์ชันใหม่",
@@ -176,6 +186,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.3-06 Build 6: Auto update checks can run every minute and are configurable in Settings.",
     "V1.0.3-05 Build 5: Small Git update notification test patch.",
     "V1.0.3-04 Build 4: In-app updates now launch the installer silently without showing the setup wizard.",
     "V1.0.3-03 Build 3: Fixed update download staying at 0% by adding size precheck and finer progress updates.",
@@ -1391,6 +1402,13 @@ def main(page: ft.Page):
             return max(3, int(settings.get("sync_interval_seconds") or 5))
         except (TypeError, ValueError):
             return 5
+
+    def update_check_interval_seconds():
+        try:
+            minutes = int(settings.get("update_check_interval_minutes") or DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)
+        except (TypeError, ValueError):
+            minutes = DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES
+        return max(1, minutes) * 60
 
     header_title = ft.Text("Project Overview", size=34, weight=ft.FontWeight.W_800, color=TEXT)
     header_subtitle = ft.Text(f"{APP_NAME} / Work Board", size=13, weight=ft.FontWeight.W_700, color=MUTED)
@@ -2958,6 +2976,7 @@ def main(page: ft.Page):
         template_rank_switch = ft.Switch(label="Smart Template ranking", value=settings.get("template_ranking_enabled", True))
         update_checks_switch = ft.Switch(label="Online update checks", value=settings.get("update_checks_enabled", True))
         offline_mode_switch = ft.Switch(label="Offline mode", value=settings.get("offline_mode", False))
+        update_interval_select = dropdown(170, str(settings.get("update_check_interval_minutes", DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)), ["1", "5", "15", "30", "60"])
         interval_select = dropdown(150, str(settings.get("sync_interval_seconds", 5)), ["3", "5", "10", "30", "60"])
         snapshot_select = dropdown(150, str(settings.get("snapshot_retention", 25)), ["10", "25", "50", "100"])
         stale_select = dropdown(150, str(settings.get("stale_doing_days", 7)), ["3", "7", "14", "30"])
@@ -3140,6 +3159,7 @@ def main(page: ft.Page):
             settings["template_ranking_enabled"] = bool(template_rank_switch.value)
             settings["update_checks_enabled"] = bool(update_checks_switch.value)
             settings["offline_mode"] = bool(offline_mode_switch.value)
+            settings["update_check_interval_minutes"] = int(update_interval_select.value or DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)
             settings["sync_interval_seconds"] = int(interval_select.value or 5)
             settings["snapshot_retention"] = int(snapshot_select.value or 25)
             settings["stale_doing_days"] = int(stale_select.value or 7)
@@ -3165,6 +3185,7 @@ def main(page: ft.Page):
             settings["template_ranking_enabled"] = bool(template_rank_switch.value)
             settings["update_checks_enabled"] = bool(update_checks_switch.value)
             settings["offline_mode"] = bool(offline_mode_switch.value)
+            settings["update_check_interval_minutes"] = int(update_interval_select.value or DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)
             settings["sync_interval_seconds"] = int(interval_select.value or 5)
             settings["snapshot_retention"] = int(snapshot_select.value or 25)
             settings["stale_doing_days"] = int(stale_select.value or 7)
@@ -3506,6 +3527,21 @@ def main(page: ft.Page):
                                 ft.Text(f"Current version: {APP_VERSION}. Update checks only use internet for app updates; normal work stays offline-first.", size=12, color=MUTED),
                                 update_checks_switch,
                                 offline_mode_switch,
+                                ft.Row(
+                                    spacing=12,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                    controls=[
+                                        ft.Column(
+                                            spacing=2,
+                                            expand=True,
+                                            controls=[
+                                                ft.Text("Auto-check interval", size=13, weight=ft.FontWeight.W_800, color=TEXT),
+                                                ft.Text("How often SA CHECK checks GitHub while Online mode is enabled.", size=11, color=MUTED),
+                                            ],
+                                        ),
+                                        ft.Row(spacing=8, controls=[update_interval_select, ft.Text("minutes", size=12, color=MUTED)]),
+                                    ],
+                                ),
                                 ft.Row(spacing=10, controls=[
                                     ft.Button("Check now", icon=ft.Icons.REFRESH, on_click=lambda _e: check_for_updates(manual=True)),
                                     ft.Button("Version notes", icon=ft.Icons.FACT_CHECK_OUTLINED, on_click=show_version_notes),
@@ -4405,17 +4441,20 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         str(installer_path),
                         "/VERYSILENT",
                         "/SUPPRESSMSGBOXES",
+                        "/NOCANCEL",
                         "/NORESTART",
                         "/CLOSEAPPLICATIONS",
                         "/FORCECLOSEAPPLICATIONS",
                     ]
                     subprocess.Popen(silent_args, cwd=str(temp_dir), close_fds=True)
-                    show_message(page, "Update", "Silent installer is running. SA CHECK may close and reopen during the update.", kind="success")
+                    show_message(page, "Update", "Silent installer is running. SA CHECK will close and reopen after the update.", kind="success")
                     try:
                         page.pop_dialog()
                         page.update()
                     except Exception:
                         pass
+                    time.sleep(1.5)
+                    os._exit(0)
                 except Exception as exc:
                     try:
                         if part_path and part_path.exists():
@@ -5734,7 +5773,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     settings["last_0900_update_check"] = update_day_key
                     save_settings(settings)
                     check_for_updates(manual=False)
-                if time.time() - float(state.get("last_update_check") or 0) > UPDATE_CHECK_INTERVAL_SECONDS:
+                if time.time() - float(state.get("last_update_check") or 0) > update_check_interval_seconds():
                     check_for_updates(manual=False)
             except Exception:
                 state["syncing"] = False
