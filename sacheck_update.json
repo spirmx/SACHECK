@@ -2,7 +2,7 @@
   "version": "1.0.4 Stable",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/5ba094a653f01f73d0f0d3e81f7c20f9722b9698/release/SA_CHECK_Installer.exe",
   "notes": [
     "Required stability update for V1.0.4.",
     "ทำให้แอพเสถียรมากที่สุดใน update flow ปัจจุบัน",
