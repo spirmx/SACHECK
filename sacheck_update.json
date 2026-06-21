@@ -2,7 +2,7 @@
   "version": "1.0.3-06 Build 6",
   "release_date": "2026-06-22",
   "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/5fb22c30f66ebe3deec77beb69be8612a06f611e/release/SA_CHECK_Installer.exe",
   "notes": [
     "Small update for V1.0.3 Build 6.",
     "Auto update checks can now run every minute.",
