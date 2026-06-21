@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.3-06 Build 6"
+APP_VERSION = "1.0.4 Stable"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.3-06 Build 6",
+        "version": "1.0.4 Stable",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Required stability update for SA CHECK.",
+            "Hardened update flow to prevent duplicate installer launches.",
+            "Required updates can start automatically while Online mode is enabled.",
+            "Keeps Work folders, settings, cache, and user data safe.",
+        ],
+    },
+    {
+        "version": "1.0.3-06 Build 6",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Added configurable automatic update check interval.",
             "Default update check interval is now 1 minute for easier update testing.",
@@ -186,6 +197,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.4 Stable: Required stability update with safer forced-update flow and duplicate-launch protection.",
     "V1.0.3-06 Build 6: Auto update checks can run every minute and are configurable in Settings.",
     "V1.0.3-05 Build 5: Small Git update notification test patch.",
     "V1.0.3-04 Build 4: In-app updates now launch the installer silently without showing the setup wizard.",
@@ -1238,6 +1250,7 @@ def main(page: ft.Page):
         "update_manifest": None,
         "update_available": False,
         "update_checking": False,
+        "update_installing": False,
         "last_update_check": 0,
         "update_prompted_versions": set(),
     }
@@ -4341,6 +4354,10 @@ th{{background:#eff6ff;color:#1d4ed8}}
         reason = update_force_reason(version, manifest, int(settings.get("update_dismiss_count", 0))) if version else ""
 
         def open_update(_event=None):
+            if state.get("update_installing"):
+                show_message(page, "Update", "Update is already running. Please wait for SA CHECK to reopen.", kind="warning")
+                return
+            state["update_installing"] = True
             url = manifest.get("installer_url") or ""
             settings["last_update_prompt_version"] = version
             settings["update_dismiss_count"] = 0
@@ -4348,6 +4365,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             page.pop_dialog()
             page.update()
             if not url:
+                state["update_installing"] = False
                 show_message(page, "Update", "Update package is not ready yet. Please contact the app publisher.")
                 return
             cancel_download = {"value": False}
@@ -4456,6 +4474,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     time.sleep(1.5)
                     os._exit(0)
                 except Exception as exc:
+                    state["update_installing"] = False
                     try:
                         if part_path and part_path.exists():
                             part_path.unlink()
@@ -4548,7 +4567,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     state["update_available"] = True
                     dismissed = int(settings.get("update_dismiss_count", 0)) if settings.get("last_update_prompt_version") == manifest.get("version") else 0
                     forced_reason = update_force_reason(manifest.get("version"), manifest, dismissed)
-                    auto_start = bool(forced_reason and is_core_platform_update(manifest.get("version")))
+                    auto_start = bool(forced_reason and (manifest.get("required") or is_core_platform_update(manifest.get("version"))))
                     show_update_prompt(manifest, forced=bool(forced_reason), auto_start=auto_start)
                 else:
                     state["update_manifest"] = manifest

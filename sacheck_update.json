@@ -1,15 +1,15 @@
 {
-  "version": "1.0.3-06 Build 6",
+  "version": "1.0.4 Stable",
   "release_date": "2026-06-22",
-  "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/5fb22c30f66ebe3deec77beb69be8612a06f611e/release/SA_CHECK_Installer.exe",
+  "required": true,
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small update for V1.0.3 Build 6.",
-    "Auto update checks can now run every minute.",
-    "Settings now has an Auto-check interval selector: 1, 5, 15, 30, or 60 minutes.",
-    "Default update check interval is 1 minute while Online mode is enabled.",
-    "After an in-app update starts, SA CHECK closes itself and the installer opens the app again when finished.",
-    "Silent update installs no longer show the Setup wizard.",
+    "Required stability update for V1.0.4.",
+    "ทำให้แอพเสถียรมากที่สุดใน update flow ปัจจุบัน",
+    "Prevent duplicate update installer launches.",
+    "Required updates can start automatically while Online mode is enabled.",
+    "SA CHECK closes before installing and reopens after setup finishes.",
+    "No Setup wizard is shown during in-app silent updates.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]
 }

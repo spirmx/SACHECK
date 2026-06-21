@@ -8,14 +8,16 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.3-06 Build 6`
+Version: `1.0.4 Stable`
 
-This is a small update flow and auto-check patch.
+This is a required stability update.
 
 Latest changes:
 
-- Auto update checks can run every minute.
-- Settings can choose update checks every 1, 5, 15, 30, or 60 minutes.
+- Required update through the GitHub manifest.
+- ทำให้แอพเสถียรมากที่สุดใน update flow ปัจจุบัน
+- Prevents duplicate update installer launches.
+- Required updates can start automatically while Online mode is enabled.
 - In-app updates close SA CHECK before installing and relaunch the app after setup finishes.
 - Silent update installs do not show the Setup wizard.
 - Does not clear Work folders, settings, cache, or local user data.
@@ -80,4 +82,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.3-06 Build 6` adds configurable auto update checks and improves the silent update restart flow.
+`1.0.4 Stable` is a required stability update for the updater and relaunch flow.
