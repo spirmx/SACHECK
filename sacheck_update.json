@@ -2,7 +2,7 @@
   "version": "1.0.4-01 Stable Hotfix",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/42c6aaec4ae903d3beee6854139e1c7d99ae839a/release/SA_CHECK_Installer.exe",
   "notes": [
     "Required hotfix for V1.0.4 update finish behavior.",
     "After an in-app update finishes, SA CHECK stays closed.",
