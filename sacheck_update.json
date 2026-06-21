@@ -2,7 +2,7 @@
   "version": "1.0.3-04 Build 4",
   "release_date": "2026-06-22",
   "required": false,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/2992ee1a67c91571e1aeab00662da4d2afe6f6b2/release/SA_CHECK_Installer.exe",
   "notes": [
     "Small update for V1.0.3 Build 4.",
     "In-app updates now launch the installer silently.",
