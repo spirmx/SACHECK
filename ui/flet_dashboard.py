@@ -3779,7 +3779,18 @@ th{{background:#eff6ff;color:#1d4ed8}}
     def show_update_prompt(manifest=None, forced=False):
         manifest = manifest or state.get("update_manifest") or {}
         version = manifest.get("version", "")
-        notes = manifest.get("notes") or ["Update package is available."]
+        raw_notes = manifest.get("notes") or ["Update package is available."]
+        notes = [
+            item
+            for item in raw_notes
+            if "http://" not in item
+            and "https://" not in item
+            and "Google Drive" not in item
+            and "raw.githubusercontent" not in item
+            and len(item.strip()) <= 120
+        ][:5]
+        if not notes:
+            notes = ["Update package is ready.", "App files will be updated only.", "Work folders and user settings stay safe."]
         reason = update_force_reason(version, manifest, int(settings.get("update_dismiss_count", 0))) if version else ""
 
         def open_update(_event=None):
@@ -3826,16 +3837,21 @@ th{{background:#eff6ff;color:#1d4ed8}}
         page.show_dialog(
             ft.AlertDialog(
                 modal=forced,
-                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color="#D97706"), ft.Text(f"Update available: {version}", size=21, weight=ft.FontWeight.W_900, color=TEXT)]),
+                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color="#D97706"), ft.Text("Update Ready", size=22, weight=ft.FontWeight.W_900, color=TEXT)]),
                 content=ft.Container(
-                    width=620,
-                    height=360,
+                    width=560,
+                    height=330,
                     content=ft.Column(
-                        spacing=12,
+                        spacing=14,
                         controls=[
-                            ft.Text("SA CHECK is offline-first. Updating replaces app system files only and keeps user Work folders/settings/cache.", size=13, color=MUTED),
-                            ft.Container(border=border_all(1, "#FED7AA"), border_radius=14, bgcolor="#FFFBEB", padding=12, content=ft.Text(reason or "You can update now or later.", size=13, weight=ft.FontWeight.W_800, color="#92400E")),
-                            ft.Column(spacing=7, controls=[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.ARROW_RIGHT_ALT, size=16, color=PRIMARY), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in notes]),
+                            ft.Row(spacing=10, controls=[
+                                ft.Container(padding=pad_sym(horizontal=12, vertical=7), border_radius=999, bgcolor="#ECFDF5", content=ft.Text(f"Installed {APP_VERSION}", size=12, weight=ft.FontWeight.W_800, color="#047857")),
+                                ft.Container(padding=pad_sym(horizontal=12, vertical=7), border_radius=999, bgcolor="#FFFBEB", border=border_all(1, "#FED7AA"), content=ft.Text(f"New {version}", size=12, weight=ft.FontWeight.W_900, color="#92400E")),
+                            ]),
+                            ft.Container(border=border_all(1, "#DBEAFE"), border_radius=14, bgcolor="#F8FBFF", padding=12, content=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.SHIELD_OUTLINED, color=PRIMARY), ft.Text("Updates replace app system files only. Work folders, settings, and cache stay safe.", size=13, color=MUTED, expand=True)])),
+                            ft.Container(visible=bool(reason), border=border_all(1, "#FED7AA"), border_radius=14, bgcolor="#FFFBEB", padding=12, content=ft.Text(reason, size=13, weight=ft.FontWeight.W_800, color="#92400E")),
+                            ft.Text("What's included", size=13, weight=ft.FontWeight.W_900, color=TEXT),
+                            ft.Column(spacing=7, controls=[ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, size=16, color="#16A34A"), ft.Text(item, size=12, color=MUTED, expand=True)]) for item in notes]),
                         ],
                     ),
                 ),
