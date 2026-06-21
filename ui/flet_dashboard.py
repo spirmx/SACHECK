@@ -13,6 +13,7 @@ import html
 import time
 import re
 import tempfile
+import base64
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -84,7 +85,7 @@ def bundled_asset_path(*parts):
 APP_NAME = "SA CHECK"
 APP_VERSION = "1.0.2"
 MANUAL_VERSION = "2026-06-18-user-guide"
-DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
+DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 UPDATE_CHECK_INTERVAL_SECONDS = 1800
 CURRENT_CHANGELOG = [
@@ -181,7 +182,9 @@ def direct_download_url(url):
 
 
 def read_update_url(url, max_bytes=2 * 1024 * 1024, timeout=7):
-    request = urllib.request.Request(url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}"})
+    if "raw.githubusercontent.com" in str(url) and "?" not in str(url):
+        url = f"{url}?t={int(time.time())}"
+    request = urllib.request.Request(url, headers={"User-Agent": f"SA-CHECK/{APP_VERSION}", "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read(max_bytes)
 
@@ -3871,6 +3874,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
             return None, "offline"
         payload = read_update_url(url, max_bytes=1024 * 1024)
         data = json.loads(payload.decode("utf-8-sig"))
+        if isinstance(data, dict) and "content" in data and str(data.get("encoding", "")).lower() == "base64":
+            decoded = base64.b64decode(str(data.get("content", "")).encode("ascii")).decode("utf-8-sig")
+            data = json.loads(decoded)
         manifest = normalize_update_manifest(data)
         return manifest or None, "online"
 
