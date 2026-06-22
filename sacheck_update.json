@@ -2,7 +2,7 @@
   "version": "1.0.6 Reliability Patch",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/a10e09e28e10785b9c8323b0181c0b03e1e31eb3/release/SA_CHECK_Installer.exe",
   "notes": [
     "Required reliability patch for V1.0.6.",
     "Hardened Template use, delete, and target fallback for older records.",
