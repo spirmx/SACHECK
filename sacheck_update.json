@@ -2,7 +2,7 @@
   "version": "1.0.7.5 Calendar Native Picker",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/cbbb67a5dd359477ae56c2687ef5df8a1d1aa508/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/e985d2aa3f2c8164f2eeaea7040b06afc489266b/release/SA_CHECK_Installer.exe",
   "notes": [
     "Rebuilt Calendar event dialog into a clean card-based layout.",
     "Selected date now opens a standard DatePicker popup instead of manual +/- controls.",
