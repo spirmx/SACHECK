@@ -2,8 +2,11 @@
   "version": "1.0.8 Stable",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/20b7dc5391f34a5052f4105198f32cb122c5ab34/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/650c7d628a7de793bda221383f8d1b80a27dc403/release/SA_CHECK_Installer.exe",
   "notes": [
+    "Stability rebuild for SA CHECK V1.0.8 Stable without changing the version number.",
+    "Clickable containers no longer force ink feedback when wrapping input controls.",
+    "Calendar event save/delete errors now show a message instead of leaving the dialog stuck.",
     "Stabilized Calendar event dialog click handling.",
     "Removed nested DatePicker/TimePicker popups from inside the edit dialog.",
     "Moved Calendar event buttons back to standard AlertDialog actions.",
