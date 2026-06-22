@@ -2,7 +2,7 @@
   "version": "1.0.7.7 Calendar TimePicker Hotfix",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/6a04dbced994ed4564b4f75b5be3fb7653184b82/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/b90d7b5c42cb0783a3365dac4a9a91a53a9849c3/release/SA_CHECK_Installer.exe",
   "notes": [
     "Hotfixed Calendar event time selection when the dropdown stopped opening.",
     "Replaced the time dropdown with a standard 24-hour TimePicker popup.",
