@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7.5 Calendar Native Picker"
+APP_VERSION = "1.0.7.6 Calendar Dialog Fit"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7.5 Calendar Native Picker",
+        "version": "1.0.7.6 Calendar Dialog Fit",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Fixed Calendar event dialog height so bottom actions are no longer clipped.",
+            "Limited the 24-hour time dropdown height so it does not stretch across the screen.",
+            "Tightened Calendar event spacing while keeping the clean card-based layout.",
+            "Kept DatePicker popup, time dropdown, color chips, and saved event data compatible.",
+        ],
+    },
+    {
+        "version": "1.0.7.5 Calendar Native Picker",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Rebuilt Calendar event dialog into a clean card-based layout.",
             "Selected date now opens a standard DatePicker popup instead of manual +/- controls.",
@@ -296,6 +307,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7.6 Calendar Dialog Fit: Calendar dialog bottom actions no longer clip and time dropdown is height-limited.",
     "V1.0.7.5 Calendar Native Picker: Calendar dialog now uses DatePicker popup, 24-hour time dropdown, compact color chips, and safer bottom actions.",
     "V1.0.7.4 Calendar UX Polish: Calendar date/time picker now uses compact cards, quick actions, and no long dropdown list.",
     "V1.0.7.3 Calendar UX: Replaced overflowing calendar dropdowns with fixed stepper controls for date and time.",
@@ -716,7 +728,7 @@ def stat_card(title, value):
     )
 
 
-def dropdown(width, value, options, on_select=None):
+def dropdown(width, value, options, on_select=None, menu_height=None):
     return ft.Dropdown(
         width=width,
         height=48,
@@ -729,6 +741,7 @@ def dropdown(width, value, options, on_select=None):
         text_size=14,
         color=TEXT,
         content_padding=pad_sym(horizontal=12),
+        menu_height=menu_height,
         on_select=on_select,
     )
 
@@ -5087,13 +5100,13 @@ th{{background:#eff6ff;color:#1d4ed8}}
             prefix_icon=ft.Icons.EVENT_OUTLINED,
             suffix=ft.IconButton(icon=ft.Icons.CALENDAR_MONTH_OUTLINED, icon_size=18, tooltip="Open calendar"),
         )
-        time_field = dropdown(180, initial_time_value, time_options)
+        time_field = dropdown(180, initial_time_value, time_options, menu_height=220)
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
         selected_color = {"value": source.get("color", "#7C3AED")}
-        color_preview = ft.Container(width=38, height=38, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
+        color_preview = ft.Container(width=34, height=34, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
         notify_switch = ft.Switch(label="Daily summary at 09:00", value=bool(source.get("notify", True)))
         alarm_switch = ft.Switch(label="Alarm again at event time", value=bool(source.get("alarm", True)))
-        note_field = ft.TextField(label="Note", value=source.get("note", ""), multiline=True, min_lines=3, max_lines=3, border_radius=12, border_color=BORDER)
+        note_field = ft.TextField(label="Note", value=source.get("note", ""), multiline=True, min_lines=2, max_lines=2, border_radius=12, border_color=BORDER)
         color_choices = [
             "#7C3AED", "#6366F1", "#2563EB", "#0284C7", "#0891B2", "#0F766E",
             "#16A34A", "#65A30D", "#CA8A04", "#D97706", "#EA580C", "#DC2626",
@@ -5156,14 +5169,14 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
         def event_color_swatch(color):
             return ft.Container(
-                width=27,
-                height=27,
+                width=24,
+                height=24,
                 border_radius=999,
                 bgcolor=color,
                 data=color,
                 alignment=CENTER,
                 border=border_all(3, TEXT if color == selected_color["value"] else WHITE),
-                content=ft.Icon(ft.Icons.CHECK, size=14, color=WHITE) if color == selected_color["value"] else None,
+                content=ft.Icon(ft.Icons.CHECK, size=13, color=WHITE) if color == selected_color["value"] else None,
                 on_click=lambda _e, value=color: pick_event_color(value),
             )
 
@@ -5228,17 +5241,17 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 ),
                 content=ft.Column(
                     width=680,
-                    height=470,
-                    spacing=14,
+                    height=425,
+                    spacing=10,
                     controls=[
                         title_field,
                         ft.Container(
-                            padding=pad_sym(horizontal=14, vertical=12),
-                            border_radius=18,
+                            padding=pad_sym(horizontal=12, vertical=10),
+                            border_radius=16,
                             bgcolor="#F8FAFC",
                             border=border_all(1, BORDER),
                             content=ft.Column(
-                                spacing=12,
+                                spacing=8,
                                 controls=[
                                     ft.Row(
                                         spacing=10,
@@ -5249,26 +5262,26 @@ th{{background:#eff6ff;color:#1d4ed8}}
                                             kind_field,
                                         ],
                                     ),
-                                    ft.Text("Date uses the standard calendar popup. Time uses a fixed 24-hour dropdown.", size=11, color=MUTED),
+                                    ft.Text("Date uses the standard calendar popup. Time uses a fixed 24-hour dropdown.", size=10, color=MUTED),
                                 ],
                             ),
                         ),
                         ft.Container(
-                            padding=pad_sym(horizontal=14, vertical=12),
-                            border_radius=18,
+                            padding=pad_sym(horizontal=12, vertical=10),
+                            border_radius=16,
                             bgcolor="#F8FAFC",
                             border=border_all(1, BORDER),
                             content=ft.Column(
-                                spacing=8,
+                                spacing=7,
                                 controls=[
                                     ft.Row(spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[color_preview, ft.Text("Event color", size=13, weight=ft.FontWeight.W_900, color=TEXT)]),
-                                    ft.Row(spacing=8, controls=color_swatch_controls[:17]),
-                                    ft.Row(spacing=8, controls=color_swatch_controls[17:]),
+                                    ft.Row(spacing=7, controls=color_swatch_controls[:17]),
+                                    ft.Row(spacing=7, controls=color_swatch_controls[17:]),
                                 ],
                             ),
                         ),
                         ft.Row(
-                            spacing=18,
+                            spacing=14,
                             alignment=ft.MainAxisAlignment.CENTER,
                             controls=[notify_switch, alarm_switch],
                         ),
