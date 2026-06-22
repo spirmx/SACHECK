@@ -8,17 +8,18 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.4 Calendar UX Polish`
+Version: `1.0.7.5 Calendar Native Picker`
 
-This patch polishes Calendar event date/time UX and keeps the dialog from feeling crowded.
+This patch rebuilds the Calendar event dialog with a cleaner DatePicker and time dropdown flow.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Polished Calendar event date/time UX into compact picker cards.
-- Removed the tall stepper block that made the dialog feel crowded.
-- Added clearer date and time quick actions without long dropdown menus.
-- Reduced dialog height pressure so the note box and action buttons stay visible.
+- Rebuilt Calendar event dialog into a clean card-based layout.
+- Selected date now opens a standard DatePicker popup instead of manual +/- controls.
+- Selected time now uses a 24-hour dropdown in 30-minute intervals.
+- Event colors now use compact selectable chips with a checkmark indicator.
+- Moved Delete to the far left and Save/Cancel to the far right for safer actions.
 - Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
 - Keeps previous calendar event data compatible.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
@@ -85,4 +86,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.4 Calendar UX Polish` refines the Calendar event picker into compact date/time cards and keeps the dialog readable.
+`1.0.7.5 Calendar Native Picker` uses a standard DatePicker popup, a 24-hour time dropdown, compact color chips, and safer bottom actions.
