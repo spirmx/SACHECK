@@ -2,7 +2,7 @@
   "version": "1.0.7 Health Center",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/a10e09e28e10785b9c8323b0181c0b03e1e31eb3/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/61c5afa36196d829c4aa7e1d5a826ae88b40aa2f/release/SA_CHECK_Installer.exe",
   "notes": [
     "Added Health Check overview for Work folder, data files, templates, updates, and snapshots.",
     "Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.",
