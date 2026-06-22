@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7.1 UI Sharpness"
+APP_VERSION = "1.0.7.2 Calendar Picker"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7.1 UI Sharpness",
+        "version": "1.0.7.2 Calendar Picker",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Replaced free-typing calendar event date/time with guided dropdown pickers.",
+            "Added Today/Tomorrow and quick time buttons for safer event scheduling.",
+            "Calendar event save now uses picker-backed YYYY-MM-DD and HH:MM values.",
+            "Kept existing event storage and reminders compatible with previous versions.",
+        ],
+    },
+    {
+        "version": "1.0.7.1 UI Sharpness",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Sharpened dashboard cards, navigation buttons, and Health Center panels.",
             "Reduced heavy blur shadows so borders and text read cleaner.",
@@ -252,6 +263,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7.2 Calendar Picker: Calendar events now use guided date/time selectors with quick date and time buttons.",
     "V1.0.7.1 UI Sharpness: Sharpened card borders, navigation buttons, Health Center panels, and reduced heavy blur shadows.",
     "V1.0.7 Health Center: Added Health Check overview, Broken Link Center filters, and stronger broken target detection.",
     "V1.0.6 Reliability Patch: Hardened Template target fallback, URL-to-file edits, stale shortcut cleanup, and missing-target errors.",
@@ -5016,8 +5028,24 @@ th{{background:#eff6ff;color:#1d4ed8}}
         editing = event is not None
         source = event or {}
         title_field = ft.TextField(label="Event name", value=source.get("title", ""), height=48, border_radius=12, border_color=BORDER)
-        date_field = ft.TextField(label="Date", value=source.get("date") or (selected_date or calendar_state["selected"]).isoformat(), height=48, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.EVENT_OUTLINED)
-        time_field = ft.TextField(label="Event time", value=source.get("time", "09:00"), height=48, width=150, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.ACCESS_TIME)
+        try:
+            picker_date = datetime.strptime(str(source.get("date") or (selected_date or calendar_state["selected"]).isoformat())[:10], "%Y-%m-%d").date()
+        except ValueError:
+            picker_date = selected_date or calendar_state["selected"] or date.today()
+        try:
+            picker_time = datetime.strptime(str(source.get("time") or "09:00")[:5], "%H:%M").time()
+        except ValueError:
+            picker_time = datetime.strptime("09:00", "%H:%M").time()
+        picker_state = {"date": picker_date, "hour": picker_time.hour, "minute": picker_time.minute}
+        date_field = ft.TextField(label="Selected date", value=picker_state["date"].isoformat(), height=48, read_only=True, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.EVENT_OUTLINED)
+        time_field = ft.TextField(label="Selected time", value=f"{picker_state['hour']:02d}:{picker_state['minute']:02d}", height=48, width=150, read_only=True, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.ACCESS_TIME)
+        year_options = [str(year) for year in range(date.today().year - 1, date.today().year + 6)]
+        year_select = ft.Dropdown(width=112, height=44, label="Year", value=str(picker_state["date"].year), options=[ft.dropdown.Option(value) for value in year_options], border_radius=12, border_color=BORDER, text_size=13, content_padding=pad_sym(horizontal=10))
+        month_select = ft.Dropdown(width=112, height=44, label="Month", value=f"{picker_state['date'].month:02d}", options=[ft.dropdown.Option(f"{month:02d}") for month in range(1, 13)], border_radius=12, border_color=BORDER, text_size=13, content_padding=pad_sym(horizontal=10))
+        day_select = ft.Dropdown(width=96, height=44, label="Day", value=f"{picker_state['date'].day:02d}", border_radius=12, border_color=BORDER, text_size=13, content_padding=pad_sym(horizontal=10))
+        hour_select = ft.Dropdown(width=96, height=44, label="Hour", value=f"{picker_state['hour']:02d}", options=[ft.dropdown.Option(f"{hour:02d}") for hour in range(24)], border_radius=12, border_color=BORDER, text_size=13, content_padding=pad_sym(horizontal=10))
+        minute_values = sorted({0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, picker_state["minute"]})
+        minute_select = ft.Dropdown(width=104, height=44, label="Minute", value=f"{picker_state['minute']:02d}", options=[ft.dropdown.Option(f"{minute:02d}") for minute in minute_values], border_radius=12, border_color=BORDER, text_size=13, content_padding=pad_sym(horizontal=10))
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
         selected_color = {"value": source.get("color", "#7C3AED")}
         color_preview = ft.Container(width=44, height=44, border_radius=14, bgcolor=selected_color["value"], border=border_all(1, BORDER))
@@ -5030,6 +5058,50 @@ th{{background:#eff6ff;color:#1d4ed8}}
             "#E11D48", "#DB2777", "#C026D3", "#9333EA", "#475569", "#111827",
             "#22C55E", "#06B6D4", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6",
         ]
+
+        def update_picker_fields():
+            year = int(year_select.value or picker_state["date"].year)
+            month = int(month_select.value or picker_state["date"].month)
+            max_day = calendar.monthrange(year, month)[1]
+            current_day = min(int(day_select.value or picker_state["date"].day), max_day)
+            day_select.options = [ft.dropdown.Option(f"{day:02d}") for day in range(1, max_day + 1)]
+            day_select.value = f"{current_day:02d}"
+            picker_state["date"] = date(year, month, current_day)
+            picker_state["hour"] = int(hour_select.value or picker_state["hour"])
+            picker_state["minute"] = int(minute_select.value or picker_state["minute"])
+            date_field.value = picker_state["date"].isoformat()
+            time_field.value = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
+            page.update()
+
+        def set_quick_date(day_value):
+            picker_state["date"] = day_value
+            if str(day_value.year) not in year_options:
+                year_options.append(str(day_value.year))
+                year_options.sort()
+                year_select.options = [ft.dropdown.Option(value) for value in year_options]
+            year_select.value = str(day_value.year)
+            month_select.value = f"{day_value.month:02d}"
+            day_select.value = f"{day_value.day:02d}"
+            update_picker_fields()
+
+        def set_quick_time(value):
+            hour, minute = [int(part) for part in value.split(":", 1)]
+            picker_state["hour"] = hour
+            picker_state["minute"] = minute
+            hour_select.value = f"{hour:02d}"
+            if minute not in minute_values:
+                minute_values.append(minute)
+                minute_values.sort()
+                minute_select.options.append(ft.dropdown.Option(f"{minute:02d}"))
+            minute_select.value = f"{minute:02d}"
+            update_picker_fields()
+
+        year_select.on_change = lambda _event: update_picker_fields()
+        month_select.on_change = lambda _event: update_picker_fields()
+        day_select.on_change = lambda _event: update_picker_fields()
+        hour_select.on_change = lambda _event: update_picker_fields()
+        minute_select.on_change = lambda _event: update_picker_fields()
+        update_picker_fields()
 
         def pick_event_color(color):
             selected_color["value"] = color
@@ -5057,17 +5129,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
             if not title:
                 show_message(page, "Missing event name", "Please enter an event name.")
                 return
-            try:
-                parsed = datetime.strptime((date_field.value or "").strip(), "%Y-%m-%d").date().isoformat()
-            except ValueError:
-                show_message(page, "Invalid date", "Use YYYY-MM-DD, for example 2026-06-15.")
-                return
-            event_time = (time_field.value or "09:00").strip()
-            try:
-                datetime.strptime(event_time, "%H:%M")
-            except ValueError:
-                show_message(page, "Invalid time", "Use HH:MM, for example 09:00 or 14:30.")
-                return
+            update_picker_fields()
+            parsed = picker_state["date"].isoformat()
+            event_time = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
             event_id = source.get("id") or str(uuid.uuid4())
             payload = {
                 "id": event_id,
@@ -5113,11 +5177,41 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 ),
                 content=ft.Column(
                     width=700,
-                    height=470,
+                    height=560,
                     spacing=14,
                     controls=[
                         title_field,
                         ft.Row(spacing=10, controls=[date_field, time_field, kind_field]),
+                        ft.Container(
+                            padding=pad_sym(horizontal=12, vertical=10),
+                            border_radius=16,
+                            bgcolor="#F8FAFC",
+                            border=border_all(1, BORDER),
+                            content=ft.Column(
+                                spacing=10,
+                                controls=[
+                                    ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CALENDAR_MONTH_OUTLINED, color=PRIMARY, size=18), ft.Text("Pick exact date and time", size=13, weight=ft.FontWeight.W_900, color=TEXT)]),
+                                    ft.Row(spacing=8, controls=[year_select, month_select, day_select, ft.Container(width=10), hour_select, minute_select]),
+                                    ft.Row(
+                                        spacing=8,
+                                        controls=[
+                                            ft.Container(padding=pad_sym(horizontal=10, vertical=5), border_radius=999, bgcolor="#EFF6FF", border=border_all(1, "#BFDBFE"), content=ft.Text("Time is fixed by Hour + Minute", size=11, weight=ft.FontWeight.W_900, color=PRIMARY)),
+                                            ft.Text("No free-typing time input.", size=11, color=MUTED),
+                                        ],
+                                    ),
+                                    ft.Row(
+                                        spacing=8,
+                                        controls=[
+                                            ft.TextButton("Today", on_click=lambda _e: set_quick_date(date.today())),
+                                            ft.TextButton("Tomorrow", on_click=lambda _e: set_quick_date(date.today() + timedelta(days=1))),
+                                            ft.TextButton("09:00", on_click=lambda _e: set_quick_time("09:00")),
+                                            ft.TextButton("13:00", on_click=lambda _e: set_quick_time("13:00")),
+                                            ft.TextButton("17:00", on_click=lambda _e: set_quick_time("17:00")),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ),
                         ft.Container(
                             padding=pad_sym(horizontal=12, vertical=10),
                             border_radius=16,

@@ -8,18 +8,18 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.1 UI Sharpness`
+Version: `1.0.7.2 Calendar Picker`
 
-This is a small UI sharpness patch on top of Health Center.
+This patch adds safer calendar event date/time picking.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Sharpened dashboard cards, navigation buttons, and Health Center panels.
-- Reduced heavy blur shadows so borders and text read cleaner.
-- Improved contrast on Health Check and Broken Link Center controls.
-- Keeps the V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
-- Does not change workflow, Work folder, settings, cache, or local user data behavior.
+- Added guided calendar event date and time pickers.
+- Added Today, Tomorrow, and quick time buttons for safer scheduling.
+- Calendar event save now uses picker-backed `YYYY-MM-DD` and `HH:MM` values.
+- Keeps previous calendar event data compatible.
+- Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
@@ -83,4 +83,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.1 UI Sharpness` improves visual clarity without changing user data behavior.
+`1.0.7.2 Calendar Picker` reduces calendar event date/time input mistakes with guided selectors.

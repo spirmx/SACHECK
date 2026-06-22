@@ -1,14 +1,14 @@
 {
-  "version": "1.0.7.1 UI Sharpness",
+  "version": "1.0.7.2 Calendar Picker",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/8d8acb5a8060b6873be85a4972e521df2a505281/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Small UI sharpness patch for V1.0.7.1.",
-    "Sharpened dashboard cards, navigation buttons, and Health Center panels.",
-    "Reduced heavy blur shadows so borders and text read cleaner.",
-    "Improved contrast on Health Check and Broken Link Center controls.",
-    "No workflow, Work folder, settings, or cache behavior is changed.",
+    "Added guided calendar event date and time pickers.",
+    "Added Today, Tomorrow, and quick time buttons for safer scheduling.",
+    "Calendar event save now uses picker-backed YYYY-MM-DD and HH:MM values.",
+    "Keeps previous calendar event data compatible.",
+    "No Work folder, settings, or cache behavior is changed.",
     "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]
