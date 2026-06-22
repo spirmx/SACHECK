@@ -1,12 +1,13 @@
 {
-  "version": "1.0.7.3 Calendar UX",
+  "version": "1.0.7.4 Calendar UX Polish",
   "release_date": "2026-06-22",
   "required": true,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/1c1ee4294a18571f95890c798bff2f44868f7db9/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Reworked Calendar event date/time UX to stop dropdown menus from overflowing the dialog.",
-    "Changed Year, Month, Day, Hour, and Minute into fixed stepper controls.",
-    "Kept Today, Tomorrow, and quick time buttons for faster scheduling.",
+    "Polished Calendar event date/time UX into compact picker cards.",
+    "Removed the tall stepper block that made the dialog feel crowded.",
+    "Added clearer date and time quick actions without long dropdown menus.",
+    "Reduced dialog height pressure so the note box and action buttons stay visible.",
     "Calendar event save still uses YYYY-MM-DD and HH:MM values.",
     "No Work folder, settings, or cache behavior is changed.",
     "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",

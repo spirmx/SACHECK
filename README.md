@@ -8,16 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.3 Calendar UX`
+Version: `1.0.7.4 Calendar UX Polish`
 
-This patch improves Calendar event date/time UX and fixes dropdown overflow.
+This patch polishes Calendar event date/time UX and keeps the dialog from feeling crowded.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Reworked Calendar event date/time UX to avoid dropdown menus overflowing the dialog.
-- Changed Year, Month, Day, Hour, and Minute into fixed stepper controls.
-- Kept Today, Tomorrow, and quick time buttons for faster scheduling.
+- Polished Calendar event date/time UX into compact picker cards.
+- Removed the tall stepper block that made the dialog feel crowded.
+- Added clearer date and time quick actions without long dropdown menus.
+- Reduced dialog height pressure so the note box and action buttons stay visible.
 - Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
 - Keeps previous calendar event data compatible.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
@@ -84,4 +85,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.3 Calendar UX` fixes Calendar dropdown overflow with fixed date/time stepper controls.
+`1.0.7.4 Calendar UX Polish` refines the Calendar event picker into compact date/time cards and keeps the dialog readable.

@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7.3 Calendar UX"
+APP_VERSION = "1.0.7.4 Calendar UX Polish"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7.3 Calendar UX",
+        "version": "1.0.7.4 Calendar UX Polish",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Polished Calendar event date/time UX into compact picker cards.",
+            "Removed the tall stepper block that made the dialog feel crowded.",
+            "Added clearer date and time quick actions without long dropdown menus.",
+            "Reduced dialog height pressure so the note box and action buttons stay visible.",
+        ],
+    },
+    {
+        "version": "1.0.7.3 Calendar UX",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Reworked Calendar event date/time UX to avoid dropdown menus overflowing the dialog.",
             "Changed Year, Month, Day, Hour, and Minute into fixed stepper controls.",
@@ -274,6 +285,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7.4 Calendar UX Polish: Calendar date/time picker now uses compact cards, quick actions, and no long dropdown list.",
     "V1.0.7.3 Calendar UX: Replaced overflowing calendar dropdowns with fixed stepper controls for date and time.",
     "V1.0.7.2 Calendar Picker: Calendar events now use guided date/time selectors with quick date and time buttons.",
     "V1.0.7.1 UI Sharpness: Sharpened card borders, navigation buttons, Health Center panels, and reduced heavy blur shadows.",
@@ -5051,17 +5063,15 @@ th{{background:#eff6ff;color:#1d4ed8}}
         picker_state = {"date": picker_date, "hour": picker_time.hour, "minute": picker_time.minute}
         date_field = ft.TextField(label="Selected date", value=picker_state["date"].isoformat(), height=48, read_only=True, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.EVENT_OUTLINED)
         time_field = ft.TextField(label="Selected time", value=f"{picker_state['hour']:02d}:{picker_state['minute']:02d}", height=48, width=150, read_only=True, border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.ACCESS_TIME)
-        year_value = ft.Text("", size=16, weight=ft.FontWeight.W_900, color=TEXT)
-        month_value = ft.Text("", size=16, weight=ft.FontWeight.W_900, color=TEXT)
-        day_value = ft.Text("", size=16, weight=ft.FontWeight.W_900, color=TEXT)
-        hour_value = ft.Text("", size=16, weight=ft.FontWeight.W_900, color=TEXT)
-        minute_value = ft.Text("", size=16, weight=ft.FontWeight.W_900, color=TEXT)
+        date_value = ft.Text("", size=17, weight=ft.FontWeight.W_900, color=TEXT)
+        month_value = ft.Text("", size=11, weight=ft.FontWeight.W_800, color=MUTED)
+        time_value = ft.Text("", size=20, weight=ft.FontWeight.W_900, color=TEXT)
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
         selected_color = {"value": source.get("color", "#7C3AED")}
-        color_preview = ft.Container(width=44, height=44, border_radius=14, bgcolor=selected_color["value"], border=border_all(1, BORDER))
+        color_preview = ft.Container(width=38, height=38, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
         notify_switch = ft.Switch(label="Daily summary at 09:00", value=bool(source.get("notify", True)))
         alarm_switch = ft.Switch(label="Alarm again at event time", value=bool(source.get("alarm", True)))
-        note_field = ft.TextField(label="Note", value=source.get("note", ""), multiline=True, min_lines=5, max_lines=5, border_radius=12, border_color=BORDER)
+        note_field = ft.TextField(label="Note", value=source.get("note", ""), multiline=True, min_lines=3, max_lines=3, border_radius=12, border_color=BORDER)
         color_choices = [
             "#7C3AED", "#6366F1", "#2563EB", "#0284C7", "#0891B2", "#0F766E",
             "#16A34A", "#65A30D", "#CA8A04", "#D97706", "#EA580C", "#DC2626",
@@ -5072,11 +5082,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
         def update_picker_fields():
             date_field.value = picker_state["date"].isoformat()
             time_field.value = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
-            year_value.value = str(picker_state["date"].year)
-            month_value.value = f"{picker_state['date'].month:02d}"
-            day_value.value = f"{picker_state['date'].day:02d}"
-            hour_value.value = f"{picker_state['hour']:02d}"
-            minute_value.value = f"{picker_state['minute']:02d}"
+            date_value.value = picker_state["date"].strftime("%d %b %Y")
+            month_value.value = picker_state["date"].strftime("%A")
+            time_value.value = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
             page.update()
 
         def set_picker_date(year, month, day):
@@ -5116,22 +5124,50 @@ th{{background:#eff6ff;color:#1d4ed8}}
             picker_state["minute"] = minute
             update_picker_fields()
 
-        def stepper(label, value_control, minus_click, plus_click, width=112):
+        def picker_button(label, on_click, icon=None, primary=False, width=None):
             return ft.Container(
                 width=width,
-                height=58,
-                border=border_all(1, BORDER),
-                border_radius=14,
-                bgcolor=WHITE,
-                padding=pad_sym(horizontal=6, vertical=4),
+                height=34,
+                border_radius=12,
+                bgcolor=PRIMARY if primary else WHITE,
+                border=border_all(1, PRIMARY if primary else BORDER),
+                alignment=CENTER,
+                padding=pad_sym(horizontal=10, vertical=0),
+                on_click=on_click,
                 content=ft.Row(
-                    spacing=4,
+                    spacing=6,
                     alignment=ft.MainAxisAlignment.CENTER,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=([
+                        ft.Icon(icon, size=15, color=WHITE if primary else PRIMARY),
+                    ] if icon else []) + [
+                        ft.Text(label, size=12, weight=ft.FontWeight.W_800, color=WHITE if primary else "#1E3A8A"),
+                    ],
+                ),
+            )
+
+        def picker_summary(icon, title, value_control, sub_control, accent):
+            return ft.Container(
+                height=78,
+                border_radius=14,
+                bgcolor=WHITE,
+                border=border_all(1, BORDER),
+                padding=pad_sym(horizontal=12, vertical=9),
+                content=ft.Row(
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.IconButton(icon=ft.Icons.REMOVE, icon_size=16, tooltip=f"Decrease {label}", on_click=minus_click),
-                        ft.Column(spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text(label, size=10, weight=ft.FontWeight.W_900, color=MUTED), value_control]),
-                        ft.IconButton(icon=ft.Icons.ADD, icon_size=16, tooltip=f"Increase {label}", on_click=plus_click),
+                        ft.Container(width=38, height=38, border_radius=12, bgcolor=accent + "18", alignment=CENTER, content=ft.Icon(icon, size=20, color=accent)),
+                        ft.Column(
+                            spacing=1,
+                            expand=True,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.Text(title, size=11, weight=ft.FontWeight.W_900, color=MUTED),
+                                value_control,
+                                sub_control,
+                            ],
+                        ),
                     ],
                 ),
             )
@@ -5145,8 +5181,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
         def event_color_swatch(color):
             return ft.Container(
-                width=30,
-                height=30,
+                width=27,
+                height=27,
                 border_radius=999,
                 bgcolor=color,
                 border=border_all(2, TEXT if color == selected_color["value"] else WHITE),
@@ -5212,8 +5248,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 ),
                 content=ft.Column(
                     width=700,
-                    height=560,
-                    spacing=14,
+                    height=520,
+                    spacing=12,
                     controls=[
                         title_field,
                         ft.Row(spacing=10, controls=[date_field, time_field, kind_field]),
@@ -5225,44 +5261,73 @@ th{{background:#eff6ff;color:#1d4ed8}}
                             content=ft.Column(
                                 spacing=10,
                                 controls=[
-                                    ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.CALENDAR_MONTH_OUTLINED, color=PRIMARY, size=18), ft.Text("Pick exact date and time", size=13, weight=ft.FontWeight.W_900, color=TEXT)]),
+                                    ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.TUNE_OUTLINED, color=PRIMARY, size=18), ft.Text("Pick date and time", size=13, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("compact controls, no long dropdown list", size=11, color=MUTED)]),
                                     ft.Row(
-                                        spacing=8,
+                                        spacing=10,
                                         controls=[
-                                            stepper("Year", year_value, lambda _e: shift_date(years=-1), lambda _e: shift_date(years=1), width=126),
-                                            stepper("Month", month_value, lambda _e: shift_date(months=-1), lambda _e: shift_date(months=1), width=126),
-                                            stepper("Day", day_value, lambda _e: shift_date(days=-1), lambda _e: shift_date(days=1), width=126),
-                                        ],
-                                    ),
-                                    ft.Row(
-                                        spacing=8,
-                                        controls=[
-                                            stepper("Hour", hour_value, lambda _e: shift_time(hours=-1), lambda _e: shift_time(hours=1), width=126),
-                                            stepper("Minute", minute_value, lambda _e: shift_time(minutes=-5), lambda _e: shift_time(minutes=5), width=126),
                                             ft.Container(
                                                 expand=True,
-                                                padding=pad_sym(horizontal=12, vertical=8),
+                                                padding=pad_sym(horizontal=10, vertical=10),
                                                 border_radius=14,
-                                                bgcolor="#EFF6FF",
-                                                border=border_all(1, "#BFDBFE"),
+                                                bgcolor="#FFFFFF",
+                                                border=border_all(1, BORDER),
                                                 content=ft.Column(
-                                                    spacing=2,
+                                                    spacing=8,
                                                     controls=[
-                                                        ft.Text("Fixed time form", size=12, weight=ft.FontWeight.W_900, color=PRIMARY),
-                                                        ft.Text("No dropdown list and no free-typing time input.", size=11, color=MUTED),
+                                                        picker_summary(ft.Icons.EVENT_AVAILABLE_OUTLINED, "Selected date", date_value, month_value, PRIMARY),
+                                                        ft.Row(
+                                                            spacing=6,
+                                                            wrap=True,
+                                                            controls=[
+                                                                picker_button("- Day", lambda _e: shift_date(days=-1), ft.Icons.CHEVRON_LEFT, width=82),
+                                                                picker_button("+ Day", lambda _e: shift_date(days=1), ft.Icons.CHEVRON_RIGHT, width=82),
+                                                                picker_button("- Month", lambda _e: shift_date(months=-1), width=92),
+                                                                picker_button("+ Month", lambda _e: shift_date(months=1), width=92),
+                                                                picker_button("- Year", lambda _e: shift_date(years=-1), width=82),
+                                                                picker_button("+ Year", lambda _e: shift_date(years=1), width=82),
+                                                            ],
+                                                        ),
+                                                        ft.Row(
+                                                            spacing=6,
+                                                            controls=[
+                                                                picker_button("Today", lambda _e: set_quick_date(date.today()), primary=True, width=82),
+                                                                picker_button("Tomorrow", lambda _e: set_quick_date(date.today() + timedelta(days=1)), width=104),
+                                                                picker_button("+7 days", lambda _e: set_quick_date(date.today() + timedelta(days=7)), width=86),
+                                                            ],
+                                                        ),
                                                     ],
                                                 ),
                                             ),
-                                        ],
-                                    ),
-                                    ft.Row(
-                                        spacing=8,
-                                        controls=[
-                                            ft.TextButton("Today", on_click=lambda _e: set_quick_date(date.today())),
-                                            ft.TextButton("Tomorrow", on_click=lambda _e: set_quick_date(date.today() + timedelta(days=1))),
-                                            ft.TextButton("09:00", on_click=lambda _e: set_quick_time("09:00")),
-                                            ft.TextButton("13:00", on_click=lambda _e: set_quick_time("13:00")),
-                                            ft.TextButton("17:00", on_click=lambda _e: set_quick_time("17:00")),
+                                            ft.Container(
+                                                width=245,
+                                                padding=pad_sym(horizontal=10, vertical=10),
+                                                border_radius=14,
+                                                bgcolor="#FFFFFF",
+                                                border=border_all(1, BORDER),
+                                                content=ft.Column(
+                                                    spacing=8,
+                                                    controls=[
+                                                        picker_summary(ft.Icons.ACCESS_TIME, "Selected time", time_value, ft.Text("24-hour fixed form", size=11, color=MUTED), "#0F766E"),
+                                                        ft.Row(
+                                                            spacing=6,
+                                                            controls=[
+                                                                picker_button("-1h", lambda _e: shift_time(hours=-1), width=52),
+                                                                picker_button("+1h", lambda _e: shift_time(hours=1), width=52),
+                                                                picker_button("-5m", lambda _e: shift_time(minutes=-5), width=52),
+                                                                picker_button("+5m", lambda _e: shift_time(minutes=5), width=52),
+                                                            ],
+                                                        ),
+                                                        ft.Row(
+                                                            spacing=6,
+                                                            controls=[
+                                                                picker_button("09:00", lambda _e: set_quick_time("09:00"), primary=True, width=66),
+                                                                picker_button("13:00", lambda _e: set_quick_time("13:00"), width=66),
+                                                                picker_button("17:00", lambda _e: set_quick_time("17:00"), width=66),
+                                                            ],
+                                                        ),
+                                                    ],
+                                                ),
+                                            ),
                                         ],
                                     ),
                                 ],
