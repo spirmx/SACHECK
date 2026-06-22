@@ -2,7 +2,7 @@
   "version": "1.0.7.6 Calendar Dialog Fit",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/e985d2aa3f2c8164f2eeaea7040b06afc489266b/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/6a04dbced994ed4564b4f75b5be3fb7653184b82/release/SA_CHECK_Installer.exe",
   "notes": [
     "Fixed Calendar event dialog height so bottom actions are no longer clipped.",
     "Limited the 24-hour time dropdown height so it does not stretch across the screen.",
