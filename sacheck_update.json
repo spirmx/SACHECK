@@ -2,7 +2,7 @@
   "version": "1.0.5 Template Fix",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/d153fa21934610d22d2e1a0e424fcbc44dd9ec6b/release/SA_CHECK_Installer.exe",
   "notes": [
     "Required Template system fix for V1.0.5.",
     "Fixed Template edit, type move, and target update flow.",
