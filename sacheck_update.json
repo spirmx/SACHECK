@@ -2,7 +2,7 @@
   "version": "1.0.7.1 UI Sharpness",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/61c5afa36196d829c4aa7e1d5a826ae88b40aa2f/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/8d8acb5a8060b6873be85a4972e521df2a505281/release/SA_CHECK_Installer.exe",
   "notes": [
     "Small UI sharpness patch for V1.0.7.1.",
     "Sharpened dashboard cards, navigation buttons, and Health Center panels.",
