@@ -1,13 +1,13 @@
 {
-  "version": "1.0.7.2 Calendar Picker",
+  "version": "1.0.7.3 Calendar UX",
   "release_date": "2026-06-22",
   "required": true,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/3625e8a9f8ff6b5dfae85a46c4e51fd38bd6cdce/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Added guided calendar event date and time pickers.",
-    "Added Today, Tomorrow, and quick time buttons for safer scheduling.",
-    "Calendar event save now uses picker-backed YYYY-MM-DD and HH:MM values.",
-    "Keeps previous calendar event data compatible.",
+    "Reworked Calendar event date/time UX to stop dropdown menus from overflowing the dialog.",
+    "Changed Year, Month, Day, Hour, and Minute into fixed stepper controls.",
+    "Kept Today, Tomorrow, and quick time buttons for faster scheduling.",
+    "Calendar event save still uses YYYY-MM-DD and HH:MM values.",
     "No Work folder, settings, or cache behavior is changed.",
     "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",
     "No user Work folders, settings, or cache are cleared by this update."

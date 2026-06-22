@@ -8,16 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.2 Calendar Picker`
+Version: `1.0.7.3 Calendar UX`
 
-This patch adds safer calendar event date/time picking.
+This patch improves Calendar event date/time UX and fixes dropdown overflow.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Added guided calendar event date and time pickers.
-- Added Today, Tomorrow, and quick time buttons for safer scheduling.
-- Calendar event save now uses picker-backed `YYYY-MM-DD` and `HH:MM` values.
+- Reworked Calendar event date/time UX to avoid dropdown menus overflowing the dialog.
+- Changed Year, Month, Day, Hour, and Minute into fixed stepper controls.
+- Kept Today, Tomorrow, and quick time buttons for faster scheduling.
+- Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
 - Keeps previous calendar event data compatible.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
@@ -83,4 +84,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.2 Calendar Picker` reduces calendar event date/time input mistakes with guided selectors.
+`1.0.7.3 Calendar UX` fixes Calendar dropdown overflow with fixed date/time stepper controls.
