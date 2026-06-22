@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7.7 Calendar TimePicker Hotfix"
+APP_VERSION = "1.0.8 Stable"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7.7 Calendar TimePicker Hotfix",
+        "version": "1.0.8 Stable",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Stabilized Calendar event dialog click handling.",
+            "Removed nested DatePicker/TimePicker popups from inside the edit dialog.",
+            "Moved Calendar event buttons back to standard AlertDialog actions.",
+            "Added direct date/time validation so invalid values do not save.",
+        ],
+    },
+    {
+        "version": "1.0.7.7 Calendar TimePicker Hotfix",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Hotfixed Calendar event time selection when the dropdown stopped opening.",
             "Replaced the time dropdown with a standard 24-hour TimePicker popup.",
@@ -318,6 +329,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.8 Stable: Calendar event dialog uses standard actions and direct date/time validation to avoid unclickable overlays.",
     "V1.0.7.7 Calendar TimePicker Hotfix: Time selection now uses a 24-hour TimePicker popup after the dropdown stopped opening.",
     "V1.0.7.6 Calendar Dialog Fit: Calendar dialog bottom actions no longer clip and time dropdown is height-limited.",
     "V1.0.7.5 Calendar Native Picker: Calendar dialog now uses DatePicker popup, 24-hour time dropdown, compact color chips, and safer bottom actions.",
@@ -5101,24 +5113,22 @@ th{{background:#eff6ff;color:#1d4ed8}}
             label="Selected date",
             value=picker_state["date"].isoformat(),
             height=50,
-            read_only=True,
+            hint_text="YYYY-MM-DD",
             border_radius=14,
             border_color=BORDER,
             focused_border_color=PRIMARY,
             prefix_icon=ft.Icons.EVENT_OUTLINED,
-            suffix=ft.IconButton(icon=ft.Icons.CALENDAR_MONTH_OUTLINED, icon_size=18, tooltip="Open calendar"),
         )
         time_field = ft.TextField(
             label="Selected time",
             value=f"{picker_state['hour']:02d}:{picker_state['minute']:02d}",
             height=50,
             width=180,
-            read_only=True,
+            hint_text="HH:MM",
             border_radius=14,
             border_color=BORDER,
             focused_border_color=PRIMARY,
             prefix_icon=ft.Icons.ACCESS_TIME,
-            suffix=ft.IconButton(icon=ft.Icons.SCHEDULE_OUTLINED, icon_size=18, tooltip="Open time picker"),
         )
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
         selected_color = {"value": source.get("color", "#7C3AED")}
@@ -5138,63 +5148,6 @@ th{{background:#eff6ff;color:#1d4ed8}}
             time_field.value = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
             page.update()
 
-        def on_date_change(event):
-            picked = event.control.value or event.data
-            if isinstance(picked, datetime):
-                picker_state["date"] = picked.date()
-            elif isinstance(picked, date):
-                picker_state["date"] = picked
-            else:
-                try:
-                    picker_state["date"] = datetime.strptime(str(picked)[:10], "%Y-%m-%d").date()
-                except ValueError:
-                    return
-            update_picker_fields()
-
-        def open_date_picker(_event=None):
-            page.show_dialog(
-                ft.DatePicker(
-                    value=datetime.combine(picker_state["date"], datetime.min.time()),
-                    current_date=datetime.now(),
-                    first_date=datetime(2000, 1, 1),
-                    last_date=datetime(2050, 12, 31),
-                    help_text="Select event date",
-                    cancel_text="Cancel",
-                    confirm_text="Apply",
-                    on_change=on_date_change,
-                )
-            )
-
-        date_field.suffix.on_click = open_date_picker
-
-        def on_time_change(event):
-            picked = event.control.value or event.data
-            if hasattr(picked, "hour") and hasattr(picked, "minute"):
-                picker_state["hour"] = int(picked.hour)
-                picker_state["minute"] = int(picked.minute)
-            else:
-                try:
-                    hour, minute = [int(part) for part in str(picked)[:5].split(":", 1)]
-                except ValueError:
-                    return
-                picker_state["hour"] = hour
-                picker_state["minute"] = minute
-            update_picker_fields()
-
-        def open_time_picker(_event=None):
-            page.show_dialog(
-                ft.TimePicker(
-                    value=datetime.strptime(f"{picker_state['hour']:02d}:{picker_state['minute']:02d}", "%H:%M").time(),
-                    entry_mode=ft.TimePickerEntryMode.INPUT,
-                    hour_format=ft.TimePickerHourFormat.H24,
-                    help_text="Select event time",
-                    cancel_text="Cancel",
-                    confirm_text="Apply",
-                    on_change=on_time_change,
-                )
-            )
-
-        time_field.suffix.on_click = open_time_picker
         update_picker_fields()
 
         def pick_event_color(color):
@@ -5232,9 +5185,29 @@ th{{background:#eff6ff;color:#1d4ed8}}
             if not title:
                 show_message(page, "Missing event name", "Please enter an event name.")
                 return
-            update_picker_fields()
-            parsed = picker_state["date"].isoformat()
-            event_time = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
+            date_text = str(date_field.value or "").strip()
+            time_text = str(time_field.value or "").strip()
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_text):
+                show_message(page, "Invalid date", "Use YYYY-MM-DD, for example 2026-06-22.")
+                return
+            if not re.fullmatch(r"\d{2}:\d{2}", time_text):
+                show_message(page, "Invalid time", "Use 24-hour HH:MM, for example 09:00 or 13:30.")
+                return
+            try:
+                parsed_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+            except ValueError:
+                show_message(page, "Invalid date", "Use YYYY-MM-DD, for example 2026-06-22.")
+                return
+            try:
+                parsed_time = datetime.strptime(time_text, "%H:%M").time()
+            except ValueError:
+                show_message(page, "Invalid time", "Use 24-hour HH:MM, for example 09:00 or 13:30.")
+                return
+            picker_state["date"] = parsed_date
+            picker_state["hour"] = parsed_time.hour
+            picker_state["minute"] = parsed_time.minute
+            parsed = parsed_date.isoformat()
+            event_time = f"{parsed_time.hour:02d}:{parsed_time.minute:02d}"
             event_id = source.get("id") or str(uuid.uuid4())
             payload = {
                 "id": event_id,
@@ -5280,7 +5253,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 ),
                 content=ft.Column(
                     width=680,
-                    height=425,
+                    height=370,
                     spacing=10,
                     controls=[
                         title_field,
@@ -5296,12 +5269,12 @@ th{{background:#eff6ff;color:#1d4ed8}}
                                         spacing=10,
                                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                         controls=[
-                                            ft.Container(expand=True, on_click=open_date_picker, content=date_field),
-                                            ft.Container(on_click=open_time_picker, content=time_field),
+                                            ft.Container(expand=True, content=date_field),
+                                            time_field,
                                             kind_field,
                                         ],
                                     ),
-                                    ft.Text("Date and time open standard picker popups. No long dropdown list.", size=10, color=MUTED),
+                                    ft.Text("Stable mode: enter date as YYYY-MM-DD and time as 24-hour HH:MM.", size=10, color=MUTED),
                                 ],
                             ),
                         ),
@@ -5325,22 +5298,13 @@ th{{background:#eff6ff;color:#1d4ed8}}
                             controls=[notify_switch, alarm_switch],
                         ),
                         note_field,
-                        ft.Row(
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            controls=[
-                                ft.TextButton("Delete", on_click=delete_event, visible=editing, style=ft.ButtonStyle(color="#DC2626")),
-                                ft.Row(
-                                    spacing=10,
-                                    controls=[
-                                        ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
-                                        ft.Button("Save event", icon=ft.Icons.SAVE_OUTLINED, on_click=save_event, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
-                                    ],
-                                ),
-                            ],
-                        ),
                     ],
                 ),
+                actions=[
+                    ft.TextButton("Delete", on_click=delete_event, visible=editing, style=ft.ButtonStyle(color="#DC2626")),
+                    ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
+                    ft.Button("Save event", icon=ft.Icons.SAVE_OUTLINED, on_click=save_event, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
                 bgcolor=WHITE,
                 shape=ft.RoundedRectangleBorder(radius=16),
             )

@@ -8,17 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.7 Calendar TimePicker Hotfix`
+Version: `1.0.8 Stable`
 
-This patch hotfixes Calendar event time selection by replacing the risky dropdown with a native TimePicker popup.
+This patch stabilizes Calendar event editing by removing nested picker popups and using standard dialog actions.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Hotfixed Calendar event time selection when the dropdown stopped opening.
-- Replaced the time dropdown with a standard 24-hour TimePicker popup.
-- Removed the dropdown menu-height setting that could break the packaged Flet runtime.
-- Kept the compact Calendar event dialog layout and saved event data compatible.
+- Stabilized Calendar event dialog click handling.
+- Removed nested DatePicker/TimePicker popups from inside the edit dialog.
+- Moved Calendar event buttons back to standard AlertDialog actions.
+- Added direct date/time validation so invalid values do not save.
 - Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
 - Keeps previous calendar event data compatible.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
@@ -85,4 +85,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.7 Calendar TimePicker Hotfix` uses DatePicker and TimePicker popups for Calendar events and removes the risky dropdown height override.
+`1.0.8 Stable` uses a simpler Calendar event dialog with standard actions and direct date/time validation to avoid unclickable overlays.
