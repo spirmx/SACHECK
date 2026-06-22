@@ -2,7 +2,7 @@
   "version": "1.0.7.4 Calendar UX Polish",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/1c1ee4294a18571f95890c798bff2f44868f7db9/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/cbbb67a5dd359477ae56c2687ef5df8a1d1aa508/release/SA_CHECK_Installer.exe",
   "notes": [
     "Polished Calendar event date/time UX into compact picker cards.",
     "Removed the tall stepper block that made the dialog feel crowded.",
