@@ -8,17 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7.6 Calendar Dialog Fit`
+Version: `1.0.7.7 Calendar TimePicker Hotfix`
 
-This patch fixes Calendar event dialog fit and limits the time dropdown height.
+This patch hotfixes Calendar event time selection by replacing the risky dropdown with a native TimePicker popup.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Fixed Calendar event dialog height so bottom actions are no longer clipped.
-- Limited the 24-hour time dropdown height so it does not stretch across the screen.
-- Tightened Calendar event spacing while keeping the clean card-based layout.
-- Kept DatePicker popup, time dropdown, color chips, and saved event data compatible.
+- Hotfixed Calendar event time selection when the dropdown stopped opening.
+- Replaced the time dropdown with a standard 24-hour TimePicker popup.
+- Removed the dropdown menu-height setting that could break the packaged Flet runtime.
+- Kept the compact Calendar event dialog layout and saved event data compatible.
 - Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
 - Keeps previous calendar event data compatible.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
@@ -85,4 +85,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7.6 Calendar Dialog Fit` keeps the Calendar event dialog compact and prevents the time dropdown from stretching across the screen.
+`1.0.7.7 Calendar TimePicker Hotfix` uses DatePicker and TimePicker popups for Calendar events and removes the risky dropdown height override.

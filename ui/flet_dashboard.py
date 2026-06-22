@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7.6 Calendar Dialog Fit"
+APP_VERSION = "1.0.7.7 Calendar TimePicker Hotfix"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7.6 Calendar Dialog Fit",
+        "version": "1.0.7.7 Calendar TimePicker Hotfix",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Hotfixed Calendar event time selection when the dropdown stopped opening.",
+            "Replaced the time dropdown with a standard 24-hour TimePicker popup.",
+            "Removed the dropdown menu-height setting that could break the packaged Flet runtime.",
+            "Kept the compact Calendar event dialog layout and saved event data compatible.",
+        ],
+    },
+    {
+        "version": "1.0.7.6 Calendar Dialog Fit",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Fixed Calendar event dialog height so bottom actions are no longer clipped.",
             "Limited the 24-hour time dropdown height so it does not stretch across the screen.",
@@ -307,6 +318,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7.7 Calendar TimePicker Hotfix: Time selection now uses a 24-hour TimePicker popup after the dropdown stopped opening.",
     "V1.0.7.6 Calendar Dialog Fit: Calendar dialog bottom actions no longer clip and time dropdown is height-limited.",
     "V1.0.7.5 Calendar Native Picker: Calendar dialog now uses DatePicker popup, 24-hour time dropdown, compact color chips, and safer bottom actions.",
     "V1.0.7.4 Calendar UX Polish: Calendar date/time picker now uses compact cards, quick actions, and no long dropdown list.",
@@ -728,7 +740,7 @@ def stat_card(title, value):
     )
 
 
-def dropdown(width, value, options, on_select=None, menu_height=None):
+def dropdown(width, value, options, on_select=None):
     return ft.Dropdown(
         width=width,
         height=48,
@@ -741,7 +753,6 @@ def dropdown(width, value, options, on_select=None, menu_height=None):
         text_size=14,
         color=TEXT,
         content_padding=pad_sym(horizontal=12),
-        menu_height=menu_height,
         on_select=on_select,
     )
 
@@ -5086,9 +5097,6 @@ th{{background:#eff6ff;color:#1d4ed8}}
         except ValueError:
             picker_time = datetime.strptime("09:00", "%H:%M").time()
         picker_state = {"date": picker_date, "hour": picker_time.hour, "minute": picker_time.minute}
-        time_options = [f"{hour:02d}:{minute:02d}" for hour in range(24) for minute in (0, 30)]
-        initial_time_value = f"{picker_state['hour']:02d}:{(30 if picker_state['minute'] >= 30 else 0):02d}"
-        picker_state["hour"], picker_state["minute"] = [int(part) for part in initial_time_value.split(":", 1)]
         date_field = ft.TextField(
             label="Selected date",
             value=picker_state["date"].isoformat(),
@@ -5100,7 +5108,18 @@ th{{background:#eff6ff;color:#1d4ed8}}
             prefix_icon=ft.Icons.EVENT_OUTLINED,
             suffix=ft.IconButton(icon=ft.Icons.CALENDAR_MONTH_OUTLINED, icon_size=18, tooltip="Open calendar"),
         )
-        time_field = dropdown(180, initial_time_value, time_options, menu_height=220)
+        time_field = ft.TextField(
+            label="Selected time",
+            value=f"{picker_state['hour']:02d}:{picker_state['minute']:02d}",
+            height=50,
+            width=180,
+            read_only=True,
+            border_radius=14,
+            border_color=BORDER,
+            focused_border_color=PRIMARY,
+            prefix_icon=ft.Icons.ACCESS_TIME,
+            suffix=ft.IconButton(icon=ft.Icons.SCHEDULE_OUTLINED, icon_size=18, tooltip="Open time picker"),
+        )
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
         selected_color = {"value": source.get("color", "#7C3AED")}
         color_preview = ft.Container(width=34, height=34, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
@@ -5118,15 +5137,6 @@ th{{background:#eff6ff;color:#1d4ed8}}
             date_field.value = picker_state["date"].isoformat()
             time_field.value = f"{picker_state['hour']:02d}:{picker_state['minute']:02d}"
             page.update()
-
-        def set_time_from_dropdown(event):
-            value = event.control.value or "09:00"
-            hour, minute = [int(part) for part in value.split(":", 1)]
-            picker_state["hour"] = hour
-            picker_state["minute"] = minute
-            update_picker_fields()
-
-        time_field.on_select = set_time_from_dropdown
 
         def on_date_change(event):
             picked = event.control.value or event.data
@@ -5156,6 +5166,35 @@ th{{background:#eff6ff;color:#1d4ed8}}
             )
 
         date_field.suffix.on_click = open_date_picker
+
+        def on_time_change(event):
+            picked = event.control.value or event.data
+            if hasattr(picked, "hour") and hasattr(picked, "minute"):
+                picker_state["hour"] = int(picked.hour)
+                picker_state["minute"] = int(picked.minute)
+            else:
+                try:
+                    hour, minute = [int(part) for part in str(picked)[:5].split(":", 1)]
+                except ValueError:
+                    return
+                picker_state["hour"] = hour
+                picker_state["minute"] = minute
+            update_picker_fields()
+
+        def open_time_picker(_event=None):
+            page.show_dialog(
+                ft.TimePicker(
+                    value=datetime.strptime(f"{picker_state['hour']:02d}:{picker_state['minute']:02d}", "%H:%M").time(),
+                    entry_mode=ft.TimePickerEntryMode.INPUT,
+                    hour_format=ft.TimePickerHourFormat.H24,
+                    help_text="Select event time",
+                    cancel_text="Cancel",
+                    confirm_text="Apply",
+                    on_change=on_time_change,
+                )
+            )
+
+        time_field.suffix.on_click = open_time_picker
         update_picker_fields()
 
         def pick_event_color(color):
@@ -5258,11 +5297,11 @@ th{{background:#eff6ff;color:#1d4ed8}}
                                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                         controls=[
                                             ft.Container(expand=True, on_click=open_date_picker, content=date_field),
-                                            time_field,
+                                            ft.Container(on_click=open_time_picker, content=time_field),
                                             kind_field,
                                         ],
                                     ),
-                                    ft.Text("Date uses the standard calendar popup. Time uses a fixed 24-hour dropdown.", size=10, color=MUTED),
+                                    ft.Text("Date and time open standard picker popups. No long dropdown list.", size=10, color=MUTED),
                                 ],
                             ),
                         ),
