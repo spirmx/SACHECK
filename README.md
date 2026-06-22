@@ -8,18 +8,18 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.7 Health Center`
+Version: `1.0.7.1 UI Sharpness`
 
-This release adds Health Check and Broken Link Center.
+This is a small UI sharpness patch on top of Health Center.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Added Health Check overview for Work folder, data files, templates, updates, and snapshots.
-- Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.
-- Improved broken-link detection for older records and URL shortcut records.
-- Added clearer repair status counts without touching Work files during scans.
-- Keeps the V1.0.6 reliability fixes and V1.0.5 Template fixes.
+- Sharpened dashboard cards, navigation buttons, and Health Center panels.
+- Reduced heavy blur shadows so borders and text read cleaner.
+- Improved contrast on Health Check and Broken Link Center controls.
+- Keeps the V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
+- Does not change workflow, Work folder, settings, cache, or local user data behavior.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
@@ -83,4 +83,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.7 Health Center` adds Health Check and Broken Link Center filters for safer system review.
+`1.0.7.1 UI Sharpness` improves visual clarity without changing user data behavior.

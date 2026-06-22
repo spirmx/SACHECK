@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.7 Health Center"
+APP_VERSION = "1.0.7.1 UI Sharpness"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.7 Health Center",
+        "version": "1.0.7.1 UI Sharpness",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Sharpened dashboard cards, navigation buttons, and Health Center panels.",
+            "Reduced heavy blur shadows so borders and text read cleaner.",
+            "Improved contrast on Health Check and Broken Link Center controls.",
+            "Kept this as a small UI-only patch without changing user Work data.",
+        ],
+    },
+    {
+        "version": "1.0.7 Health Center",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Added Health Check overview for Work folder, data files, templates, updates, and snapshots.",
             "Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.",
@@ -241,6 +252,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7.1 UI Sharpness: Sharpened card borders, navigation buttons, Health Center panels, and reduced heavy blur shadows.",
     "V1.0.7 Health Center: Added Health Check overview, Broken Link Center filters, and stronger broken target detection.",
     "V1.0.6 Reliability Patch: Hardened Template target fallback, URL-to-file edits, stale shortcut cleanup, and missing-target errors.",
     "V1.0.5 Template Fix: Fixed Template edit, type move, delete, and create-to-work reliability.",
@@ -610,7 +622,7 @@ def task_icon(task_type):
 
 
 def soft_shadow():
-    return ft.BoxShadow(spread_radius=0, blur_radius=18, color="#14000000", offset=ft.Offset(0, 8))
+    return ft.BoxShadow(spread_radius=0, blur_radius=10, color="#16000000", offset=ft.Offset(0, 3))
 
 
 NAV_BG = "#08111F"
@@ -619,19 +631,19 @@ NAV_ACTIVE = "#1D4ED8"
 
 def nav_button(icon, active=False):
     return ft.Container(
-        width=46,
-        height=46,
-        border_radius=14,
+        width=48,
+        height=48,
+        border_radius=12,
         bgcolor=NAV_ACTIVE if active else "#0F1B2D",
-        border=border_all(1, "#60A5FA" if active else "#1E293B"),
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=14, color="#33000000", offset=ft.Offset(0, 5)) if active else None,
+        border=border_all(1, "#93C5FD" if active else "#263449"),
+        shadow=ft.BoxShadow(spread_radius=0, blur_radius=8, color="#24000000", offset=ft.Offset(0, 3)) if active else None,
         alignment=CENTER,
         content=ft.Row(
             spacing=0,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
-                ft.Container(width=4, height=24, border_radius=999, bgcolor="#FFFFFF" if active else "#0F1B2D"),
-                ft.Container(width=40, alignment=CENTER, content=ft.Icon(icon, size=21, color=WHITE if active else "#B6C2D5")),
+                ft.Container(width=4, height=26, border_radius=999, bgcolor="#FFFFFF" if active else "#0F1B2D"),
+                ft.Container(width=42, alignment=CENTER, content=ft.Icon(icon, size=22, color=WHITE if active else "#C3CEE0")),
             ],
         ),
     )
@@ -640,17 +652,17 @@ def nav_button(icon, active=False):
 def stat_card(title, value):
     return ft.Container(
         expand=True,
-        height=112,
+        height=108,
         bgcolor=WHITE,
         border=border_all(1, BORDER),
-        border_radius=18,
+        border_radius=14,
         padding=pad_sym(horizontal=24, vertical=20),
         shadow=soft_shadow(),
         content=ft.Column(
             spacing=12,
             controls=[
-                ft.Text(title, size=13, weight=ft.FontWeight.W_700, color=MUTED),
-                ft.Text(str(value), size=34, weight=ft.FontWeight.W_800, color=TEXT),
+                ft.Text(title, size=12, weight=ft.FontWeight.W_900, color=MUTED),
+                ft.Text(str(value), size=34, weight=ft.FontWeight.W_900, color=TEXT),
             ],
         ),
     )
@@ -1662,12 +1674,12 @@ def main(page: ft.Page):
             ],
         )
         filters = ft.Container(
-            height=62,
+            height=58,
             bgcolor=WHITE,
             border=border_all(1, BORDER),
-            border_radius=16,
+            border_radius=14,
             padding=pad_sym(horizontal=14, vertical=7),
-            shadow=ft.BoxShadow(spread_radius=0, blur_radius=14, color="#0A000000", offset=ft.Offset(0, 4)),
+            shadow=ft.BoxShadow(spread_radius=0, blur_radius=8, color="#0A000000", offset=ft.Offset(0, 2)),
             content=ft.Row(
                 spacing=12,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -3945,7 +3957,7 @@ def main(page: ft.Page):
                 height=188,
                 bgcolor=bg,
                 border=border_all(1, color + "55"),
-                border_radius=20,
+                border_radius=16,
                 padding=16,
                 content=ft.Column(
                     spacing=10,
@@ -3954,7 +3966,7 @@ def main(page: ft.Page):
                             spacing=10,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             controls=[
-                                ft.Container(width=36, height=36, border_radius=12, bgcolor=WHITE, alignment=CENTER, content=ft.Icon(icon, size=18, color=color)),
+                                ft.Container(width=36, height=36, border_radius=10, bgcolor=WHITE, border=border_all(1, color + "44"), alignment=CENTER, content=ft.Icon(icon, size=19, color=color)),
                                 ft.Text(title, size=16, weight=ft.FontWeight.W_900, color=TEXT, expand=True),
                             ],
                         ),
@@ -4133,16 +4145,16 @@ def main(page: ft.Page):
                 render_current()
 
             return ft.Container(
-                height=64,
+                height=62,
                 bgcolor=WHITE,
                 border=border_all(1, BORDER),
-                border_radius=16,
+                border_radius=14,
                 padding=pad_only(left=12, right=8),
                 content=ft.Row(
                     spacing=12,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(width=38, height=38, border_radius=11, bgcolor="#FEF2F2", alignment=CENTER, content=ft.Icon(icon, size=18, color=icon_color)),
+                        ft.Container(width=38, height=38, border_radius=10, bgcolor="#FEF2F2", border=border_all(1, "#FECACA"), alignment=CENTER, content=ft.Icon(icon, size=19, color=icon_color)),
                         ft.Column(
                             expand=True,
                             spacing=2,
@@ -4245,16 +4257,16 @@ def main(page: ft.Page):
             bg = "#F0FDF4" if ok else "#FEF2F2"
             return ft.Container(
                 expand=True,
-                height=84,
+                height=82,
                 bgcolor=bg,
                 border=border_all(1, "#BBF7D0" if ok else "#FECACA"),
-                border_radius=18,
+                border_radius=14,
                 padding=14,
                 content=ft.Row(
                     spacing=10,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(width=38, height=38, border_radius=12, bgcolor=WHITE, alignment=CENTER, content=ft.Icon(check.get("icon", ft.Icons.CHECK_CIRCLE_OUTLINE), size=19, color=color)),
+                        ft.Container(width=38, height=38, border_radius=10, bgcolor=WHITE, border=border_all(1, "#BBF7D0" if ok else "#FECACA"), alignment=CENTER, content=ft.Icon(check.get("icon", ft.Icons.CHECK_CIRCLE_OUTLINE), size=20, color=color)),
                         ft.Column(
                             spacing=2,
                             expand=True,
@@ -4270,7 +4282,7 @@ def main(page: ft.Page):
         health_check_card = ft.Container(
             bgcolor=WHITE,
             border=border_all(1, BORDER),
-            border_radius=22,
+            border_radius=18,
             padding=18,
             content=ft.Column(
                 spacing=14,
@@ -4296,7 +4308,7 @@ def main(page: ft.Page):
                 padding=pad_sym(horizontal=12, vertical=8),
                 border_radius=999,
                 bgcolor=PRIMARY if active else "#F8FAFC",
-                border=border_all(1, PRIMARY if active else BORDER),
+                border=border_all(1, "#1D4ED8" if active else "#CBD5E1"),
                 content=ft.Row(
                     spacing=7,
                     controls=[
@@ -4310,7 +4322,7 @@ def main(page: ft.Page):
             expand=2,
             bgcolor=WHITE,
             border=border_all(1, BORDER),
-            border_radius=22,
+            border_radius=18,
             padding=22,
             content=ft.Column(
                 spacing=14,
@@ -4351,7 +4363,7 @@ def main(page: ft.Page):
             expand=1,
             bgcolor=WHITE,
             border=border_all(1, BORDER),
-            border_radius=22,
+            border_radius=18,
             padding=22,
             content=ft.Column(
                 spacing=14,

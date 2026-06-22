@@ -1,14 +1,14 @@
 {
-  "version": "1.0.7 Health Center",
+  "version": "1.0.7.1 UI Sharpness",
   "release_date": "2026-06-22",
   "required": true,
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/61c5afa36196d829c4aa7e1d5a826ae88b40aa2f/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Added Health Check overview for Work folder, data files, templates, updates, and snapshots.",
-    "Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.",
-    "Improved broken-link detection for older records and URL shortcut records.",
-    "Added clearer repair status counts without touching Work files during scans.",
-    "Keeps V1.0.6 reliability fixes for Template targets and URL-to-file edits.",
+    "Small UI sharpness patch for V1.0.7.1.",
+    "Sharpened dashboard cards, navigation buttons, and Health Center panels.",
+    "Reduced heavy blur shadows so borders and text read cleaner.",
+    "Improved contrast on Health Check and Broken Link Center controls.",
+    "No workflow, Work folder, settings, or cache behavior is changed.",
     "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]
