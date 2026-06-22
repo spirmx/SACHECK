@@ -1,13 +1,14 @@
 {
-  "version": "1.0.5 Template Fix",
+  "version": "1.0.6 Reliability Patch",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/d153fa21934610d22d2e1a0e424fcbc44dd9ec6b/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Required Template system fix for V1.0.5.",
-    "Fixed Template edit, type move, and target update flow.",
-    "Fixed Template delete so both file and record are removed reliably.",
-    "Template category changes now move the stored template file to the correct Work type folder.",
+    "Required reliability patch for V1.0.6.",
+    "Hardened Template use, delete, and target fallback for older records.",
+    "Fixed task edit behavior when changing a URL item into a file or folder target.",
+    "Added clearer failure handling when a selected target file or folder is missing.",
+    "Cleaned up stale URL shortcuts when an item is changed to a local file/folder target.",
     "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]

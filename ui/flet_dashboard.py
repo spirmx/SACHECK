@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.5 Template Fix"
+APP_VERSION = "1.0.6 Reliability Patch"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.5 Template Fix",
+        "version": "1.0.6 Reliability Patch",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Hardened Template use, delete, and target fallback for older records.",
+            "Fixed task edit behavior when changing a URL item into a file or folder target.",
+            "Added clearer failure handling when a selected target file or folder is missing.",
+            "Cleaned up stale URL shortcuts when an item is changed to a local file/folder target.",
+        ],
+    },
+    {
+        "version": "1.0.5 Template Fix",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Fixed Template edit, type move, and target update flow.",
             "Fixed Template delete so both file and record are removed reliably.",
@@ -219,6 +230,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.6 Reliability Patch: Hardened Template target fallback, URL-to-file edits, stale shortcut cleanup, and missing-target errors.",
     "V1.0.5 Template Fix: Fixed Template edit, type move, delete, and create-to-work reliability.",
     "V1.0.4-01 Stable Hotfix: Update install now leaves SA CHECK closed so users reopen it manually after setup finishes.",
     "V1.0.4 Stable: Required stability update with safer forced-update flow and duplicate-launch protection.",
@@ -1008,6 +1020,7 @@ from core.flet_data import (  # noqa: E402
     status_folder,
     unique_target_path,
     update_template_record,
+    item_target,
     log_activity,
 )
 from core.create_tools import CREATE_TOOLS  # noqa: E402
@@ -2548,7 +2561,7 @@ def main(page: ft.Page):
 
         def template_row(template):
             icon, icon_color = task_icon(template.get("type", "Other"))
-            target = template.get("link", "")
+            target = item_target(template)
             pseudo_task = {"name": template.get("name", ""), "type": template.get("type", "Other"), "link": target, "shortcut_path": template.get("shortcut_path", ""), "target_kind": template.get("target_kind", "file"), "note": template.get("note", ""), "date_added": template.get("date_added", "")}
 
             def mark_used():
@@ -2572,7 +2585,7 @@ def main(page: ft.Page):
                     except Exception as exc:
                         show_message(page, "Template failed", str(exc), kind="danger")
 
-                run_with_duplicate_guard(template.get("name", "Untitled task"), template.get("link", ""), template.get("type", "Other"), create_from_template)
+                run_with_duplicate_guard(template.get("name", "Untitled task"), item_target(template), template.get("type", "Other"), create_from_template)
 
             def open_template(_event):
                 if open_target(pseudo_task):
@@ -2701,7 +2714,7 @@ def main(page: ft.Page):
             for template in templates:
                 name = template.get("name", "")
                 file_type = template.get("type", "Other")
-                target = template.get("link", "")
+                target = item_target(template)
                 if selected != "All template types" and file_type != selected:
                     continue
                 if query and query not in name.casefold() and query not in file_type.casefold() and query not in target.casefold():
@@ -4388,7 +4401,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
         def open_update(_event=None):
             if state.get("update_installing"):
-                show_message(page, "Update", "Update is already running. Please wait for SA CHECK to reopen.", kind="warning")
+                show_message(page, "Update", "Update is already running. Please wait until SA CHECK closes, then open it again manually.", kind="warning")
                 return
             state["update_installing"] = True
             url = manifest.get("installer_url") or ""

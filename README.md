@@ -8,16 +8,18 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.5 Template Fix`
+Version: `1.0.6 Reliability Patch`
 
-This is a required Template system fix.
+This is a required reliability patch.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Fixed Template edit, type move, and target update flow.
-- Fixed Template delete so both file and record are removed reliably.
-- Template category changes now move the stored template file to the correct Work type folder.
+- Hardened Template use, delete, and target fallback for older records.
+- Fixed task edit behavior when changing a URL item into a file or folder target.
+- Added clearer failure handling when a selected target file or folder is missing.
+- Cleaned up stale URL shortcuts when an item is changed to a local file/folder target.
+- Keeps the V1.0.5 Template edit, type move, target update, and delete fixes.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
@@ -81,4 +83,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.4-01 Stable Hotfix` changes the update finish flow so the app stays closed after setup finishes.
+`1.0.6 Reliability Patch` hardens Template targets, URL-to-file edits, missing-target handling, and stale shortcut cleanup.

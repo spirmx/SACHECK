@@ -792,42 +792,58 @@ def delete_item_target(item) -> bool:
     return deleted
 
 
+def item_target(item) -> str:
+    link = (item.get("link") or "").strip()
+    shortcut = (item.get("shortcut_path") or "").strip()
+    if link.startswith(("http://", "https://")):
+        return link
+    return shortcut or link
+
+
 def rename_task_target(task, new_name: str, new_target: str = "", new_file_type: str | None = None, new_status: str | None = None):
     clean_name = (new_name or task.get("name") or "Untitled task").strip()
     safe_name = safe_item_name(clean_name, task.get("name") or "Untitled task")
-    current_target = task.get("link") or task.get("shortcut_path") or ""
+    current_target = item_target(task)
     requested_target = (new_target or current_target).strip()
     resolved_type = new_file_type or task.get("type", "Other")
     resolved_status = new_status or task.get("status", STATUS_PENDING)
     previous_status = task.get("status")
 
-    if requested_target.startswith(("http://", "https://")) or task.get("target_kind") == "url":
+    if requested_target.startswith(("http://", "https://")):
         task["name"] = safe_name
         task["type"] = resolved_type
         apply_status_date(task, resolved_status)
-        if requested_target:
-            task["link"] = requested_target
-            task["target_kind"] = "url"
-            shortcut_text = task.get("shortcut_path") or ""
-            shortcut = Path(shortcut_text) if shortcut_text else None
-            if shortcut and shortcut.exists() and is_under_work(str(shortcut)):
-                destination_folder = status_folder(resolved_status, resolved_type)
-                destination_folder.mkdir(parents=True, exist_ok=True)
-                target_path = destination_folder / f"{safe_name}.url"
-                if normalized_file_key(str(target_path)) != normalized_file_key(str(shortcut)):
-                    if target_path.exists():
-                        target_path = unique_target_path(target_path.parent, target_path.stem, target_path.suffix)
-                    retry_file_operation(lambda: shortcut.rename(target_path), label=f"Move shortcut {shortcut.name}")
-                task["shortcut_path"] = str(target_path)
-                task["file_key"] = normalized_file_key(str(target_path))
-            elif requested_target.startswith(("http://", "https://")):
-                target_path = write_url_shortcut(status_folder(resolved_status, resolved_type), safe_name, requested_target)
-                task["shortcut_path"] = str(target_path)
-                task["file_key"] = normalized_file_key(str(target_path))
+        task["link"] = requested_target
+        task["target_kind"] = "url"
+        shortcut_text = task.get("shortcut_path") or ""
+        shortcut = Path(shortcut_text) if shortcut_text else None
+        if shortcut and shortcut.exists() and is_under_work(str(shortcut)):
+            destination_folder = status_folder(resolved_status, resolved_type)
+            destination_folder.mkdir(parents=True, exist_ok=True)
+            target_path = destination_folder / f"{safe_name}.url"
+            if normalized_file_key(str(target_path)) != normalized_file_key(str(shortcut)):
+                if target_path.exists():
+                    target_path = unique_target_path(target_path.parent, target_path.stem, target_path.suffix)
+                retry_file_operation(lambda: shortcut.rename(target_path), label=f"Move shortcut {shortcut.name}")
+            task["shortcut_path"] = str(target_path)
+            task["file_key"] = normalized_file_key(str(target_path))
+        else:
+            target_path = write_url_shortcut(status_folder(resolved_status, resolved_type), safe_name, requested_target)
+            task["shortcut_path"] = str(target_path)
+            task["file_key"] = normalized_file_key(str(target_path))
         return task
 
     current_path = Path(current_target) if current_target else None
     requested_path = Path(requested_target) if requested_target else None
+    if requested_target and (not requested_path or not requested_path.exists()):
+        raise FileNotFoundError(f"Target file/folder was not found: {requested_target}")
+
+    old_shortcut = task.get("shortcut_path") or ""
+    if task.get("target_kind") == "url" and old_shortcut:
+        shortcut_path = Path(old_shortcut)
+        if shortcut_path.exists() and is_under_work(str(shortcut_path)):
+            retry_file_operation(lambda: shortcut_path.unlink(), label=f"Delete old shortcut {shortcut_path.name}")
+
     if current_path and current_path.exists() and requested_path and normalized_file_key(str(current_path)) == normalized_file_key(str(requested_path)):
         suffix = "" if current_path.is_dir() else current_path.suffix
         desired_stem = Path(safe_name).stem if Path(safe_name).suffix and not current_path.is_dir() else safe_name
@@ -860,7 +876,9 @@ def rename_task_target(task, new_name: str, new_target: str = "", new_file_type:
 
 def create_task_from_template(template, title=""):
     file_type = template.get("type", "Other")
-    source = template.get("link") or template.get("shortcut_path") or ""
+    source = item_target(template)
+    if not source:
+        raise ValueError("Template target is empty.")
     name = (title or template.get("name") or "Template work").strip()
     return create_task_from_source(name, source, file_type=file_type, note=template.get("note", ""), status=STATUS_PENDING)
 
