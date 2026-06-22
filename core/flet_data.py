@@ -210,16 +210,19 @@ def broken_items(tasks=None, templates=None):
     problems = []
     for source, items in [("Task", tasks if tasks is not None else load_tasks()), ("Template", templates if templates is not None else load_templates())]:
         for item in items:
-            link = item.get("link") or ""
-            shortcut = item.get("shortcut_path") or ""
-            target = shortcut or link
+            link = (item.get("link") or "").strip()
+            shortcut = (item.get("shortcut_path") or "").strip()
+            target = item_target(item)
             if not target:
-                problems.append({"source": source, "reason": "No target", "item": item})
+                problems.append({"source": source, "reason": "No target", "target": "", "item": item})
                 continue
-            if link.startswith(("http://", "https://")):
+            if link.startswith(("http://", "https://")) and shortcut and not Path(shortcut).exists():
+                problems.append({"source": source, "reason": "Missing URL shortcut", "target": shortcut, "item": item})
+                continue
+            if target.startswith(("http://", "https://")):
                 continue
             if not Path(target).exists():
-                problems.append({"source": source, "reason": "Missing file/folder", "item": item})
+                problems.append({"source": source, "reason": "Missing file/folder", "target": target, "item": item})
     return problems
 
 

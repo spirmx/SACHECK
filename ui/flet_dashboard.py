@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.6 Reliability Patch"
+APP_VERSION = "1.0.7 Health Center"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.6 Reliability Patch",
+        "version": "1.0.7 Health Center",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Added Health Check overview for Work folder, data files, templates, updates, and snapshots.",
+            "Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.",
+            "Improved broken-link detection for older records and URL shortcut records.",
+            "Added clearer repair status counts without touching Work files during scans.",
+        ],
+    },
+    {
+        "version": "1.0.6 Reliability Patch",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Hardened Template use, delete, and target fallback for older records.",
             "Fixed task edit behavior when changing a URL item into a file or folder target.",
@@ -230,6 +241,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.7 Health Center: Added Health Check overview, Broken Link Center filters, and stronger broken target detection.",
     "V1.0.6 Reliability Patch: Hardened Template target fallback, URL-to-file edits, stale shortcut cleanup, and missing-target errors.",
     "V1.0.5 Template Fix: Fixed Template edit, type move, delete, and create-to-work reliability.",
     "V1.0.4-01 Stable Hotfix: Update install now leaves SA CHECK closed so users reopen it manually after setup finishes.",
@@ -1291,6 +1303,7 @@ def main(page: ft.Page):
         "update_installing": False,
         "last_update_check": 0,
         "update_prompted_versions": set(),
+        "health_filter": "All",
     }
 
     page.title = APP_NAME
@@ -3777,6 +3790,75 @@ def main(page: ft.Page):
         zombie_limit = int(settings.get("zombie_waiting_days") or 30)
         overload_doing_limit = int(settings.get("overload_doing_limit") or 4)
         overload_total_limit = int(settings.get("overload_total_limit") or 10)
+        health_filter = state.get("health_filter", "All")
+
+        def path_writable(path):
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                probe = path / ".sacheck_health_probe"
+                probe.write_text("ok", encoding="utf-8")
+                probe.unlink(missing_ok=True)
+                return True
+            except Exception:
+                return False
+
+        health_checks = [
+            {
+                "label": "Work folder",
+                "ok": root_work.exists() and root_work.is_dir(),
+                "detail": str(root_work),
+                "icon": ft.Icons.FOLDER_OUTLINED,
+            },
+            {
+                "label": "Data folder",
+                "ok": path_writable(DATA_FILE.parent),
+                "detail": str(DATA_FILE.parent),
+                "icon": ft.Icons.SAVE_OUTLINED,
+            },
+            {
+                "label": "Tasks file",
+                "ok": isinstance(all_tasks, list),
+                "detail": f"{len(all_tasks)} records loaded",
+                "icon": ft.Icons.FACT_CHECK_OUTLINED,
+            },
+            {
+                "label": "Templates file",
+                "ok": isinstance(templates, list),
+                "detail": f"{len(templates)} records loaded",
+                "icon": ft.Icons.ARTICLE_OUTLINED,
+            },
+            {
+                "label": "Update channel",
+                "ok": bool(update_channel_url()) and not settings.get("offline_mode", False),
+                "detail": "Online checks enabled" if not settings.get("offline_mode", False) else "Offline mode is on",
+                "icon": ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED,
+            },
+            {
+                "label": "Snapshots",
+                "ok": bool(snapshots),
+                "detail": f"{len(snapshots)} recent snapshots",
+                "icon": ft.Icons.BACKUP_OUTLINED,
+            },
+        ]
+        health_ok_count = sum(1 for check in health_checks if check["ok"])
+        broken_tasks = [problem for problem in problems if problem.get("source") == "Task"]
+        broken_templates = [problem for problem in problems if problem.get("source") == "Template"]
+
+        def problem_matches_filter(problem):
+            reason = problem.get("reason", "")
+            if health_filter == "Tasks":
+                return problem.get("source") == "Task"
+            if health_filter == "Templates":
+                return problem.get("source") == "Template"
+            if health_filter == "Missing":
+                return reason == "Missing file/folder"
+            if health_filter == "No target":
+                return reason == "No target"
+            if health_filter == "URL shortcut":
+                return reason == "Missing URL shortcut"
+            return True
+
+        visible_problems = [problem for problem in problems if problem_matches_filter(problem)]
 
         def task_date_value(task):
             try:
@@ -3972,7 +4054,7 @@ def main(page: ft.Page):
                 show_task_detail(page, item, save_and_render, all_tasks, is_template=is_template)
 
             def copy_target(_event):
-                page.clipboard.set(item.get("link") or item.get("shortcut_path") or "")
+                page.clipboard.set(problem.get("target") or item_target(item))
                 show_message(page, "Copied", "Target copied.")
 
             def save_repaired(message):
@@ -4157,6 +4239,73 @@ def main(page: ft.Page):
                 ),
             )
 
+        def health_check_tile(check):
+            ok = bool(check.get("ok"))
+            color = "#16A34A" if ok else "#DC2626"
+            bg = "#F0FDF4" if ok else "#FEF2F2"
+            return ft.Container(
+                expand=True,
+                height=84,
+                bgcolor=bg,
+                border=border_all(1, "#BBF7D0" if ok else "#FECACA"),
+                border_radius=18,
+                padding=14,
+                content=ft.Row(
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=38, height=38, border_radius=12, bgcolor=WHITE, alignment=CENTER, content=ft.Icon(check.get("icon", ft.Icons.CHECK_CIRCLE_OUTLINE), size=19, color=color)),
+                        ft.Column(
+                            spacing=2,
+                            expand=True,
+                            controls=[
+                                ft.Row(spacing=6, controls=[ft.Text(check.get("label", "Check"), size=13, weight=ft.FontWeight.W_900, color=TEXT), ft.Icon(ft.Icons.CHECK_CIRCLE if ok else ft.Icons.ERROR_OUTLINE, size=15, color=color)]),
+                                ft.Text(check.get("detail", ""), size=11, color=MUTED, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                            ],
+                        ),
+                    ],
+                ),
+            )
+
+        health_check_card = ft.Container(
+            bgcolor=WHITE,
+            border=border_all(1, BORDER),
+            border_radius=22,
+            padding=18,
+            content=ft.Column(
+                spacing=14,
+                controls=[
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.MONITOR_HEART_OUTLINED, color=PRIMARY), ft.Text("Health Check", size=22, weight=ft.FontWeight.W_900, color=TEXT)]),
+                            ft.Container(padding=pad_sym(horizontal=12, vertical=7), border_radius=999, bgcolor="#EFF6FF", border=border_all(1, "#BFDBFE"), content=ft.Text(f"{health_ok_count}/{len(health_checks)} checks OK", size=12, weight=ft.FontWeight.W_900, color=PRIMARY)),
+                        ],
+                    ),
+                    ft.Row(spacing=12, controls=[health_check_tile(check) for check in health_checks[:3]]),
+                    ft.Row(spacing=12, controls=[health_check_tile(check) for check in health_checks[3:]]),
+                ],
+            ),
+        )
+
+        def health_filter_button(label, count):
+            active = health_filter == label
+            return ft.Container(
+                on_click=lambda _e, value=label: (state.update({"health_filter": value}), render_current()),
+                padding=pad_sym(horizontal=12, vertical=8),
+                border_radius=999,
+                bgcolor=PRIMARY if active else "#F8FAFC",
+                border=border_all(1, PRIMARY if active else BORDER),
+                content=ft.Row(
+                    spacing=7,
+                    controls=[
+                        ft.Text(label, size=12, weight=ft.FontWeight.W_900, color=WHITE if active else TEXT),
+                        ft.Container(width=28, height=20, border_radius=999, bgcolor=WHITE if active else "#EEF2FF", alignment=CENTER, content=ft.Text(str(count), size=10, weight=ft.FontWeight.W_900, color=PRIMARY if active else MUTED)),
+                    ],
+                ),
+            )
+
         issue_card = ft.Container(
             expand=2,
             bgcolor=WHITE,
@@ -4169,17 +4318,29 @@ def main(page: ft.Page):
                     ft.Row(
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         controls=[
-                            ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.REPORT_PROBLEM_OUTLINED, color="#DC2626"), ft.Text("Broken / Missing", size=22, weight=ft.FontWeight.W_800, color=TEXT)]),
+                            ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.LINK_OFF_OUTLINED, color="#DC2626"), ft.Text("Broken Link Center", size=22, weight=ft.FontWeight.W_800, color=TEXT)]),
                             ft.Button("Scan now", icon=ft.Icons.SYNC, on_click=sync_now, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))),
                         ],
                     ),
-                    ft.Text("Read-only intelligence highlights broken links, stale work, duplicates, and category mismatches. Work files are not changed by this scan.", size=13, color=MUTED),
+                    ft.Text("Scans task and template records for missing local targets, empty targets, and missing URL shortcuts. Work files are not changed by this scan.", size=13, color=MUTED),
+                    ft.Row(
+                        spacing=8,
+                        wrap=True,
+                        controls=[
+                            health_filter_button("All", len(problems)),
+                            health_filter_button("Tasks", len(broken_tasks)),
+                            health_filter_button("Templates", len(broken_templates)),
+                            health_filter_button("Missing", sum(1 for problem in problems if problem.get("reason") == "Missing file/folder")),
+                            health_filter_button("No target", sum(1 for problem in problems if problem.get("reason") == "No target")),
+                            health_filter_button("URL shortcut", sum(1 for problem in problems if problem.get("reason") == "Missing URL shortcut")),
+                        ],
+                    ),
                     ft.Container(
                         expand=True,
                         content=ft.ListView(
                             expand=True,
                             spacing=10,
-                            controls=[issue_row(problem) for problem in problems] if problems else [ft.Container(expand=True, alignment=CENTER, content=ft.Text("No broken items found", size=15, color=MUTED_2))],
+                            controls=[issue_row(problem) for problem in visible_problems] if visible_problems else [ft.Container(expand=True, alignment=CENTER, content=ft.Text("No broken items found for this filter", size=15, color=MUTED_2))],
                         ),
                     ),
                 ],
@@ -4210,7 +4371,7 @@ def main(page: ft.Page):
             ),
         )
 
-        main_body.controls = ([smart_overview] if smart_health_on else []) + [ft.Row(spacing=18, expand=True, controls=[issue_card, activity_card])]
+        main_body.controls = [health_check_card] + ([smart_overview] if smart_health_on else []) + [ft.Row(spacing=18, expand=True, controls=[issue_card, activity_card])]
         page.update()
 
     def show_settings(_e=None):

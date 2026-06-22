@@ -8,18 +8,18 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.6 Reliability Patch`
+Version: `1.0.7 Health Center`
 
-This is a required reliability patch.
+This release adds Health Check and Broken Link Center.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- Hardened Template use, delete, and target fallback for older records.
-- Fixed task edit behavior when changing a URL item into a file or folder target.
-- Added clearer failure handling when a selected target file or folder is missing.
-- Cleaned up stale URL shortcuts when an item is changed to a local file/folder target.
-- Keeps the V1.0.5 Template edit, type move, target update, and delete fixes.
+- Added Health Check overview for Work folder, data files, templates, updates, and snapshots.
+- Added Broken Link Center filters for tasks, templates, missing targets, and URL shortcuts.
+- Improved broken-link detection for older records and URL shortcut records.
+- Added clearer repair status counts without touching Work files during scans.
+- Keeps the V1.0.6 reliability fixes and V1.0.5 Template fixes.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
@@ -83,4 +83,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.6 Reliability Patch` hardens Template targets, URL-to-file edits, missing-target handling, and stale shortcut cleanup.
+`1.0.7 Health Center` adds Health Check and Broken Link Center filters for safer system review.
