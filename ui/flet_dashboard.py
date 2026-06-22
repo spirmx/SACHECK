@@ -1241,8 +1241,11 @@ def install_pointer_feedback():
         if DARK_UI and "bgcolor" in kwargs:
             kwargs["bgcolor"] = adapt_theme_color(kwargs.get("bgcolor"))
         if kwargs.get("on_click") and kwargs.get("ink") is None:
-            kwargs["ink"] = True
-            kwargs.setdefault("ink_color", "#E2E8F0")
+            content = kwargs.get("content")
+            input_controls = (ft.TextField, ft.Dropdown)
+            if not isinstance(content, input_controls):
+                kwargs["ink"] = True
+                kwargs.setdefault("ink_color", "#E2E8F0")
         original_container_init(self, *args, **kwargs)
 
     ft.Container.__init__ = patched_container_init
@@ -5222,21 +5225,29 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 "created_at": source.get("created_at") or datetime.now().isoformat(timespec="seconds"),
                 "updated_at": datetime.now().isoformat(timespec="seconds"),
             }
-            clear_event_alert_keys(event_id)
-            if editing:
-                source.clear()
-                source.update(payload)
-            else:
-                calendar_events.append(payload)
-            save_calendar_events()
+            try:
+                clear_event_alert_keys(event_id)
+                if editing:
+                    source.clear()
+                    source.update(payload)
+                else:
+                    calendar_events.append(payload)
+                save_calendar_events()
+            except Exception as exc:
+                show_message(page, "Calendar save failed", f"Could not save this event. {exc}")
+                return
             page.pop_dialog()
             render_current()
             show_message(page, "Calendar event", "Event saved.")
 
         def delete_event(_event):
             if editing and source in calendar_events:
-                calendar_events.remove(source)
-                save_calendar_events()
+                try:
+                    calendar_events.remove(source)
+                    save_calendar_events()
+                except Exception as exc:
+                    show_message(page, "Calendar delete failed", f"Could not delete this event. {exc}")
+                    return
                 page.pop_dialog()
                 render_current()
                 show_message(page, "Calendar event", "Event deleted.")
