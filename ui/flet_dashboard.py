@@ -87,16 +87,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "1.0.4-01 Stable Hotfix"
+APP_VERSION = "1.0.5 Template Fix"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.4-01 Stable Hotfix",
+        "version": "1.0.5 Template Fix",
         "date": "2026-06-22",
         "latest": True,
+        "items": [
+            "Fixed Template edit, type move, and target update flow.",
+            "Fixed Template delete so both file and record are removed reliably.",
+            "Template category changes now move the stored template file to the correct Work type folder.",
+            "Added safer Template file handling without clearing Work folders or user data.",
+        ],
+    },
+    {
+        "version": "1.0.4-01 Stable Hotfix",
+        "date": "2026-06-22",
+        "latest": False,
         "items": [
             "Changed update finish behavior so SA CHECK stays closed after installation.",
             "Users should open SA CHECK manually after the installer finishes.",
@@ -208,6 +219,7 @@ VERSION_HISTORY = [
     },
 ]
 CURRENT_CHANGELOG = [
+    "V1.0.5 Template Fix: Fixed Template edit, type move, delete, and create-to-work reliability.",
     "V1.0.4-01 Stable Hotfix: Update install now leaves SA CHECK closed so users reopen it manually after setup finishes.",
     "V1.0.4 Stable: Required stability update with safer forced-update flow and duplicate-launch protection.",
     "V1.0.3-06 Build 6: Auto update checks can run every minute and are configurable in Settings.",
@@ -995,6 +1007,7 @@ from core.flet_data import (  # noqa: E402
     template_folder,
     status_folder,
     unique_target_path,
+    update_template_record,
     log_activity,
 )
 from core.create_tools import CREATE_TOOLS  # noqa: E402
@@ -2582,8 +2595,16 @@ def main(page: ft.Page):
                     except Exception as exc:
                         show_message(page, "Delete failed", str(exc))
                         return
-                    if template in templates:
-                        templates.remove(template)
+                    template_id = template.get("id")
+                    template_key = template.get("file_key") or normalized_file_key(template.get("shortcut_path") or template.get("link") or "")
+                    templates[:] = [
+                        item
+                        for item in templates
+                        if not (
+                            (template_id and item.get("id") == template_id)
+                            or (template_key and (item.get("file_key") or normalized_file_key(item.get("shortcut_path") or item.get("link") or "")) == template_key)
+                        )
+                    ]
                     save_templates(templates)
                     page.pop_dialog()
                     render_current()
@@ -6107,17 +6128,10 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             before = dict(task)
             create_snapshot("Before template edit")
             try:
-                edited = create_template_from_source(new_name, new_target, file_type=new_type, note=note_field.value or "")
-                try:
-                    delete_item_target(before)
-                except Exception:
-                    pass
-                edited["id"] = task.get("id") or edited.get("id")
-                edited["date_added"] = parsed_date
-                edited["usage_count"] = task.get("usage_count", 0)
-                edited["last_used"] = task.get("last_used", "")
-                task.clear()
-                task.update(edited)
+                update_template_record(task, new_name, file_type=new_type, target=new_target, note=note_field.value or "", date_added=parsed_date)
+                task["id"] = before.get("id") or task.get("id")
+                task["usage_count"] = before.get("usage_count", task.get("usage_count", 0))
+                task["last_used"] = before.get("last_used", task.get("last_used", ""))
                 if template_records is not None and task not in template_records:
                     template_records.append(task)
                 save_templates(template_records if template_records is not None else load_templates())

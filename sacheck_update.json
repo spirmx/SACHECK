@@ -1,14 +1,14 @@
 {
-  "version": "1.0.4-01 Stable Hotfix",
+  "version": "1.0.5 Template Fix",
   "release_date": "2026-06-22",
   "required": true,
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/42c6aaec4ae903d3beee6854139e1c7d99ae839a/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
   "notes": [
-    "Required hotfix for V1.0.4 update finish behavior.",
-    "After an in-app update finishes, SA CHECK stays closed.",
-    "Users should open SA CHECK manually from the desktop or Start Menu shortcut.",
-    "This avoids black-screen or empty-data states caused by relaunching too quickly.",
-    "No Setup wizard is shown during in-app silent updates.",
+    "Required Template system fix for V1.0.5.",
+    "Fixed Template edit, type move, and target update flow.",
+    "Fixed Template delete so both file and record are removed reliably.",
+    "Template category changes now move the stored template file to the correct Work type folder.",
+    "No Setup wizard is shown during in-app silent updates and SA CHECK stays closed after update.",
     "No user Work folders, settings, or cache are cleared by this update."
   ]
 }

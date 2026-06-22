@@ -8,17 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.4-01 Stable Hotfix`
+Version: `1.0.5 Template Fix`
 
-This is a required hotfix for the update finish flow.
+This is a required Template system fix.
 
 Latest changes:
 
 - Required update through the GitHub manifest.
-- After an in-app update finishes, SA CHECK stays closed.
-- Users should open SA CHECK manually from the desktop or Start Menu shortcut.
-- Avoids black-screen or empty-data states caused by relaunching too quickly.
-- Silent update installs do not show the Setup wizard.
+- Fixed Template edit, type move, and target update flow.
+- Fixed Template delete so both file and record are removed reliably.
+- Template category changes now move the stored template file to the correct Work type folder.
+- Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
 

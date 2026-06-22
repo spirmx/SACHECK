@@ -685,6 +685,92 @@ def create_template_from_source(name: str, source: str, file_type: str = "Other"
     }
 
 
+def update_template_record(template, name: str, file_type: str = "Other", target: str = "", note: str = "", date_added: str = ""):
+    safe_name = safe_item_name(name, template.get("name", "Template"))
+    requested_target = (target or template.get("link") or template.get("shortcut_path") or "").strip()
+    if not requested_target:
+        raise ValueError("Template target is empty.")
+    resolved_type = (file_type or template.get("type") or "Other").strip() or "Other"
+    destination_folder = template_folder(resolved_type)
+    destination_folder.mkdir(parents=True, exist_ok=True)
+
+    old_targets = []
+    old_shortcut = template.get("shortcut_path") or ""
+    old_link = template.get("link") or ""
+    if old_shortcut:
+        old_targets.append(old_shortcut)
+    if old_link and not old_link.startswith(("http://", "https://")):
+        old_targets.append(old_link)
+    old_keys = {normalized_file_key(path) for path in old_targets if path}
+
+    def delete_old_targets(except_key=""):
+        for old in dict.fromkeys(old_targets):
+            if not old or normalized_file_key(old) == except_key:
+                continue
+            path = Path(old)
+            if not path.exists() or not is_under_work(str(path)):
+                continue
+            if path.is_dir():
+                retry_file_operation(lambda p=path: shutil.rmtree(p), label=f"Delete old template folder {path.name}")
+            else:
+                retry_file_operation(lambda p=path: p.unlink(), label=f"Delete old template file {path.name}")
+
+    if requested_target.startswith(("http://", "https://")):
+        shortcut = write_url_shortcut(destination_folder, safe_name, requested_target)
+        final_key = normalized_file_key(str(shortcut))
+        delete_old_targets(except_key=final_key)
+        template.update(
+            {
+                "name": safe_name,
+                "type": resolved_type,
+                "detected_type": infer_type(requested_target),
+                "link": requested_target,
+                "target_kind": "url",
+                "shortcut_path": str(shortcut),
+                "note": note.strip(),
+                "date_added": date_added or template.get("date_added") or datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "source": template.get("source") or "manual_template",
+                "file_key": final_key,
+            }
+        )
+        return template
+
+    requested_path = Path(requested_target)
+    if not requested_path.exists():
+        raise FileNotFoundError(f"Template target not found: {requested_target}")
+
+    requested_key = normalized_file_key(str(requested_path))
+    if requested_key in old_keys and is_under_work(str(requested_path)):
+        suffix = "" if requested_path.is_dir() else requested_path.suffix
+        desired_stem = Path(safe_name).stem if Path(safe_name).suffix and not requested_path.is_dir() else safe_name
+        desired_name = desired_stem if requested_path.is_dir() else f"{desired_stem}{suffix}"
+        final_path = destination_folder / desired_name
+        if normalized_file_key(str(final_path)) != requested_key:
+            if final_path.exists():
+                final_path = unique_target_path(final_path.parent, final_path.stem, final_path.suffix)
+            retry_file_operation(lambda: requested_path.rename(final_path), label=f"Move template {requested_path.name}")
+    else:
+        final_path = copy_source_to_folder(str(requested_path), destination_folder, safe_name)
+        delete_old_targets(except_key=normalized_file_key(str(final_path)))
+
+    final_path = Path(final_path)
+    template.update(
+        {
+            "name": final_path.stem if final_path.is_file() else final_path.name,
+            "type": resolved_type,
+            "detected_type": infer_type(str(final_path)),
+            "link": str(final_path),
+            "target_kind": "folder" if final_path.is_dir() else "file",
+            "shortcut_path": str(final_path),
+            "note": note.strip(),
+            "date_added": date_added or template.get("date_added") or datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "source": template.get("source") or "manual_template",
+            "file_key": normalized_file_key(str(final_path)),
+        }
+    )
+    return template
+
+
 def delete_item_target(item) -> bool:
     targets = []
     shortcut = item.get("shortcut_path") or ""
