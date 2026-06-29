@@ -3,7 +3,7 @@
   "release_date": "2026-06-29",
   "required": false,
   "release_status": "ready",
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/2ab76a9/release/SA_CHECK_Installer.exe",
   "installer_sha256": "8a1c6d62acb1f809eb4f37f5a628b12863ff5909e6815eda301b860758056f6c",
   "installer_size": 33189146,
   "repair_version": "1.0.9",
