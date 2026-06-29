@@ -10,9 +10,25 @@ from pathlib import Path
 
 from config.category import EXTENSION_TYPES, URL_RULES
 from core import file_intelligence
-from core.app_paths import ACTIVITY_LOG_FILE, APP_SETTINGS_FILE, DATA_FILE, SNAPSHOT_DIR, TEMPLATE_FILE, UNDO_STACK_FILE, work_folder
+from core.app_paths import ACTIVITY_LOG_FILE, APP_SETTINGS_FILE, DATA_FILE, SNAPSHOT_DIR, TEMPLATE_FILE, UNDO_STACK_FILE, is_dev_runtime, work_folder
 from core.create_tools import create_project_folder, tool_default_name, write_blank_file
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
+
+APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
+APP_VERSION = "1.0.9"
+MANUAL_VERSION = "2026-06-18-user-guide"
+DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
+
+type_color_choices = [
+    "#7C3AED", "#6366F1", "#2563EB", "#0284C7", "#0891B2", "#0F766E",
+    "#16A34A", "#65A30D", "#D97706", "#EA580C", "#E11D48", "#DB2777",
+    "#9333EA", "#475569", "#111827", "#22C55E", "#06B6D4", "#F59E0B",
+]
+
+CREATE_TOOLS = [
+    {"type": name, "label": name}
+    for name in FILE_TYPES
+]
 
 
 def load_json(path, fallback):
@@ -112,6 +128,31 @@ def load_settings():
 
 def save_settings(settings):
     save_json(APP_SETTINGS_FILE, settings)
+
+
+def status_theme(status):
+    palette = {
+        STATUS_PENDING: ("#EFF6FF", "#2563EB"),
+        STATUS_PROGRESS: ("#FFFBEB", "#D97706"),
+        STATUS_DONE: ("#F0FDF4", "#16A34A"),
+    }
+    return palette.get(status, ("#F8FAFC", "#2563EB"))
+
+
+def update_channel_url():
+    return ""
+
+
+def check_for_updates(manual=False):
+    return None
+
+
+def migrate_work_folder(new_root):
+    settings = load_settings()
+    settings["work_folder_path"] = str(new_root)
+    save_settings(settings)
+    Path(new_root).mkdir(parents=True, exist_ok=True)
+    return Path(new_root)
 
 
 def create_snapshot(reason: str):

@@ -8,19 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.8 Stable`
+Version: `1.0.9`
 
-This patch stabilizes Calendar event editing by removing nested picker popups and using standard dialog actions.
+This release adds a fast startup loader, guarded online preflight checks, and verified system-file repair.
 
 Latest changes:
 
-- Required update through the GitHub manifest.
-- Stabilized Calendar event dialog click handling.
-- Removed nested DatePicker/TimePicker popups from inside the edit dialog.
-- Moved Calendar event buttons back to standard AlertDialog actions.
-- Added direct date/time validation so invalid values do not save.
-- Calendar event save still uses `YYYY-MM-DD` and `HH:MM` values.
-- Keeps previous calendar event data compatible.
+- Added a bright, colorful startup loader before the Work Board opens.
+- Online startup checks use a one-second timeout and reuse the result in the updater.
+- Offline mode skips update and integrity network checks and opens local work immediately.
+- Added SHA-256 verified repair for approved app system files.
+- Added a startup recovery card instead of leaving a black screen if dashboard handoff fails.
 - Keeps the V1.0.7.1 UI sharpness, V1.0.7 Health Center, V1.0.6 reliability fixes, and V1.0.5 Template fixes.
 - Silent update installs do not show the Setup wizard and SA CHECK stays closed after update.
 - Does not clear Work folders, settings, cache, or local user data.
@@ -71,6 +69,9 @@ ui/flet_dashboard.py
 Important files:
 
 - `sacheck_update.json` - update manifest used by installed apps.
+- `sacheck_integrity.json` - SHA-256 list for startup integrity checks.
+- `core/startup_preflight.py` - fast online check and verified repair engine.
+- `ui/startup.py` - startup loader and recovery UI.
 - `README.md` - Git/Drive developer notes.
 - `release/SA_CHECK_Installer.exe` - installer payload for users and in-app updates.
 
@@ -79,10 +80,12 @@ Before publishing a new update:
 1. Update `APP_VERSION` in `ui/flet_dashboard.py`.
 2. Add a new version entry in `VERSION_HISTORY`.
 3. Update `sacheck_update.json`.
-4. Build the installer.
-5. Push source, manifest, and installer to GitHub.
-6. Pin the manifest installer URL to the new installer commit if cache-safe testing is needed.
+4. Run `python tools/build_integrity_manifest.py` after the final source edit.
+5. Build the installer and calculate its SHA-256 hash.
+6. Set `installer_url`, remove `installer_build_required`, and test the package.
+7. Push source, integrity manifest, update manifest, and installer to GitHub.
+8. Pin the manifest installer URL to the new installer commit if cache-safe testing is needed.
 
 ## Current Status
 
-`1.0.8 Stable` uses a simpler Calendar event dialog with standard actions and direct date/time validation to avoid unclickable overlays.
+`1.0.9` passed source, native bundle, integrity, and isolated installer QA. The release manifest and installer are ready for Git publishing.

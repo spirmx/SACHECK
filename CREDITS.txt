@@ -16,4 +16,4 @@ Copyright:
 Copyright (c) 2026 HOYTURBRO
 
 Notes:
-This production build is prepared as a native Windows standalone app.
+เอาไว้ใช้งานในเครื่องตัวเองแต่แอพมีอัปเดตอยู่ น่ะจ๊ะ
