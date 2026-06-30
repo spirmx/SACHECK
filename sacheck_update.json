@@ -3,7 +3,7 @@
   "release_date": "2026-06-30",
   "required": false,
   "release_status": "ready",
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/b61eca10ae8abd6a1ef4222883f137c2f0969294/release/SA_CHECK_Installer.exe",
   "installer_sha256": "476953d61c958d415243635d6fabe7ec55190b6dd39d001403bdf9d855aa536a",
   "installer_size": 33194948,
   "repair_version": "1.0.9-01 Abillity",
