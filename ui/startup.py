@@ -18,6 +18,7 @@ BORDER = "#CFE0E8"
 SUCCESS = "#16A36A"
 WARNING = "#F59E0B"
 ERROR = "#EF4B5A"
+MINIMUM_LOADER_SECONDS = 1.4
 STEP_COLORS = ("#2563EB", "#13A8A8", "#F59E0B", "#16A36A")
 STEP_BACKGROUNDS = ("#EAF2FF", "#E8FBFB", "#FFF7E6", "#EAF9F1")
 
@@ -171,6 +172,10 @@ def show_startup_loader(
     )
     page.add(ft.Container(expand=True, alignment=ft.Alignment(0, 0), bgcolor=BG, content=card))
     _safe_update(page)
+    try:
+        page.run_task(page.window.center)
+    except Exception:
+        pass
 
     step_indexes = {"boot": 0, "local": 1, "online": 2, "repair": 2, "offline": 2, "ready": 3}
 
@@ -222,7 +227,7 @@ def show_startup_loader(
             timeout=1.0,
             status=set_status,
         )
-        remaining = 0.55 - (time.perf_counter() - started)
+        remaining = MINIMUM_LOADER_SECONDS - (time.perf_counter() - started)
         if remaining > 0:
             time.sleep(remaining)
         if result.health_issues:

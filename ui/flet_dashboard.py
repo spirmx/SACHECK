@@ -91,16 +91,30 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
-APP_VERSION = "1.0.9"
+APP_VERSION = "1.0.9-01 Abillity"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "" if is_dev_runtime() else "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
+        "version": "1.0.9-01 Abillity",
+        "date": "2026-06-30",
+        "latest": True,
+        "items": [
+            "Sync now performs a safe in-app refresh without closing or blanking the main window.",
+            "The refresh loader reloads Work data and settings, then checks Git for updates.",
+            "Added timeout and error recovery so a slow folder cannot leave the app stuck on Working.",
+            "The startup loader is centered on screen and remains visible long enough to read its status.",
+            "Fixed About SA CHECK and User guide buttons in the Settings Credits section.",
+            "Settings now opens the same About, User guide, and Version notes dialogs as the main dashboard.",
+            "Work folders, settings, and cache remain local and are never cleared by refresh.",
+        ],
+    },
+    {
         "version": "1.0.9",
         "date": "2026-06-29",
-        "latest": True,
+        "latest": False,
         "items": [
             "Added a bright, colorful startup loader before the Work Board opens.",
             "Online startup checks now verify the Git update channel with a short timeout.",
@@ -1418,6 +1432,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "settings_search": "",
         "last_sync_check": datetime.now().timestamp(),
         "syncing": False,
+        "refreshing": False,
+        "refresh_token": "",
         "closed": False,
         "online_status": (
             "online"
@@ -1975,6 +1991,9 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 run_with_duplicate_guard=run_with_duplicate_guard,
                 remember_task_action=remember_task_action,
                 show_create_new=show_create_new,
+                show_about=show_about,
+                show_help=show_help,
+                show_version_notes=show_version_notes,
                 status_theme=status_theme,
                 file_types=file_types,
                 filtered_tasks=filtered_tasks,
@@ -2101,13 +2120,209 @@ def dashboard_main(page: ft.Page, startup_result=None):
         render_current()
 
     def sync_now(_e=None):
-        create_snapshot("Before manual sync")
-        synced_tasks, _synced_templates, changed = sync_from_work(force=True)
-        state["last_sync_check"] = datetime.now().timestamp()
-        all_tasks.clear()
-        all_tasks.extend(synced_tasks)
-        render_current()
-        show_message(page, "Sync complete", "Work folders and templates were scanned." if changed else "Everything is already in sync.")
+        nonlocal root_work, calendar_events
+        if state.get("refreshing") or state.get("syncing"):
+            show_message(page, "Refresh in progress", "SA CHECK is already refreshing. Please wait a moment.", kind="warning")
+            return
+
+        refresh_token = uuid.uuid4().hex
+        state["refreshing"] = True
+        state["syncing"] = True
+        state["refresh_token"] = refresh_token
+        started = time.perf_counter()
+
+        refresh_icon = ft.Icon(ft.Icons.SYNC_ROUNDED, size=25, color="#2563EB")
+        refresh_status = ft.Text("Preparing a safe refresh...", size=14, weight=ft.FontWeight.W_700, color=TEXT)
+        refresh_detail = ft.Text("The main window stays open while local data is reloaded.", size=11, color=MUTED)
+        refresh_progress = ft.ProgressBar(value=0.06, height=8, color="#2563EB", bgcolor="#DCE7EF", border_radius=99)
+        refresh_percent = ft.Text("6%", size=12, weight=ft.FontWeight.W_900, color="#2563EB")
+        refresh_steps = [
+            ft.Container(width=9, height=9, border_radius=99, bgcolor="#2563EB"),
+            ft.Container(width=9, height=9, border_radius=99, bgcolor="#CBD5E1"),
+            ft.Container(width=9, height=9, border_radius=99, bgcolor="#CBD5E1"),
+            ft.Container(width=9, height=9, border_radius=99, bgcolor="#CBD5E1"),
+        ]
+        refresh_dialog = ft.AlertDialog(
+            modal=True,
+            content_padding=0,
+            content=ft.Container(
+                width=470,
+                height=270,
+                border_radius=18,
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                bgcolor=WHITE,
+                content=ft.Column(
+                    spacing=0,
+                    controls=[
+                        ft.Row(spacing=0, controls=[ft.Container(expand=True, height=7, bgcolor=color) for color in ("#2563EB", "#14B8A6", "#F59E0B", "#E11D48")]),
+                        ft.Container(
+                            expand=True,
+                            padding=pad_sym(horizontal=28, vertical=24),
+                            content=ft.Column(
+                                spacing=14,
+                                controls=[
+                                    ft.Row(
+                                        spacing=12,
+                                        controls=[
+                                            ft.Container(width=48, height=48, border_radius=14, bgcolor="#EFF6FF", alignment=CENTER, content=refresh_icon),
+                                            ft.Column(spacing=3, expand=True, controls=[ft.Text("Refreshing SA CHECK", size=21, weight=ft.FontWeight.W_900, color=TEXT), ft.Text(APP_VERSION, size=11, weight=ft.FontWeight.W_700, color=PRIMARY)]),
+                                        ],
+                                    ),
+                                    ft.Container(
+                                        height=62,
+                                        padding=pad_sym(horizontal=14, vertical=10),
+                                        border_radius=12,
+                                        bgcolor="#F8FAFC",
+                                        border=border_all(1, BORDER),
+                                        content=ft.Column(spacing=3, controls=[refresh_status, refresh_detail]),
+                                    ),
+                                    ft.Row(spacing=10, controls=[ft.Container(expand=True, content=refresh_progress), refresh_percent]),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Row(spacing=7, controls=[refresh_steps[0], ft.Text("Prepare", size=10, color=MUTED)]),
+                                            ft.Row(spacing=7, controls=[refresh_steps[1], ft.Text("Work", size=10, color=MUTED)]),
+                                            ft.Row(spacing=7, controls=[refresh_steps[2], ft.Text("Update", size=10, color=MUTED)]),
+                                            ft.Row(spacing=7, controls=[refresh_steps[3], ft.Text("Ready", size=10, color=MUTED)]),
+                                        ],
+                                    ),
+                                    ft.Row(spacing=6, alignment=ft.MainAxisAlignment.CENTER, controls=[ft.Icon(ft.Icons.LOCK_OUTLINE, size=13, color=MUTED), ft.Text("Work folders, settings, and cache are never cleared.", size=10, color=MUTED)]),
+                                ],
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+            bgcolor=ft.Colors.TRANSPARENT,
+        )
+
+        def token_is_active():
+            return state.get("refresh_token") == refresh_token and state.get("refreshing")
+
+        def set_refresh_status(message, detail, value, step, *, error=False):
+            if not token_is_active():
+                return
+            refresh_status.value = message
+            refresh_detail.value = detail
+            refresh_progress.value = value
+            refresh_progress.color = "#DC2626" if error else "#16A34A" if value >= 1 else "#2563EB"
+            refresh_percent.value = f"{int(value * 100)}%"
+            refresh_percent.color = refresh_progress.color
+            refresh_icon.icon = ft.Icons.ERROR_OUTLINE if error else ft.Icons.CHECK_CIRCLE_OUTLINE if value >= 1 else ft.Icons.SYNC_ROUNDED
+            refresh_icon.color = refresh_progress.color
+            for index, dot in enumerate(refresh_steps):
+                dot.bgcolor = "#16A34A" if index < step else "#2563EB" if index == step else "#CBD5E1"
+            try:
+                page.update()
+            except Exception:
+                pass
+
+        def close_refresh_dialog():
+            if getattr(refresh_dialog, "open", False):
+                try:
+                    page.pop_dialog()
+                except Exception:
+                    refresh_dialog.open = False
+            try:
+                page.update()
+            except Exception:
+                pass
+
+        def finish_refresh(*, changed=False, update_manifest=None, error=None, timed_out=False):
+            if state.get("refresh_token") != refresh_token:
+                return
+            state["refreshing"] = False
+            state["syncing"] = bool(timed_out)
+            state["refresh_token"] = ""
+            close_refresh_dialog()
+            if error:
+                show_message(page, "Refresh failed", f"The current screen is still safe. {error}", kind="warning")
+                return
+            if timed_out:
+                show_message(page, "Refresh timeout", "The folder scan is taking longer than expected, so the loader was closed. Your current data remains available and the background scan will release itself when finished.", kind="warning")
+                return
+            show_message(page, "Refresh complete", "Work data changed and the screen was refreshed." if changed else "Local data is current. The app also checked for updates.", kind="success")
+            if update_manifest and is_newer_version(update_manifest.get("version")):
+                dismissed = int(settings.get("update_dismiss_count", 0)) if settings.get("last_update_prompt_version") == update_manifest.get("version") else 0
+                forced_reason = update_force_reason(update_manifest.get("version"), update_manifest, dismissed)
+                auto_start = bool(forced_reason and (update_manifest.get("required") or is_core_platform_update(update_manifest.get("version"))))
+                show_update_prompt(update_manifest, forced=bool(forced_reason), auto_start=auto_start)
+
+        def refresh_worker():
+            nonlocal root_work, calendar_events
+            try:
+                set_refresh_status("Protecting the current session...", "Creating a small recovery snapshot before the scan.", 0.14, 0)
+                create_snapshot("Before safe in-app refresh")
+                if not token_is_active():
+                    return
+
+                set_refresh_status("Scanning Work folders...", "Reading Waiting, Doing, Success, and Template items in the background.", 0.36, 1)
+                synced_tasks, _synced_templates, changed = sync_from_work(force=True)
+                if not token_is_active():
+                    return
+
+                set_refresh_status("Reloading local settings...", "Applying the latest local paths, calendar data, and preferences.", 0.64, 1)
+                refreshed_settings = load_settings()
+                refreshed_root = work_folder()
+                all_tasks.clear()
+                all_tasks.extend(synced_tasks)
+                settings.clear()
+                settings.update(refreshed_settings)
+                root_work = refreshed_root
+                refreshed_events = settings.setdefault("calendar_events", [])
+                calendar_events = refreshed_events if isinstance(refreshed_events, list) else []
+                settings["calendar_events"] = calendar_events
+                current_path = Path(current_browser_path.get("path") or refreshed_root)
+                try:
+                    current_path.resolve().relative_to(refreshed_root.resolve())
+                    path_is_safe = current_path.exists()
+                except (OSError, ValueError):
+                    path_is_safe = False
+                current_browser_path["path"] = current_path if path_is_safe else refreshed_root
+                state["last_sync_check"] = datetime.now().timestamp()
+
+                manifest = None
+                if not settings.get("offline_mode", False) and settings.get("update_checks_enabled", True):
+                    set_refresh_status("Checking for updates...", "Contacting the SA CHECK Git update channel with a short timeout.", 0.82, 2)
+                    try:
+                        manifest, network = fetch_update_manifest()
+                        state["online_status"] = network
+                        state["last_update_check"] = time.time()
+                        state["update_manifest"] = manifest
+                        state["update_available"] = bool(manifest and is_newer_version(manifest.get("version")))
+                    except Exception:
+                        state["online_status"] = "offline"
+                        state["update_available"] = False
+                else:
+                    state["online_status"] = "offline"
+
+                if not token_is_active():
+                    return
+                set_refresh_status("Refresh complete", "The app stayed open and the latest local data is ready.", 1.0, 3)
+                elapsed = time.perf_counter() - started
+                if elapsed < 1.15:
+                    time.sleep(1.15 - elapsed)
+                if not token_is_active():
+                    return
+                render_current()
+                finish_refresh(changed=changed, update_manifest=manifest)
+            except Exception as exc:
+                set_refresh_status("Refresh could not finish", "The current app screen and user data were kept intact.", 1.0, 3, error=True)
+                time.sleep(0.45)
+                finish_refresh(error=str(exc) or "Unknown refresh error")
+            finally:
+                if state.get("refresh_token") != refresh_token:
+                    state["syncing"] = False
+
+        def refresh_watchdog():
+            time.sleep(15)
+            if token_is_active():
+                finish_refresh(timed_out=True)
+
+        page.show_dialog(refresh_dialog)
+        page.update()
+        page.run_thread(refresh_worker)
+        page.run_thread(refresh_watchdog)
 
     def show_create_new(_e=None):
         name_field = ft.TextField(
@@ -3302,7 +3517,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
         ],
     )
 
-    sync_button = ft.IconButton(icon=ft.Icons.SYNC, tooltip="Sync Work folders", icon_color=MUTED, on_click=sync_now)
+    sync_button = ft.IconButton(icon=ft.Icons.SYNC, tooltip="Refresh app, reload Work data, and check for updates", icon_color=MUTED, on_click=sync_now)
     export_button = ft.IconButton(icon=ft.Icons.IOS_SHARE_OUTLINED, tooltip="Export report", icon_color=MUTED, on_click=export_report)
     about_button = ft.IconButton(icon=ft.Icons.INFO_OUTLINED, tooltip="About SA CHECK", icon_color=MUTED, on_click=show_about)
 

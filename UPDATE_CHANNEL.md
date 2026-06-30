@@ -1,6 +1,6 @@
 # SA CHECK Update Channel
 
-Current source version: `1.0.9`
+Current source version: `1.0.9-01 Abillity`
 
 SA CHECK is offline-first. Normal work, Work folders, settings, and user cache must remain local and usable without internet. Online access is used only for checking and downloading app updates.
 
@@ -57,6 +57,8 @@ Use `sacheck_update_manifest.example.json` as the template:
 ## Update behavior
 
 - If there is no internet, the app stays offline and never blocks work.
+- The Sync button safely reloads local data and performs an update check without closing the app.
+- The refresh loader never clears the mounted dashboard and has a timeout recovery path.
 - If `offline_mode` is enabled, update checks are skipped.
 - If `update_checks_enabled` is disabled, update checks are skipped.
 - The update button appears in the sidebar only when a newer version exists.

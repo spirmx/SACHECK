@@ -36,7 +36,7 @@ def main() -> None:
     entries = [entry(path, "source") for path in files if path.is_file()]
     entries.extend(entry(ROOT / name, "all") for name in EXTERNAL_ASSETS if (ROOT / name).is_file())
     payload = {
-        "version": "1.0.9",
+        "version": "1.0.9-01 Abillity",
         "algorithm": "sha256",
         "system_files": entries,
     }
@@ -48,21 +48,27 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             existing_update = {}
     installer = ROOT / "release" / "SA_CHECK_Installer.exe"
-    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "1.0.9" else ""
+    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "1.0.9-01 Abillity" else ""
     installer_url = os.environ.get("SACHECK_INSTALLER_URL", "").strip() or existing_url
     if installer.is_file() and not installer_url:
         installer_url = f"{RAW_BASE_URL}/release/SA_CHECK_Installer.exe"
     installer_hash = sha256(installer) if installer.is_file() else ""
     update_payload = {
-        "version": "1.0.9",
-        "release_date": "2026-06-29",
+        "version": "1.0.9-01 Abillity",
+        "release_date": "2026-06-30",
         "required": False,
         "release_status": "ready" if installer_hash else "installer_build_required",
         "installer_url": installer_url if installer_hash else "",
         "installer_sha256": installer_hash,
         "installer_size": installer.stat().st_size if installer_hash else 0,
-        "repair_version": "1.0.9",
+        "repair_version": "1.0.9-01 Abillity",
         "notes": [
+            "Sync now safely refreshes Work data and settings without closing or blanking the app.",
+            "Manual refresh checks the Git update channel when Online mode is enabled.",
+            "Work scanning runs in the background with timeout and error recovery.",
+            "The startup loader is centered on screen and remains visible long enough to read.",
+            "Fixed About SA CHECK and User guide buttons in the Settings Credits section.",
+            "Settings now opens the real About, User guide, and Version notes dialogs.",
             "Added a bright, colorful startup loader before the Work Board opens.",
             "Online startup checks use a short timeout and reuse the result in the existing updater.",
             "Offline mode skips update and integrity network checks and opens local work immediately.",

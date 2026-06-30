@@ -8,13 +8,19 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.9`
+Version: `1.0.9-01 Abillity`
 
-This release adds a fast startup loader, guarded online preflight checks, and verified system-file repair.
+This release adds a safe in-app refresh to the Sync button while keeping the startup loader and update checks reliable.
+
+`1.0.9-01 Abillity` refreshes Work data and settings without closing the app, checks Git for updates, and keeps the current screen mounted throughout the operation.
 
 Latest changes:
 
-- Added a bright, colorful startup loader before the Work Board opens.
+- Sync now opens a centered progress loader and refreshes the app without closing it.
+- Work scanning runs in the background so the window does not turn black or stay on Working.
+- Every manual refresh checks the Git update channel when Online mode is enabled.
+- A timeout guard returns control to the user if a folder scan takes too long.
+- The colorful startup loader is centered on screen and stays visible long enough to read.
 - Online startup checks use a one-second timeout and reuse the result in the updater.
 - Offline mode skips update and integrity network checks and opens local work immediately.
 - Added SHA-256 verified repair for approved app system files.
@@ -88,4 +94,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.9` passed source, native bundle, integrity, and isolated installer QA. The release manifest and installer are ready for Git publishing.
+`1.0.9-01 Abillity` adds safe in-app refresh and fixes the Settings Credits buttons while preserving offline-first Work data, settings, and cache.

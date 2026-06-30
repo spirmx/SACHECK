@@ -1,13 +1,19 @@
 {
-  "version": "1.0.9",
-  "release_date": "2026-06-29",
+  "version": "1.0.9-01 Abillity",
+  "release_date": "2026-06-30",
   "required": false,
   "release_status": "ready",
-  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/2ab76a9c968ecb0b0047cea46b1f01e3e398f32d/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "8a1c6d62acb1f809eb4f37f5a628b12863ff5909e6815eda301b860758056f6c",
-  "installer_size": 33189146,
-  "repair_version": "1.0.9",
+  "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
+  "installer_sha256": "476953d61c958d415243635d6fabe7ec55190b6dd39d001403bdf9d855aa536a",
+  "installer_size": 33194948,
+  "repair_version": "1.0.9-01 Abillity",
   "notes": [
+    "Sync now safely refreshes Work data and settings without closing or blanking the app.",
+    "Manual refresh checks the Git update channel when Online mode is enabled.",
+    "Work scanning runs in the background with timeout and error recovery.",
+    "The startup loader is centered on screen and remains visible long enough to read.",
+    "Fixed About SA CHECK and User guide buttons in the Settings Credits section.",
+    "Settings now opens the real About, User guide, and Version notes dialogs.",
     "Added a bright, colorful startup loader before the Work Board opens.",
     "Online startup checks use a short timeout and reuse the result in the existing updater.",
     "Offline mode skips update and integrity network checks and opens local work immediately.",
@@ -72,13 +78,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "185a00565db686c56f4f1dbe638aa2f4d408f384fb443c348a97445962b10e8a",
+      "sha256": "b2ca95297ece980cd07463bafa5792a35136b94b207bf4e50372a5c425209f9c",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "d299449265683de4a0b1ced6426ffa20fc6bf0ffa2e8140c35526609d468c1da",
+      "sha256": "f9970507f222377248c9f30c6346dc0e2720cd36698e9762db5c8503db5ac415",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -132,7 +138,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "1cea7a9e8076e195ed98209b07774ef991ec28ba19bf3dbe71449a3c9a68b7e6",
+      "sha256": "56c462d66d9f351ab23895fd902e9a0bac99a9e2afbb7ca305d38e36f8d2ba7d",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
@@ -174,7 +180,7 @@
     },
     {
       "path": "ui/screens/settings_screen.py",
-      "sha256": "90d086d0b1507389e6be838182965bb471fcbc222bf4bc4f386889fcf3f33788",
+      "sha256": "c5b423b8ff66c8d02db27091d444fe949d9827fa54044e367e2fcff0dc51f41e",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/settings_screen.py",
       "mode": "source"
     },
@@ -192,13 +198,13 @@
     },
     {
       "path": "ui/shared.py",
-      "sha256": "eb56a4ffa9166b3d44df02d11c70e2455f3120c93a8cf81bdfd440e1298d74e3",
+      "sha256": "d25b57f9e61aa90ca1244a2e8ba33a1871c78d8743f5847ba0c1b97611ed6748",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/shared.py",
       "mode": "source"
     },
     {
       "path": "ui/startup.py",
-      "sha256": "fcf47d0c33dd0707f801e35a1054d06269cf2e38f8726334c6df9e1795aec432",
+      "sha256": "35665b1b871ddf20df5a96ccee274077fca48f916cbdd51b7a9a503ecee55e2e",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/startup.py",
       "mode": "source"
     },

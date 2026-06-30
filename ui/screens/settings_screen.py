@@ -106,13 +106,13 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.page.update()
 
     def show_about(_event):
-        show_message(ctx.page, "About", f"{APP_NAME}\nVersion {APP_VERSION}\nA modern desktop task board.")
+        ctx.show_about(_event)
 
     def show_help(_event):
-        show_message(ctx.page, "Help", "User guide is available in the documentation.")
+        ctx.show_help(_event)
 
     def show_version_notes(_event):
-        show_message(ctx.page, "Version notes", "v1.0.8: Improved UI performance with modular screen loading.")
+        ctx.show_version_notes(_event)
 
     async def choose_work_folder(_e):
         try:
