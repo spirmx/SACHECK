@@ -1,5 +1,5 @@
 {
-  "version": "1.0.9-01 Abillity",
+  "version": "1.0.9-02 Abillity",
   "algorithm": "sha256",
   "system_files": [
     {
@@ -49,12 +49,12 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "b2ca95297ece980cd07463bafa5792a35136b94b207bf4e50372a5c425209f9c",
+      "sha256": "372a818454627cf7e89dfdea31cd621607dcb833a2438cfb68641b48d40a6e34",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "f9970507f222377248c9f30c6346dc0e2720cd36698e9762db5c8503db5ac415",
+      "sha256": "f3c0bfc4c7103b7d4df91b213e40732edd862d2aed50dcc50287c0c0f959cdcd",
       "mode": "source"
     },
     {
@@ -99,7 +99,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "56c462d66d9f351ab23895fd902e9a0bac99a9e2afbb7ca305d38e36f8d2ba7d",
+      "sha256": "97760826b5300a7a3fb17c01c7991356eb48310d99cc2d77a5e4113bcbbb410d",
       "mode": "source"
     },
     {
@@ -154,7 +154,7 @@
     },
     {
       "path": "ui/startup.py",
-      "sha256": "35665b1b871ddf20df5a96ccee274077fca48f916cbdd51b7a9a503ecee55e2e",
+      "sha256": "4a8780bb56584533e4b5c9ce644c775a23334d4323c32b978dec2cb19130efa3",
       "mode": "source"
     },
     {

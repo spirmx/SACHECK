@@ -91,16 +91,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
-APP_VERSION = "1.0.9-01 Abillity"
+APP_VERSION = "1.0.9-02 Abillity"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "" if is_dev_runtime() else "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "1.0.9-01 Abillity",
+        "version": "1.0.9-02 Abillity",
         "date": "2026-06-30",
         "latest": True,
+        "items": [
+            "Removed the black native startup frame by keeping the window hidden until the loader is ready.",
+            "Replaced the Flet executable and title-bar icon with the SA CHECK logo.",
+            "Changed the startup loader from a floating card to a clean full-window loading surface.",
+            "Kept safe in-app refresh, Git update checks, and local Work data protection unchanged.",
+        ],
+    },
+    {
+        "version": "1.0.9-01 Abillity",
+        "date": "2026-06-30",
+        "latest": False,
         "items": [
             "Sync now performs a safe in-app refresh without closing or blanking the main window.",
             "The refresh loader reloads Work data and settings, then checks Git for updates.",

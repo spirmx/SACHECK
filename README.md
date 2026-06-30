@@ -8,14 +8,17 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.9-01 Abillity`
+Version: `1.0.9-02 Abillity`
 
-This release adds a safe in-app refresh to the Sync button while keeping the startup loader and update checks reliable.
+This release removes the black native startup frame, applies the SA CHECK icon at executable level, and turns the loader into a full-window loading surface.
 
-`1.0.9-01 Abillity` refreshes Work data and settings without closing the app, checks Git for updates, and keeps the current screen mounted throughout the operation.
+`1.0.9-02 Abillity` keeps the native window hidden until the centered loader is ready, then hands off to the dashboard without showing an empty black frame.
 
 Latest changes:
 
+- Removed the black frame shown before the Python loader connected.
+- Replaced the default Flet EXE/title-bar icon with the SA CHECK logo.
+- Reworked the startup loader as a full-window surface instead of a floating card.
 - Sync now opens a centered progress loader and refreshes the app without closing it.
 - Work scanning runs in the background so the window does not turn black or stay on Working.
 - Every manual refresh checks the Git update channel when Online mode is enabled.
@@ -94,4 +97,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.9-01 Abillity` adds safe in-app refresh and fixes the Settings Credits buttons while preserving offline-first Work data, settings, and cache.
+`1.0.9-02 Abillity` fixes native startup presentation while preserving safe refresh, offline-first Work data, settings, and cache.

@@ -1,6 +1,6 @@
 # SA CHECK Update Channel
 
-Current source version: `1.0.9-01 Abillity`
+Current source version: `1.0.9-02 Abillity`
 
 SA CHECK is offline-first. Normal work, Work folders, settings, and user cache must remain local and usable without internet. Online access is used only for checking and downloading app updates.
 

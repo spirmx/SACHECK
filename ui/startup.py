@@ -50,10 +50,14 @@ def show_startup_loader(
     try:
         page.window.maximized = False
         page.window.width = 800
-        page.window.height = 600
+        page.window.height = 560
         page.window.min_width = 800
-        page.window.min_height = 600
+        page.window.min_height = 560
         page.window.resizable = False
+        page.window.bgcolor = BG
+        icon_path = app_root / "assets" / "app" / "app.ico"
+        if icon_path.is_file():
+            page.window.icon = str(icon_path)
     except Exception:
         pass
 
@@ -121,14 +125,9 @@ def show_startup_loader(
             ),
         ),
     )
-    card = ft.Container(
-        width=570,
-        height=420,
-        border_radius=16,
-        clip_behavior=ft.ClipBehavior.HARD_EDGE,
-        bgcolor=SURFACE,
-        border=ft.Border.all(1, BORDER),
-        shadow=ft.BoxShadow(blur_radius=28, color="#2A315D70", offset=ft.Offset(0, 12)),
+    loader_surface = ft.Container(
+        expand=True,
+        bgcolor=BG,
         content=ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=0,
@@ -139,10 +138,12 @@ def show_startup_loader(
                 ),
                 ft.Container(
                     expand=True,
-                    padding=ft.Padding.only(left=34, right=34, top=24, bottom=20),
+                    alignment=ft.Alignment(0, 0),
+                    padding=ft.Padding.only(left=112, right=112, top=28, bottom=24),
                     content=ft.Column(
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=11,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=12,
                         controls=[
                             logo,
                             ft.Text(app_name, size=24, weight=ft.FontWeight.W_900, color=TEXT),
@@ -170,12 +171,28 @@ def show_startup_loader(
             ],
         ),
     )
-    page.add(ft.Container(expand=True, alignment=ft.Alignment(0, 0), bgcolor=BG, content=card))
+    page.add(loader_surface)
     _safe_update(page)
+
+    async def reveal_loader() -> None:
+        try:
+            await page.window.center()
+        except Exception:
+            pass
+        try:
+            page.window.visible = True
+        except Exception:
+            pass
+        _safe_update(page)
+
     try:
-        page.run_task(page.window.center)
+        page.run_task(reveal_loader)
     except Exception:
-        pass
+        try:
+            page.window.visible = True
+        except Exception:
+            pass
+        _safe_update(page)
 
     step_indexes = {"boot": 0, "local": 1, "online": 2, "repair": 2, "offline": 2, "ready": 3}
 

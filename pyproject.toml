@@ -1,6 +1,6 @@
 [project]
 name = "sacheck"
-version = "1.0.9.post1"
+version = "1.0.9.post2"
 description = "SA CHECK desktop work board"
 dependencies = [
   "flet==0.85.3",
@@ -15,6 +15,7 @@ copyright = "Copyright (c) 2026 HOYTURBRO"
 
 [tool.flet.app]
 module = "app"
+hide_window_on_start = true
 exclude = [
   ".venv",
   ".git",

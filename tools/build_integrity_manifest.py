@@ -36,7 +36,7 @@ def main() -> None:
     entries = [entry(path, "source") for path in files if path.is_file()]
     entries.extend(entry(ROOT / name, "all") for name in EXTERNAL_ASSETS if (ROOT / name).is_file())
     payload = {
-        "version": "1.0.9-01 Abillity",
+        "version": "1.0.9-02 Abillity",
         "algorithm": "sha256",
         "system_files": entries,
     }
@@ -48,21 +48,24 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             existing_update = {}
     installer = ROOT / "release" / "SA_CHECK_Installer.exe"
-    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "1.0.9-01 Abillity" else ""
+    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "1.0.9-02 Abillity" else ""
     installer_url = os.environ.get("SACHECK_INSTALLER_URL", "").strip() or existing_url
     if installer.is_file() and not installer_url:
         installer_url = f"{RAW_BASE_URL}/release/SA_CHECK_Installer.exe"
     installer_hash = sha256(installer) if installer.is_file() else ""
     update_payload = {
-        "version": "1.0.9-01 Abillity",
+        "version": "1.0.9-02 Abillity",
         "release_date": "2026-06-30",
         "required": False,
         "release_status": "ready" if installer_hash else "installer_build_required",
         "installer_url": installer_url if installer_hash else "",
         "installer_sha256": installer_hash,
         "installer_size": installer.stat().st_size if installer_hash else 0,
-        "repair_version": "1.0.9-01 Abillity",
+        "repair_version": "1.0.9-02 Abillity",
         "notes": [
+            "Removed the black native startup frame by showing the window only after the loader is ready.",
+            "Replaced the Flet executable and title-bar icon with the SA CHECK logo.",
+            "Changed the startup loader from a floating card to a full-window loading surface.",
             "Sync now safely refreshes Work data and settings without closing or blanking the app.",
             "Manual refresh checks the Git update channel when Online mode is enabled.",
             "Work scanning runs in the background with timeout and error recovery.",
