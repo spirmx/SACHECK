@@ -12,6 +12,7 @@ import csv
 import html
 import hashlib
 import time
+import threading
 import re
 import tempfile
 import base64
@@ -3685,10 +3686,17 @@ th{{background:#eff6ff;color:#1d4ed8}}
         state["screen"] = SCREEN_CALENDAR
         render_current()
 
+    search_debounce = {"timer": None}
+
     def on_search(event):
         state["search"] = event.control.value or ""
         state["group_limits"] = {}
-        render_current()
+        existing = search_debounce.get("timer")
+        if existing is not None:
+            existing.cancel()
+        timer = threading.Timer(0.28, render_current)
+        search_debounce["timer"] = timer
+        timer.start()
 
     search_field.on_change = on_search
 

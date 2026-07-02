@@ -722,7 +722,7 @@ def grouped_task_card(page, task, save_and_render, all_tasks):
     return task_card(page, task, save_and_render, all_tasks)
 
 
-def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_key=None, group_limits=None, on_more=None):
+def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_key=None, group_limits=None, on_more=None, expanded_keys=None):
     icon, icon_color = task_icon(file_type)
     limit = (group_limits or {}).get(group_key, DEFAULT_BATCH_SIZE)
     visible_tasks, resolved_limit = visible_slice(tasks, limit, DEFAULT_BATCH_SIZE)
@@ -749,6 +749,14 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
                 ),
             )
         )
+    def on_expansion_toggle(event):
+        if expanded_keys is None or not group_key:
+            return
+        if str(getattr(event, "data", "")).lower() in ("true", "1"):
+            expanded_keys.add(group_key)
+        else:
+            expanded_keys.discard(group_key)
+
     return ft.Container(
         bgcolor=WHITE,
         border=border_all(1, BORDER),
@@ -756,7 +764,8 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
         clip_behavior=ft.ClipBehavior.HARD_EDGE,
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=12, color="#10000000", offset=ft.Offset(0, 4)),
         content=ft.ExpansionTile(
-            expanded=False,
+            expanded=bool(expanded_keys is not None and group_key in expanded_keys),
+            on_change=on_expansion_toggle,
             maintain_state=True,
             tile_padding=pad_only(left=10, right=8),
             controls_padding=pad_only(left=8, right=8, bottom=8),
@@ -776,7 +785,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
         ),
     )
 
-def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key="", group_limits=None, on_more=None, file_types_fn=None):
+def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key="", group_limits=None, on_more=None, file_types_fn=None, expanded_keys=None):
     grouped = {}
     for task in tasks:
         grouped.setdefault(task.get("type", "Other"), []).append(task)
@@ -784,12 +793,12 @@ def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key=""
     ordered_types = [file_type for file_type in (file_types_fn() if file_types_fn else []) if file_type in grouped]
     ordered_types.extend(sorted(file_type for file_type in grouped if file_type not in ordered_types))
     for file_type in ordered_types:
-        controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, f"{column_key}:{file_type}", group_limits, on_more))
+        controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, f"{column_key}:{file_type}", group_limits, on_more, expanded_keys))
     return controls
 
-def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, grouped=True, group_limits=None, on_more=None, file_types_fn=None):
+def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, grouped=True, group_limits=None, on_more=None, file_types_fn=None, expanded_keys=None):
     if tasks:
-        controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
+        controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn, expanded_keys) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
         body = ft.ListView(spacing=7, expand=True, controls=controls)
     else:
         body = ft.Container(expand=True, alignment=CENTER, content=ft.Text("No tasks yet", size=13, weight=ft.FontWeight.W_500, color=MUTED_2))

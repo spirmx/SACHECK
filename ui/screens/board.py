@@ -70,6 +70,8 @@ def render_board(ctx: DashboardContext) -> None:
         ),
     )
 
+    expanded_keys = ctx.state.setdefault("expanded_groups", set())
+
     board = ft.Row(
         spacing=10,
         expand=True,
@@ -78,19 +80,19 @@ def render_board(ctx: DashboardContext) -> None:
                 ctx.page, "Waiting List", waiting, *ctx.status_theme(STATUS_PENDING),
                 ctx.save_and_render, ctx.all_tasks, grouped=True,
                 group_limits=ctx.state["group_limits"], on_more=ctx.render_current,
-                file_types_fn=ctx.file_types
+                file_types_fn=ctx.file_types, expanded_keys=expanded_keys
             ),
             kanban_column(
                 ctx.page, "Active Work", doing, *ctx.status_theme(STATUS_PROGRESS),
                 ctx.save_and_render, ctx.all_tasks, grouped=True,
                 group_limits=ctx.state["group_limits"], on_more=ctx.render_current,
-                file_types_fn=ctx.file_types
+                file_types_fn=ctx.file_types, expanded_keys=expanded_keys
             ),
             kanban_column(
                 ctx.page, "Complete", done, *ctx.status_theme(STATUS_DONE),
                 ctx.save_and_render, ctx.all_tasks, grouped=True,
                 group_limits=ctx.state["group_limits"], on_more=ctx.render_current,
-                file_types_fn=ctx.file_types
+                file_types_fn=ctx.file_types, expanded_keys=expanded_keys
             ),
         ],
     )
