@@ -163,6 +163,22 @@ def normalize_task_dates(task):
         task["done_date"] = date_only(task.get("done_date") or task.get("status_date") or task.get("date_added"))
     else:
         task["done_date"] = None
+    # --- v2 data model (backward compatible defaults) ---
+    if not isinstance(task.get("tags"), list):
+        task["tags"] = []
+    if not isinstance(task.get("members"), list):
+        task["members"] = []
+    try:
+        task["priority"] = int(task.get("priority") or 0)
+    except (TypeError, ValueError):
+        task["priority"] = 0
+    try:
+        progress = int(task.get("progress"))
+    except (TypeError, ValueError):
+        progress = 100 if status == STATUS_DONE else 0
+    if status == STATUS_DONE:
+        progress = 100
+    task["progress"] = max(0, min(100, progress))
     return task
 
 
@@ -504,6 +520,10 @@ def make_task(name, target, target_kind=None, task_type=None, note="", status="p
         "date_added": today,
         "status_date": today,
         "done_date": today if status == STATUS_DONE else None,
+        "progress": 100 if status == STATUS_DONE else 0,
+        "priority": 0,
+        "tags": [],
+        "members": [],
     }
 
 
