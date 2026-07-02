@@ -1147,10 +1147,12 @@ from core.flet_data import (  # noqa: E402
     file_meta,
     file_type_config,
     infer_type,
+    event_occurs_on,
     list_work_items,
     list_work_items_page,
     list_snapshots,
     load_activity_log,
+    load_calendar_events as load_persisted_calendar_events,
     load_settings,
     load_tasks,
     load_templates,
@@ -1168,6 +1170,7 @@ from core.flet_data import (  # noqa: E402
     runtime_file_types,
     safe_item_name,
     save_settings,
+    save_calendar_events as save_persisted_calendar_events,
     save_tasks,
     save_templates,
     sync_from_work,
@@ -1393,7 +1396,20 @@ def apply_app_theme(settings):
     PRIMARY = palette["primary"]
     NAV_BG = palette["nav"]
     NAV_ACTIVE = palette["nav_active"]
-    for module in (theme_constants, widget_theme):
+    themed_modules = [theme_constants, widget_theme]
+    for module_name in (
+        "ui.dialogs",
+        "ui.screens.board",
+        "ui.screens.browser",
+        "ui.screens.calendar_screen",
+        "ui.screens.health",
+        "ui.screens.settings_screen",
+        "ui.screens.templates",
+    ):
+        module = sys.modules.get(module_name)
+        if module is not None:
+            themed_modules.append(module)
+    for module in themed_modules:
         module.BG = BG
         module.WHITE = WHITE
         module.TEXT = TEXT
@@ -1465,6 +1481,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
     page.title = APP_NAME
     try:
         page.window.icon = APP_ICON_PATH
+        page.window.title_bar_hidden = True
+        page.window.title_bar_buttons_hidden = True
     except Exception:
         pass
     page.window.width = 1920
@@ -1658,6 +1676,23 @@ def dashboard_main(page: ft.Page, startup_result=None):
         render_current()
         if message:
             show_message(page, APP_NAME, message)
+
+    def set_work_folder_path(selected_path):
+        nonlocal root_work
+        selected = Path(selected_path).expanduser()
+        selected.mkdir(parents=True, exist_ok=True)
+        settings["work_folder_path"] = str(selected)
+        settings.pop("root_work", None)
+        save_settings(settings)
+        root_work = work_folder()
+        current_browser_path["path"] = root_work
+        ensure_status_folders()
+        synced_tasks, _synced_templates, _changed = sync_from_work(force=True)
+        all_tasks.clear()
+        all_tasks.extend(synced_tasks)
+        state["last_sync_check"] = datetime.now().timestamp()
+        state["group_limits"] = {}
+        return root_work
 
     def remember_task_action(action, task, before):
         push_undo({"kind": "task_restore", "action": action, "task_id": task.get("id"), "before": before, "after": dict(task)})
@@ -1993,9 +2028,13 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 show_settings=show_settings,
                 show_health=show_health,
                 show_calendar=show_calendar,
+                show_calendar_event_dialog=show_calendar_event_dialog,
                 show_templates=show_templates,
                 update_sidebar=update_sidebar,
                 check_for_updates=check_for_updates,
+                update_channel_url=update_channel_url,
+                apply_app_theme=apply_app_theme,
+                set_work_folder=set_work_folder_path,
                 reset_filters=reset_filters,
                 undo_last=undo_last,
                 add_or_update_from_path=add_or_update_from_path,
@@ -2042,14 +2081,44 @@ def dashboard_main(page: ft.Page, startup_result=None):
 
     def add_task_dialog(kind):
         title = {"file": "Add file", "link": "Add link", "project": "Add project"}[kind]
+        is_project = kind == "project"
+        is_link = kind == "link"
         name_field = ft.TextField(label="Task name", border_radius=12, border_color=BORDER)
-        type_value = "Project" if kind == "project" else "Other"
-        type_field = dropdown(520, type_value, file_types())
-        target_field = ft.TextField(label="URL link" if kind == "link" else ("Project folder path" if kind == "project" else "Local file path"), value="https://" if kind == "link" else "", border_radius=12, border_color=BORDER)
+        type_options = list(file_types())
+        if is_project:
+            type_field = dropdown(300, "Project", type_options)
+        else:
+            type_field = dropdown(300, "Auto-detect", ["Auto-detect", *type_options])
+        target_field = ft.TextField(
+            label="URL link" if is_link else ("Project folder path" if is_project else "Local file path"),
+            value="https://" if is_link else "",
+            border_radius=12,
+            border_color=BORDER,
+            expand=True,
+        )
         note_field = ft.TextField(label="Note / description", multiline=True, min_lines=3, max_lines=3, border_radius=12, border_color=BORDER)
+        detected_label = ft.Text("Folders are added as Project." if is_project else "Type is detected automatically.", size=12, color=MUTED)
+
+        def refresh_detection(_e=None):
+            if is_project:
+                return
+            value = (target_field.value or "").strip()
+            if value and value != "https://":
+                detected_label.value = f"Detected type: {infer_type(value)}"
+                detected_label.color = PRIMARY
+            else:
+                detected_label.value = "Type is detected automatically."
+                detected_label.color = MUTED
+            try:
+                detected_label.update()
+            except Exception:
+                pass
+
+        if not is_project:
+            target_field.on_change = refresh_detection
 
         async def browse(_e):
-            if kind == "project":
+            if is_project:
                 path = await pick_directory("Choose project folder")
             else:
                 picked = await file_picker.pick_files(dialog_title="Choose file", allow_multiple=False)
@@ -2057,9 +2126,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
             if path:
                 target_field.value = path
                 if not name_field.value:
-                    name_field.value = Path(path).name if kind == "project" else Path(path).stem
-                if kind != "project":
-                    type_field.value = infer_type(path)
+                    name_field.value = Path(path).name if is_project else Path(path).stem
+                refresh_detection()
                 page.update()
 
         def paste_url(_e):
@@ -2069,56 +2137,231 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 value = ""
             if value:
                 target_field.value = str(value)
+                refresh_detection()
                 page.update()
 
+        def effective_type():
+            if is_project:
+                return type_field.value or "Project"
+            return "Other" if type_field.value == "Auto-detect" else type_field.value
+
         def save(_e):
-            target = target_field.value.strip()
+            target = (target_field.value or "").strip()
             if not target or target == "https://":
+                show_message(page, "Missing info", "Please choose a file or enter a link first.")
                 return
+            chosen_type = effective_type()
 
             def create_work_item():
                 try:
-                    task = create_task_from_source(name_field.value, target, file_type=type_field.value, note=note_field.value, status=STATUS_PENDING)
+                    task = create_task_from_source(name_field.value, target, file_type=chosen_type, note=note_field.value, status=STATUS_PENDING)
                 except Exception as exc:
                     show_message(page, "Add failed", str(exc))
                     return
                 all_tasks.append(task)
                 page.pop_dialog()
                 save_and_render(f"{title} copied to Waiting as {task.get('name', 'Untitled task')}.")
-                show_message(page, "Added to Waiting", task.get("name", "Untitled task"), kind="success")
+                show_message(page, "Added to Waiting", f"{task.get('name', 'Untitled task')} ({task.get('type', 'Other')})", kind="success")
 
-            run_with_duplicate_guard(name_field.value, target, type_field.value, create_work_item)
+            run_with_duplicate_guard(name_field.value, target, chosen_type, create_work_item)
 
         target_row = ft.Row(
             spacing=10,
             controls=[
                 target_field,
                 ft.Button(
-                    "Paste URL" if kind == "link" else ("Browse folder" if kind == "project" else "Browse"),
-                    on_click=paste_url if kind == "link" else browse,
-                    width=130 if kind != "link" else 110,
+                    "Paste URL" if is_link else ("Browse folder" if is_project else "Browse"),
+                    on_click=paste_url if is_link else browse,
+                    width=130 if not is_link else 110,
                 ),
             ],
         )
-        target_field.expand = True
         page.show_dialog(
             ft.AlertDialog(
                 modal=True,
                 title=ft.Text(title, size=24, weight=ft.FontWeight.W_800, color=TEXT),
                 content=ft.Column(
-                    width=540,
-                    height=410,
+                    width=560,
+                    height=430,
                     spacing=12,
+                    scroll=ft.ScrollMode.AUTO,
                     controls=[
                         name_field,
-                        ft.Column(spacing=6, controls=[ft.Text("File type" if kind != "link" else "Link type", size=12, weight=ft.FontWeight.W_700, color=MUTED), type_field]),
                         target_row,
+                        ft.Column(
+                            spacing=6,
+                            controls=[
+                                ft.Text("File type" if not is_link else "Link type", size=12, weight=ft.FontWeight.W_700, color=MUTED),
+                                ft.Row(spacing=14, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[type_field, detected_label]),
+                            ],
+                        ),
                         note_field,
                     ],
                 ),
                 actions=[
                     ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
-                    ft.Button("Save link" if kind == "link" else "Save", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                    ft.Button("Save link" if is_link else "Save", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+            )
+        )
+        page.update()
+
+    def add_files_dialog(_e=None):
+        picked_rows = []
+        list_view = ft.ListView(expand=True, spacing=8)
+        summary_text = ft.Text("No files selected yet.", size=12, weight=ft.FontWeight.W_700, color=MUTED)
+        note_field = ft.TextField(label="Note for all files (optional)", multiline=True, min_lines=1, max_lines=2, border_radius=12, border_color=BORDER)
+        manual_field = ft.TextField(label="Or paste a file path", border_radius=12, border_color=BORDER, expand=True)
+
+        def type_choices():
+            return list(file_types())
+
+        def update_summary():
+            counts = {}
+            for row in picked_rows:
+                key = row["type"]
+                counts[key] = counts.get(key, 0) + 1
+            if picked_rows:
+                breakdown = "   ".join(f"{name} {count}" for name, count in counts.items())
+                summary_text.value = f"{len(picked_rows)} file(s)  ->  {breakdown}"
+                summary_text.color = PRIMARY
+            else:
+                summary_text.value = "No files selected yet."
+                summary_text.color = MUTED
+            try:
+                summary_text.update()
+            except Exception:
+                pass
+
+        def remove_row(row):
+            if row in picked_rows:
+                picked_rows.remove(row)
+            rebuild_list()
+            update_summary()
+
+        def make_type_field(row):
+            def on_type_change(e):
+                row["type"] = e.control.value
+                update_summary()
+            return dropdown(150, row["type"], type_choices(), on_select=on_type_change)
+
+        def row_control(row):
+            icon, icon_color = task_icon(row["type"])
+            return ft.Container(
+                bgcolor=WHITE,
+                border=border_all(1, BORDER),
+                border_radius=12,
+                padding=pad_sym(horizontal=10, vertical=8),
+                content=ft.Row(
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=32, height=32, border_radius=9, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=17, color=icon_color)),
+                        ft.Column(
+                            spacing=1,
+                            expand=True,
+                            controls=[
+                                ft.Text(Path(row["path"]).name, size=13, weight=ft.FontWeight.W_700, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.Text(row["path"], size=10, color=MUTED_2, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ],
+                        ),
+                        make_type_field(row),
+                        ft.IconButton(icon=ft.Icons.CLOSE, icon_size=16, icon_color=MUTED, tooltip="Remove", on_click=lambda _e, r=row: remove_row(r)),
+                    ],
+                ),
+            )
+
+        def rebuild_list():
+            if picked_rows:
+                list_view.controls = [row_control(row) for row in picked_rows]
+            else:
+                list_view.controls = [ft.Container(alignment=CENTER, padding=30, content=ft.Text("Choose files or paste a path. Each file is auto-sorted by type.", size=13, color=MUTED_2))]
+            try:
+                list_view.update()
+            except Exception:
+                pass
+
+        def add_path(path):
+            cleaned = (path or "").strip().strip('"')
+            if not cleaned or any(row["path"] == cleaned for row in picked_rows):
+                return
+            detected = infer_type(cleaned)
+            choices = type_choices()
+            picked_rows.append({"path": cleaned, "type": detected if detected in choices else "Other"})
+
+        async def browse(_e):
+            picked = await file_picker.pick_files(dialog_title="Choose files", allow_multiple=True)
+            for file in picked or []:
+                add_path(file.path)
+            rebuild_list()
+            update_summary()
+            page.update()
+
+        def add_manual(_e):
+            if (manual_field.value or "").strip():
+                add_path(manual_field.value)
+                manual_field.value = ""
+                try:
+                    manual_field.update()
+                except Exception:
+                    pass
+                rebuild_list()
+                update_summary()
+
+        def save(_e):
+            add_path(manual_field.value)
+            if not picked_rows:
+                show_message(page, "No files", "Choose at least one file or paste a path first.")
+                return
+            created = 0
+            errors = []
+            for row in list(picked_rows):
+                try:
+                    task = create_task_from_source(Path(row["path"]).stem, row["path"], file_type=row["type"], note=note_field.value or "", status=STATUS_PENDING)
+                    all_tasks.append(task)
+                    created += 1
+                except Exception as exc:
+                    errors.append(f"{Path(row['path']).name}: {exc}")
+            if not created:
+                show_message(page, "Add failed", "\n".join(errors) or "No files were added.")
+                return
+            page.pop_dialog()
+            save_and_render(f"Added {created} file(s) to Waiting, sorted by type.")
+            if errors:
+                show_message(page, "Some files skipped", f"Added {created}. Skipped:\n" + "\n".join(errors), kind="warning")
+            else:
+                show_message(page, "Added to Waiting", f"{created} file(s) sorted by type.", kind="success")
+
+        rebuild_list()
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Add files", size=24, weight=ft.FontWeight.W_800, color=TEXT),
+                content=ft.Column(
+                    width=640,
+                    height=520,
+                    spacing=12,
+                    controls=[
+                        ft.Text("Pick one or many files. SA CHECK detects each type and copies it into the matching Waiting folder.", size=13, color=MUTED),
+                        ft.Row(
+                            spacing=10,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                manual_field,
+                                ft.Button("Add path", on_click=add_manual, height=48),
+                                ft.Button("Browse files", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=browse, height=48, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                            ],
+                        ),
+                        summary_text,
+                        ft.Container(expand=True, border=border_all(1, BORDER), border_radius=14, padding=8, bgcolor="#F8FBFF", content=list_view),
+                        note_field,
+                    ],
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
+                    ft.Button("Add to Waiting", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
                 ],
                 bgcolor=WHITE,
                 shape=ft.RoundedRectangleBorder(radius=16),
@@ -2280,9 +2523,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 settings.clear()
                 settings.update(refreshed_settings)
                 root_work = refreshed_root
-                refreshed_events = settings.setdefault("calendar_events", [])
-                calendar_events = refreshed_events if isinstance(refreshed_events, list) else []
-                settings["calendar_events"] = calendar_events
+                calendar_events = load_persisted_calendar_events()
                 current_path = Path(current_browser_path.get("path") or refreshed_root)
                 try:
                     current_path.resolve().relative_to(refreshed_root.resolve())
@@ -2404,7 +2645,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                             child_aspect_ratio=2.15,
                             spacing=12,
                             run_spacing=12,
-                            controls=[tool_card(tool) for tool in CREATE_TOOLS],
+                            controls=[tool_card(tool) for tool in CREATE_TOOLS if tool.get("kind") != "folder"],
                         ),
                     ],
                 ),
@@ -2921,9 +3162,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             step(ft.Icons.SYNC, "Sync งานเข้าระบบ", "กด Sync now เพื่อให้แอพอ่านโฟลเดอร์ Waiting, Doing, Success และไฟล์ในคลังงานขึ้นมาบนบอร์ด", "#7C3AED"),
 
             guide_header(ft.Icons.ADD_TASK_OUTLINED, "2. วิธีเพิ่มงาน", "เพิ่มได้ทั้งไฟล์ โฟลเดอร์โปรเจค ลิงก์ เทมเพลต และงานใหม่จากในแอพ"),
-            step(ft.Icons.UPLOAD_FILE_OUTLINED, "Add file", "กด + Quick Add > Add file แล้วเลือกไฟล์ เช่น Word, Excel, PDF แอพจะคัดลอกเข้า Waiting ให้ปลอดภัย", "#DC2626"),
-            step(ft.Icons.FOLDER_OUTLINED, "Create project / Add project folder", "ใช้กับงานที่เป็นโฟลเดอร์ทั้งชุด เช่น Web, Project, Design แอพจะคัดลอกโฟลเดอร์เข้า Waiting และไม่ทับของเดิม", "#7C3AED"),
-            step(ft.Icons.LINK_ROUNDED, "Add link", "ใช้เก็บ URL เช่น Google Sheet, Miro, Web หรือระบบภายใน แอพจะสร้าง shortcut .url ให้ใน Work folder", "#0891B2"),
+            step(ft.Icons.UPLOAD_FILE_OUTLINED, "Add files", "กด + Quick Add > Add files เลือกได้ทีละหลายไฟล์ แอพจะคัดแยกประเภทอัตโนมัติ (Word/Excel/PDF/ฯลฯ) แล้วคัดลอกเข้า Waiting ตามหมวดให้ปลอดภัย", "#DC2626"),
+            step(ft.Icons.LINK_ROUNDED, "Add link", "ใช้เก็บ URL เช่น Google Sheet, Miro, Canva, Figma แอพจะจับได้ว่าเป็นลิงก์ของอะไรและสร้าง shortcut .url ให้ใน Work folder", "#0891B2"),
             step(ft.Icons.NOTE_ADD_OUTLINED, "Create new work", "สร้างงานเปล่าจากชนิดไฟล์ที่ตั้งไว้ เช่น Word/Excel/Text แล้วให้แอพวางไว้ใน Waiting", "#0F766E"),
             step(ft.Icons.ARTICLE_OUTLINED, "Templates", "เก็บไฟล์ต้นแบบไว้หน้า Templates แล้วกดใช้ซ้ำเพื่อสร้างงานใหม่เข้า Waiting ได้เร็ว", "#D97706"),
 
@@ -3000,14 +3240,11 @@ th{{background:#eff6ff;color:#1d4ed8}}
         return task_calendar_date(task)
 
     calendar_state = {"year": date.today().year, "month": date.today().month, "selected": date.today(), "status": "All"}
-    calendar_events = settings.setdefault("calendar_events", [])
-    if not isinstance(calendar_events, list):
-        calendar_events = []
-        settings["calendar_events"] = calendar_events
+    calendar_events = load_persisted_calendar_events()
     settings.setdefault("calendar_event_alerts", {})
 
     def save_calendar_events():
-        settings["calendar_events"] = calendar_events
+        save_persisted_calendar_events(calendar_events)
         settings.setdefault("calendar_event_alerts", {})
         save_settings(settings)
 
@@ -3087,6 +3324,41 @@ th{{background:#eff6ff;color:#1d4ed8}}
             prefix_icon=ft.Icons.ACCESS_TIME,
         )
         kind_field = dropdown(190, source.get("kind", "Event"), ["Event", "Holiday", "Meeting", "Deadline", "Note"])
+        remind_options = {"At event time": 0, "5 minutes before": 5, "10 minutes before": 10, "30 minutes before": 30, "1 hour before": 60}
+        try:
+            current_lead = max(0, int(source.get("remind_before") or 0))
+        except (TypeError, ValueError):
+            current_lead = 0
+        remind_label = next((label for label, minutes in remind_options.items() if minutes == current_lead), "At event time")
+        remind_field = dropdown(200, remind_label, list(remind_options.keys()))
+
+        no_link_label = "(No linked work)"
+        task_label_to_id = {}
+        task_options = [no_link_label]
+        for linked in sorted(all_tasks, key=lambda item: item.get("name", "").casefold()):
+            base_label = linked.get("name") or "Untitled"
+            label = base_label
+            counter = 2
+            while label in task_label_to_id:
+                label = f"{base_label} #{counter}"
+                counter += 1
+            task_label_to_id[label] = linked.get("id")
+            task_options.append(label)
+        current_link_label = next((label for label, tid in task_label_to_id.items() if tid == source.get("task_id")), no_link_label)
+        task_field = dropdown(320, current_link_label, task_options)
+
+        def open_linked_task(_e):
+            linked_task = next((item for item in all_tasks if item.get("id") == source.get("task_id")), None)
+            if linked_task and open_target(linked_task):
+                return
+            show_message(page, "Cannot open", "The linked work item was not found on the board.")
+
+        recurrence_options = {"Does not repeat": "none", "Every day": "daily", "Every week": "weekly", "Every month": "monthly"}
+        current_recurrence = str(source.get("recurrence") or "none").lower()
+        recurrence_label = next((label for label, value in recurrence_options.items() if value == current_recurrence), "Does not repeat")
+        recurrence_field = dropdown(220, recurrence_label, list(recurrence_options.keys()))
+        until_field = ft.TextField(label="Repeat until (optional)", value=str(source.get("recurrence_until") or "")[:10], width=200, hint_text="YYYY-MM-DD", border_radius=12, border_color=BORDER)
+
         selected_color = {"value": source.get("color", "#7C3AED")}
         color_preview = ft.Container(width=34, height=34, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
         notify_switch = ft.Switch(label="Daily summary at 09:00", value=bool(source.get("notify", True)))
@@ -3165,6 +3437,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             parsed = parsed_date.isoformat()
             event_time = f"{parsed_time.hour:02d}:{parsed_time.minute:02d}"
             event_id = source.get("id") or str(uuid.uuid4())
+            linked_task_id = task_label_to_id.get(task_field.value)
+            linked_task = next((item for item in all_tasks if item.get("id") == linked_task_id), None) if linked_task_id else None
             payload = {
                 "id": event_id,
                 "title": title,
@@ -3174,17 +3448,20 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 "color": selected_color["value"] or "#7C3AED",
                 "notify": bool(notify_switch.value),
                 "alarm": bool(alarm_switch.value),
+                "remind_before": remind_options.get(remind_field.value, 0),
+                "task_id": linked_task_id,
+                "task_name": linked_task.get("name", "") if linked_task else "",
+                "recurrence": recurrence_options.get(recurrence_field.value, "none"),
+                "recurrence_until": (until_field.value or "").strip()[:10],
                 "note": note_field.value or "",
                 "created_at": source.get("created_at") or datetime.now().isoformat(timespec="seconds"),
                 "updated_at": datetime.now().isoformat(timespec="seconds"),
             }
             try:
                 clear_event_alert_keys(event_id)
-                if editing:
-                    source.clear()
-                    source.update(payload)
-                else:
-                    calendar_events.append(payload)
+                merged = [event for event in load_persisted_calendar_events() if event.get("id") != event_id]
+                merged.append(payload)
+                calendar_events[:] = merged
                 save_calendar_events()
             except Exception as exc:
                 show_message(page, "Calendar save failed", f"Could not save this event. {exc}")
@@ -3194,9 +3471,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
             show_message(page, "Calendar event", "Event saved.")
 
         def delete_event(_event):
-            if editing and source in calendar_events:
+            if editing:
                 try:
-                    calendar_events.remove(source)
+                    calendar_events[:] = [event for event in load_persisted_calendar_events() if event.get("id") != source.get("id")]
                     save_calendar_events()
                 except Exception as exc:
                     show_message(page, "Calendar delete failed", f"Could not delete this event. {exc}")
@@ -3217,10 +3494,32 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 ),
                 content=ft.Column(
                     width=680,
-                    height=370,
+                    height=400,
                     spacing=10,
+                    scroll=ft.ScrollMode.AUTO,
                     controls=[
                         title_field,
+                        ft.Row(
+                            spacing=10,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Icon(ft.Icons.LINK_ROUNDED, size=18, color=MUTED),
+                                ft.Text("Linked work", size=12, weight=ft.FontWeight.W_700, color=MUTED),
+                                ft.Container(expand=True, content=task_field),
+                                ft.IconButton(icon=ft.Icons.OPEN_IN_NEW, tooltip="Open linked work", icon_color=PRIMARY, on_click=open_linked_task, visible=bool(source.get("task_id"))),
+                            ],
+                        ),
+                        ft.Row(
+                            spacing=10,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Icon(ft.Icons.REPEAT_ROUNDED, size=18, color=MUTED),
+                                ft.Text("Repeat", size=12, weight=ft.FontWeight.W_700, color=MUTED),
+                                recurrence_field,
+                                ft.Container(expand=True),
+                                until_field,
+                            ],
+                        ),
                         ft.Container(
                             padding=pad_sym(horizontal=12, vertical=10),
                             border_radius=16,
@@ -3258,8 +3557,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         ),
                         ft.Row(
                             spacing=14,
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            controls=[notify_switch, alarm_switch],
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[notify_switch, alarm_switch, ft.Container(expand=True), ft.Text("Remind", size=12, weight=ft.FontWeight.W_700, color=MUTED), remind_field],
                         ),
                         note_field,
                     ],
@@ -3396,93 +3695,135 @@ th{{background:#eff6ff;color:#1d4ed8}}
     def build_sidebar_controls():
         online_state = state.get("online_status", "checking")
         status_color = "#16A34A" if online_state == "online" else "#D97706" if online_state == "checking" else "#DC2626"
-        status_text = "Online" if online_state == "online" else "Check" if online_state == "checking" else "Offline"
+        status_text = "Online" if online_state == "online" else "Checking" if online_state == "checking" else "Offline"
         online_enabled = not settings.get("offline_mode", False)
+        ACTIVE_BG = "#CCFBF1"
+        ACTIVE_FG = "#0F766E"
+        HOVER_BG = "#F1F5F9"
+        IDLE_FG = "#334155"
 
-        def update_popup_button():
-            manifest = state.get("update_manifest") or {}
-            version_text = str(manifest.get("version") or "").strip()
-            return ft.Container(
-                on_click=lambda _e: show_update_prompt(manifest),
-                content=ft.Stack(
-                    width=58,
-                    height=64,
+        def nav_item(icon, label, screen_key, on_click):
+            active = state.get("screen") == screen_key
+            item = ft.Container(
+                on_click=on_click,
+                height=44,
+                border_radius=10,
+                bgcolor=ACTIVE_BG if active else None,
+                padding=pad_only(left=12, right=12),
+                animate=ft.Animation(110, ft.AnimationCurve.EASE_OUT),
+                content=ft.Row(
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(
-                            left=6,
-                            top=14,
-                            content=nav_button(ft.Icons.DOWNLOAD_FOR_OFFLINE_OUTLINED, False),
-                        ),
-                        ft.Container(
-                            right=0,
-                            top=0,
-                            width=20,
-                            height=20,
-                            border_radius=999,
-                            bgcolor="#2563EB",
-                            border=border_all(2, NAV_BG),
-                            alignment=CENTER,
-                            content=ft.Icon(ft.Icons.ARROW_DOWNWARD_ROUNDED, size=12, color=WHITE),
-                        ),
-                        *([ft.Container(
-                            left=0,
-                            bottom=0,
-                            width=58,
-                            height=16,
-                            border_radius=999,
-                            bgcolor="#EFF6FF",
-                            border=border_all(1, "#BFDBFE"),
-                            alignment=CENTER,
-                            content=ft.Text(version_text, size=8, weight=ft.FontWeight.W_900, color="#1D4ED8", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                        )] if version_text else []),
+                        ft.Icon(icon, size=20, color=ACTIVE_FG if active else MUTED),
+                        ft.Text(label, size=14, weight=ft.FontWeight.W_800 if active else ft.FontWeight.W_600, color=ACTIVE_FG if active else IDLE_FG),
                     ],
                 ),
             )
+            if not active:
+                def on_hover(e, control=item):
+                    control.bgcolor = HOVER_BG if e.data == "true" else None
+                    try:
+                        control.update()
+                    except Exception:
+                        pass
+                item.on_hover = on_hover
+            return item
 
-        return [
-            ft.Container(
-                width=48,
-                height=48,
-                border_radius=14,
-                bgcolor="#020617",
-                border=border_all(1, "#334155"),
-                alignment=CENTER,
-                clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                content=profile_media_control(44),
-            ),
-            ft.Container(
-                width=58,
-                height=22,
-                border_radius=999,
-                bgcolor="#0F172A",
-                border=border_all(1, "#334155"),
-                alignment=CENTER,
-                content=ft.Row(
-                    spacing=4,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        brand = ft.Row(
+            spacing=11,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                app_logo_control(38, 11),
+                ft.Column(
+                    spacing=0,
                     controls=[
-                        ft.Container(width=7, height=7, border_radius=99, bgcolor=status_color),
-                        ft.Text(status_text, size=9, weight=ft.FontWeight.W_800, color="#CBD5E1"),
+                        ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_900, color=TEXT),
+                        ft.Text(APP_VERSION, size=10, weight=ft.FontWeight.W_700, color=MUTED_2),
                     ],
                 ),
+            ],
+        )
+
+        status_card = ft.Container(
+            border_radius=12,
+            bgcolor=BG,
+            border=border_all(1, BORDER),
+            padding=pad_sym(horizontal=12, vertical=10),
+            content=ft.Column(
+                spacing=10,
+                controls=[
+                    ft.Row(
+                        spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Container(width=34, height=34, border_radius=10, bgcolor="#0F172A", alignment=CENTER, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=profile_media_control(30)),
+                            ft.Column(
+                                spacing=1,
+                                expand=True,
+                                controls=[
+                                    ft.Row(spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[
+                                        ft.Container(width=8, height=8, border_radius=99, bgcolor=status_color),
+                                        ft.Text(status_text, size=12, weight=ft.FontWeight.W_800, color=TEXT),
+                                    ]),
+                                    ft.Text("Local-first workspace", size=10, color=MUTED_2),
+                                ],
+                            ),
+                        ],
+                    ),
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Text("Online mode", size=12, weight=ft.FontWeight.W_700, color=MUTED),
+                            ft.Switch(value=online_enabled, scale=0.7, on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
+                        ],
+                    ),
+                ],
             ),
-            ft.Container(
-                width=58,
-                height=22,
-                alignment=CENTER,
-                content=ft.Switch(value=online_enabled, scale=0.55, on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
-            ),
-            ft.Container(height=18),
-            ft.Container(on_click=show_board, content=nav_button(ft.Icons.DASHBOARD_ROUNDED, state["screen"] == SCREEN_BOARD)),
-            ft.Container(on_click=show_browser, content=nav_button(ft.Icons.FOLDER_OUTLINED, state["screen"] == SCREEN_BROWSER)),
-            ft.Container(on_click=show_calendar, content=nav_button(ft.Icons.CALENDAR_TODAY_OUTLINED, state["screen"] == SCREEN_CALENDAR)),
-            ft.Container(on_click=show_templates, content=nav_button(ft.Icons.ARTICLE_OUTLINED, state["screen"] == SCREEN_TEMPLATES)),
-            ft.Container(on_click=show_health, content=nav_button(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, state["screen"] == SCREEN_HEALTH)),
-            ft.Container(on_click=show_settings, content=nav_button(ft.Icons.SETTINGS_OUTLINED, state["screen"] == SCREEN_SETTINGS)),
+        )
+
+        extras = []
+        if state.get("update_available"):
+            manifest = state.get("update_manifest") or {}
+            extras.append(
+                ft.Container(
+                    on_click=lambda _e: show_update_prompt(manifest),
+                    height=48,
+                    border_radius=10,
+                    bgcolor="#EFF6FF",
+                    border=border_all(1, "#BFDBFE"),
+                    padding=pad_only(left=12, right=12),
+                    content=ft.Row(
+                        spacing=12,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Icon(ft.Icons.DOWNLOAD_FOR_OFFLINE_OUTLINED, size=20, color="#2563EB"),
+                            ft.Column(spacing=0, expand=True, controls=[
+                                ft.Text("Update ready", size=13, weight=ft.FontWeight.W_800, color="#1D4ED8"),
+                                ft.Text(str(manifest.get("version") or ""), size=10, color="#3B82F6", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ]),
+                        ],
+                    ),
+                )
+            )
+
+        return [
+            brand,
+            ft.Container(height=14),
+            ft.Text("MENU", size=10, weight=ft.FontWeight.W_900, color=MUTED_2),
+            ft.Container(height=4),
+            nav_item(ft.Icons.DASHBOARD_ROUNDED, "Board", SCREEN_BOARD, show_board),
+            nav_item(ft.Icons.FOLDER_OUTLINED, "Files", SCREEN_BROWSER, show_browser),
+            nav_item(ft.Icons.CALENDAR_TODAY_OUTLINED, "Calendar", SCREEN_CALENDAR, show_calendar),
+            nav_item(ft.Icons.ARTICLE_OUTLINED, "Templates", SCREEN_TEMPLATES, show_templates),
+            nav_item(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Health", SCREEN_HEALTH, show_health),
+            nav_item(ft.Icons.SETTINGS_OUTLINED, "Settings", SCREEN_SETTINGS, show_settings),
             ft.Container(expand=True),
-            *([update_popup_button()] if state.get("update_available") else []),
-            ft.Container(on_click=show_help, content=nav_button(ft.Icons.HELP_OUTLINE, False)),
+            *extras,
+            nav_item(ft.Icons.HELP_OUTLINE, "Help & guide", "__help__", show_help),
+            ft.Container(height=6),
+            status_card,
         ]
 
     def update_sidebar():
@@ -3492,12 +3833,13 @@ th{{background:#eff6ff;color:#1d4ed8}}
             pass
 
     sidebar = ft.Container(
-        width=80,
-        bgcolor=NAV_BG,
-        border=ft.Border(right=ft.BorderSide(1, "#020617")),
-        padding=pad_sym(vertical=28),
+        width=236,
+        bgcolor=WHITE,
+        border=ft.Border(right=ft.BorderSide(1, BORDER)),
+        padding=pad_sym(horizontal=16, vertical=20),
         content=ft.Column(
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=6,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             controls=build_sidebar_controls(),
         ),
     )
@@ -3517,9 +3859,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
         ),
         items=[
             ft.PopupMenuItem(content="Create new work", icon=ft.Icons.ADD_CIRCLE_OUTLINE, on_click=show_create_new),
-            ft.PopupMenuItem(content="Add file", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=lambda _e: add_task_dialog("file")),
+            ft.PopupMenuItem(content="Add files", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=add_files_dialog),
             ft.PopupMenuItem(content="Add link", icon=ft.Icons.LINK_ROUNDED, on_click=lambda _e: add_task_dialog("link")),
-            ft.PopupMenuItem(content="Create project", icon=ft.Icons.CREATE_NEW_FOLDER_OUTLINED, on_click=lambda _e: add_task_dialog("project")),
             ft.PopupMenuItem(content="Calendar event", icon=ft.Icons.ADD_ALERT_OUTLINED, on_click=lambda _e: show_calendar_event_dialog(selected_date=calendar_state["selected"])),
             ft.PopupMenuItem(content="Templates", icon=ft.Icons.ARTICLE_OUTLINED, on_click=show_templates),
             ft.PopupMenuItem(content="Export report", icon=ft.Icons.IOS_SHARE_OUTLINED, on_click=export_report),
@@ -3566,7 +3907,82 @@ th{{background:#eff6ff;color:#1d4ed8}}
         content=ft.Column(spacing=22, expand=True, controls=[header, main_body]),
     )
 
-    page.add(ft.Row(spacing=0, expand=True, controls=[sidebar, content]))
+    def _minimize(_e):
+        try:
+            page.window.minimized = True
+        except Exception:
+            pass
+
+    def _toggle_max(_e):
+        try:
+            page.window.maximized = not page.window.maximized
+            page.update()
+        except Exception:
+            pass
+
+    def _close(_e):
+        try:
+            page.window.close()
+        except Exception:
+            pass
+
+    def window_button(icon, on_click, danger=False):
+        button = ft.Container(
+            width=46,
+            height=38,
+            alignment=CENTER,
+            content=ft.Icon(icon, size=15, color=MUTED),
+            on_click=on_click,
+            animate=ft.Animation(90, ft.AnimationCurve.EASE_OUT),
+        )
+
+        def on_hover(e, control=button):
+            hot = e.data == "true"
+            control.bgcolor = ("#EF4444" if danger else "#EEF2F7") if hot else None
+            control.content.color = WHITE if (danger and hot) else MUTED
+            try:
+                control.update()
+            except Exception:
+                pass
+
+        button.on_hover = on_hover
+        return button
+
+    title_bar = ft.Container(
+        height=38,
+        bgcolor=WHITE,
+        border=ft.Border(bottom=ft.BorderSide(1, BORDER)),
+        content=ft.Row(
+            spacing=0,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.WindowDragArea(
+                    ft.Container(
+                        height=38,
+                        padding=pad_only(left=16),
+                        alignment=ft.Alignment(-1, 0),
+                        content=ft.Text(APP_NAME, size=12, weight=ft.FontWeight.W_700, color=MUTED_2),
+                    ),
+                    expand=True,
+                    maximizable=True,
+                ),
+                window_button(ft.Icons.REMOVE, _minimize),
+                window_button(ft.Icons.CROP_SQUARE, _toggle_max),
+                window_button(ft.Icons.CLOSE, _close, danger=True),
+            ],
+        ),
+    )
+
+    page.add(
+        ft.Column(
+            spacing=0,
+            expand=True,
+            controls=[
+                title_bar,
+                ft.Row(spacing=0, expand=True, controls=[sidebar, content]),
+            ],
+        )
+    )
     render_current()
     if state.get("update_available") and state.get("update_manifest"):
         manifest = state["update_manifest"]
@@ -3593,6 +4009,16 @@ th{{background:#eff6ff;color:#1d4ed8}}
         def event_line(event):
             color, bg = event_style(event)
             event_time = event.get("time", alert_time)
+            linked_task = next((item for item in all_tasks if item.get("id") == event.get("task_id")), None) if event.get("task_id") else None
+            subtitle = event.get("note") or event.get("kind", "Event")
+            if linked_task or event.get("task_name"):
+                subtitle = f"Linked: {linked_task.get('name') if linked_task else event.get('task_name')}"
+
+            def open_linked(_e, task=linked_task):
+                if task and open_target(task):
+                    return
+                show_message(page, "Cannot open", "The linked work item was not found.")
+
             return ft.Container(
                 bgcolor=bg,
                 border=border_all(1, color + "55"),
@@ -3602,15 +4028,16 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     spacing=10,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Icon(ft.Icons.CELEBRATION_OUTLINED, size=18, color=color),
+                        ft.Icon(ft.Icons.LINK_ROUNDED if linked_task else ft.Icons.CELEBRATION_OUTLINED, size=18, color=color),
                         ft.Column(
                             spacing=2,
                             expand=True,
                             controls=[
                                 ft.Text(event.get("title", "Event"), size=14, weight=ft.FontWeight.W_900, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                                ft.Text(event.get("note") or event.get("kind", "Event"), size=12, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.Text(subtitle, size=12, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                             ],
                         ),
+                        ft.IconButton(icon=ft.Icons.OPEN_IN_NEW, icon_size=16, tooltip="Open linked work", icon_color=color, on_click=open_linked, visible=bool(linked_task)),
                         ft.Text(event_time, size=12, weight=ft.FontWeight.W_900, color=color),
                     ],
                 ),
@@ -3650,40 +4077,76 @@ th{{background:#eff6ff;color:#1d4ed8}}
         )
         page.update()
 
+    def event_alarm_datetime(event, day_key):
+        try:
+            base = datetime.strptime(f"{day_key} {event.get('time', '09:00')}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            return None
+        try:
+            lead = max(0, int(event.get("remind_before") or 0))
+        except (TypeError, ValueError):
+            lead = 0
+        return base - timedelta(minutes=lead)
+
     def check_calendar_event_reminders():
+        calendar_events[:] = load_persisted_calendar_events()
         now = datetime.now()
         today_key = now.date().isoformat()
         now_hm = now.strftime("%H:%M")
         notified = settings.setdefault("calendar_event_alerts", {})
+        for stale_key in [key for key in notified if not (key.startswith(f"daily:{today_key}:") or key.startswith(f"alarm:{today_key}:"))]:
+            notified.pop(stale_key, None)
+        last_check = None
+        last_check_raw = settings.get("calendar_last_check")
+        if last_check_raw:
+            try:
+                last_check = datetime.fromisoformat(last_check_raw)
+            except ValueError:
+                last_check = None
+        today = now.date()
         due_daily = []
         due_alarm = []
+        due_missed = []
         for event in calendar_events:
-            if str(event.get("date", ""))[:10] != today_key:
-                continue
             event_id = event.get("id") or event.get("title", "")
+            if not event_occurs_on(event, today):
+                continue
             if event.get("notify", True) and now_hm >= "09:00":
                 daily_key = f"daily:{today_key}:{event_id}:09:00"
                 if not notified.get(daily_key):
                     due_daily.append(event)
-                    notified[daily_key] = datetime.now().isoformat(timespec="seconds")
-            event_time = event.get("time", "09:00")
-            if event.get("alarm", True) and now_hm >= event_time:
-                alarm_key = f"alarm:{today_key}:{event_id}:{event_time}"
+                    notified[daily_key] = now.isoformat(timespec="seconds")
+            alarm_dt = event_alarm_datetime(event, today_key)
+            if event.get("alarm", True) and alarm_dt and now >= alarm_dt:
+                alarm_key = f"alarm:{today_key}:{event_id}:{event.get('time', '09:00')}"
                 if not notified.get(alarm_key):
                     due_alarm.append(event)
-                    notified[alarm_key] = datetime.now().isoformat(timespec="seconds")
-        if due_daily or due_alarm:
+                    notified[alarm_key] = now.isoformat(timespec="seconds")
+        if last_check:
+            cursor = max(last_check.date(), today - timedelta(days=14))
+            while cursor < today:
+                for event in calendar_events:
+                    if not event.get("alarm", True) or not event_occurs_on(event, cursor):
+                        continue
+                    alarm_dt = event_alarm_datetime(event, cursor.isoformat())
+                    if alarm_dt and last_check < alarm_dt <= now:
+                        due_missed.append(event)
+                cursor += timedelta(days=1)
+        settings["calendar_last_check"] = now.isoformat(timespec="seconds")
+        if due_daily or due_alarm or due_missed:
             save_calendar_events()
             combined = []
             seen = set()
-            for item in [*due_alarm, *due_daily]:
+            for item in [*due_alarm, *due_missed, *due_daily]:
                 key = item.get("id") or item.get("title", "")
                 if key in seen:
                     continue
                 seen.add(key)
                 combined.append(item)
-            popup_title = "Event-time alarm" if due_alarm else "Today's reminders"
+            popup_title = "Missed reminders" if due_missed else "Event-time alarm" if due_alarm else "Today's reminders"
             show_event_reminder_popup(combined, now.date(), popup_title, now_hm)
+        elif last_check_raw is None:
+            save_settings(settings)
 
     def realtime_sync_loop():
         while not state.get("closed"):
@@ -4366,33 +4829,9 @@ def grouped_task_card(page, task, save_and_render, all_tasks):
     return task_card(page, task, save_and_render, all_tasks)
 
 
-def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_key=None, group_limits=None, on_more=None):
+def type_group_card(page, file_type, tasks, save_and_render, all_tasks, total_count=None):
     icon, icon_color = task_icon(file_type)
-    limit = (group_limits or {}).get(group_key, DEFAULT_BATCH_SIZE)
-    visible_tasks, resolved_limit = visible_slice(tasks, limit, DEFAULT_BATCH_SIZE)
-    hidden_count = max(0, len(tasks) - len(visible_tasks))
-    controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in visible_tasks]
-    if hidden_count:
-        def load_more(_event):
-            if group_limits is not None and group_key:
-                group_limits[group_key] = next_visible_limit(resolved_limit, len(tasks), DEFAULT_BATCH_SIZE)
-            if on_more:
-                on_more()
-
-        controls.append(
-            ft.Container(
-                height=44,
-                border_radius=10,
-                bgcolor="#F8FAFC",
-                alignment=CENTER,
-                content=ft.Button(
-                    f"Show more ({hidden_count} left)",
-                    icon=ft.Icons.EXPAND_MORE,
-                    on_click=load_more,
-                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
-                ),
-            )
-        )
+    controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in tasks]
     return ft.Container(
         bgcolor=WHITE,
         border=border_all(1, BORDER),
@@ -4413,7 +4852,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
                     ft.Container(width=28, height=28, border_radius=9, bgcolor="#F8FAFC", alignment=CENTER, content=ft.Icon(ft.Icons.KEYBOARD_ARROW_DOWN_ROUNDED, size=16, color=MUTED)),
                     ft.Container(width=30, height=30, border_radius=9, bgcolor="#EFF6FF", alignment=CENTER, content=ft.Icon(icon, size=16, color=icon_color)),
                     ft.Text(file_type, size=13, weight=ft.FontWeight.W_800, color=TEXT, expand=True),
-                    ft.Container(padding=pad_sym(horizontal=8, vertical=3), border_radius=999, bgcolor="#F8FAFC", content=ft.Text(str(len(tasks)), size=11, weight=ft.FontWeight.W_800, color=MUTED)),
+                    ft.Container(padding=pad_sym(horizontal=8, vertical=3), border_radius=999, bgcolor="#F8FAFC", content=ft.Text(str(total_count if total_count is not None else len(tasks)), size=11, weight=ft.FontWeight.W_800, color=MUTED)),
                 ],
             ),
             controls=[ft.Column(spacing=10, controls=controls)],
@@ -4422,14 +4861,43 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
 
 
 def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key="", group_limits=None, on_more=None):
+    global_key = f"{column_key}:__all__"
+    limit = (group_limits or {}).get(global_key, DEFAULT_BATCH_SIZE)
+    visible_tasks, resolved_limit = visible_slice(tasks, limit, DEFAULT_BATCH_SIZE)
+    hidden_count = max(0, len(tasks) - len(visible_tasks))
     grouped = {}
+    totals = {}
     for task in tasks:
+        file_type = task.get("type", "Other")
+        totals[file_type] = totals.get(file_type, 0) + 1
+    for task in visible_tasks:
         grouped.setdefault(task.get("type", "Other"), []).append(task)
     controls = []
     ordered_types = [file_type for file_type in runtime_file_types() if file_type in grouped]
     ordered_types.extend(sorted(file_type for file_type in grouped if file_type not in ordered_types))
     for file_type in ordered_types:
-        controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, f"{column_key}:{file_type}", group_limits, on_more))
+        controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, total_count=totals.get(file_type, len(grouped[file_type]))))
+    if hidden_count:
+        def load_more(_event):
+            if group_limits is not None:
+                group_limits[global_key] = next_visible_limit(resolved_limit, len(tasks), DEFAULT_BATCH_SIZE)
+            if on_more:
+                on_more()
+
+        controls.append(
+            ft.Container(
+                height=46,
+                border_radius=10,
+                bgcolor="#F8FAFC",
+                alignment=CENTER,
+                content=ft.Button(
+                    f"Show {min(DEFAULT_BATCH_SIZE, hidden_count)} more ({hidden_count} left)",
+                    icon=ft.Icons.EXPAND_MORE,
+                    on_click=load_more,
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
+                ),
+            )
+        )
     return controls
 
 

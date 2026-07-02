@@ -45,7 +45,7 @@
     },
     {
       "path": "config/category.py",
-      "sha256": "9e603a71d265bc4e5a13b4bd4e2552a165e85c83ac4619e0ff533618b09e1a50",
+      "sha256": "21de7d916e4833abe1320ec4a1140cf1e109b0f0007498614f4094565c0e9251",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/config/category.py",
       "mode": "source"
     },
@@ -57,7 +57,7 @@
     },
     {
       "path": "core/app_paths.py",
-      "sha256": "070ba1efe740e06c3c1658487940dbad152785bd41b9089e12a670e7d0a791be",
+      "sha256": "a38034d64b0fe171165a8a8ddd1b85524ebcb3e30b2677163137404cfff7ee6d",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/app_paths.py",
       "mode": "source"
     },
@@ -75,7 +75,7 @@
     },
     {
       "path": "core/file_intelligence.py",
-      "sha256": "d1d99b89b69bc28e7125c64deb459788ad45d2b4eb57772584c43af163fea136",
+      "sha256": "7ce5e44b1e43668266649d8b16035f40be07aa80fa7e0276c6e4555efdb787d1",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/file_intelligence.py",
       "mode": "source"
     },
@@ -87,7 +87,7 @@
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "f3c0bfc4c7103b7d4df91b213e40732edd862d2aed50dcc50287c0c0f959cdcd",
+      "sha256": "70518b17acbcd16248eb17c7facbf134b1afb8d57da4d62c74aadea9b8384297",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -135,13 +135,13 @@
     },
     {
       "path": "ui/dialogs.py",
-      "sha256": "58ac6f438d394f77a812c51b3847b93a58a28050928d17606b8fd50a9aea0448",
+      "sha256": "2458d70da8c074ac70a01499482e9ee805423e63918ca4e4908ab257a332c9db",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/dialogs.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "97760826b5300a7a3fb17c01c7991356eb48310d99cc2d77a5e4113bcbbb410d",
+      "sha256": "0a5595833490885cec052f4a27b170cd7ae279cea347defb03c507b3811ee667",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
@@ -171,43 +171,43 @@
     },
     {
       "path": "ui/screens/calendar_screen.py",
-      "sha256": "9e1f03c07408615ed0e1511f9ee35b1103e67c9a1a4209c9139bd29535ebf8eb",
+      "sha256": "f2579dc892d759e83daad52f4f50881bf558b8b058f98bc0898d0c05bee6bd85",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/calendar_screen.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/health.py",
-      "sha256": "ef35f7edbc21d05c9e8f04aebad21ef71369814a07fbb5e51230aa35796b8ccb",
+      "sha256": "ab52af8c476be694b5d2a441a73f70e2a5e2be32d450b0d1e0e1d7cf8b3384f8",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/health.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/settings_screen.py",
-      "sha256": "c5b423b8ff66c8d02db27091d444fe949d9827fa54044e367e2fcff0dc51f41e",
+      "sha256": "43e33ce9a529339d3b2c32f81dcd2fe761131232af1d696489eba48bca50d70e",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/settings_screen.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/templates.py",
-      "sha256": "e142199c98842df27fa6cb23909906437c201acc6dd5bd094d6d0ca329c8a571",
+      "sha256": "ccc333f8a5334f1e90f229736964a13edee44283d6b76d52d48bc33147e26740",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/templates.py",
       "mode": "source"
     },
     {
       "path": "ui/settings_window.py",
-      "sha256": "fa6e6fe2d16aad167eb44f6038a93429994252dde68e60c27243df96d715bd8c",
+      "sha256": "e4fae60f19456f9a4d8981a409ca0504456333ebc8de735b5487de0f3bd52e63",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/settings_window.py",
       "mode": "source"
     },
     {
       "path": "ui/shared.py",
-      "sha256": "d25b57f9e61aa90ca1244a2e8ba33a1871c78d8743f5847ba0c1b97611ed6748",
+      "sha256": "18291b437f4109b638d6687c53215422a4b65736dd1cec474ae1bb4422bb3cbd",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/shared.py",
       "mode": "source"
     },
     {
       "path": "ui/startup.py",
-      "sha256": "4a8780bb56584533e4b5c9ce644c775a23334d4323c32b978dec2cb19130efa3",
+      "sha256": "6b084843956db0244b63b35ccd1318b5061d49b65c14249567e6f0c448303544",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/startup.py",
       "mode": "source"
     },

@@ -19,8 +19,10 @@ def render_health(ctx: DashboardContext) -> None:
     try:
         from core.flet_data import (
             load_templates, broken_items, load_activity_log, list_snapshots,
-            update_channel_url, save_templates, save_tasks, log_activity,
-            create_snapshot, push_undo, normalized_file_key, infer_type, item_target
+            save_templates, save_tasks, log_activity, create_snapshot, push_undo,
+            normalized_file_key, infer_type, item_target, restore_snapshot,
+            load_settings, create_task_from_source, rename_task_target,
+            update_template_record
         )
         templates = load_templates()
         problems = broken_items(ctx.all_tasks, templates)
@@ -28,8 +30,10 @@ def render_health(ctx: DashboardContext) -> None:
         snapshots = list_snapshots(5)
     except ImportError:
         templates, problems, activity, snapshots = [], [], [], []
-        update_channel_url, save_templates, save_tasks, log_activity = None, None, None, None
+        save_templates, save_tasks, log_activity = None, None, None
         create_snapshot, push_undo, normalized_file_key, infer_type, item_target = None, None, None, None, None
+        restore_snapshot, load_settings, create_task_from_source = None, None, None
+        rename_task_target, update_template_record = None, None
 
     # We need root_work for health checks. Get it from ctx or settings.
     root_work_str = ctx.settings.get("root_work") or ctx.settings.get("work_folder_path") or ""
@@ -53,6 +57,8 @@ def render_health(ctx: DashboardContext) -> None:
         except Exception:
             return False
 
+    offline_mode = bool(ctx.settings.get("offline_mode", False))
+    update_url = str(ctx.update_channel_url() or "")
     health_checks = [
         {
             "label": "Work folder",
@@ -80,8 +86,8 @@ def render_health(ctx: DashboardContext) -> None:
         },
         {
             "label": "Update channel",
-            "ok": bool(update_channel_url and update_channel_url()) and not ctx.settings.get("offline_mode", False),
-            "detail": "Online checks enabled" if not ctx.settings.get("offline_mode", False) else "Offline mode is on",
+            "ok": offline_mode or bool(update_url),
+            "detail": "Offline mode is on" if offline_mode else ("Online checks enabled" if update_url else "Update channel is not configured"),
             "icon": ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED,
         },
         {
@@ -333,7 +339,61 @@ def render_health(ctx: DashboardContext) -> None:
             show_message(ctx.page, "Smart Repair", message)
 
         async def relink(_event):
-            show_message(ctx.page, "Not Implemented", "Relink flow not fully migrated yet.")
+            before = dict(item)
+            target = str(item.get("link") or "").strip()
+            try:
+                if create_snapshot:
+                    create_snapshot("Before relink broken item")
+                if item.get("target_kind") == "url" and target.startswith(("http://", "https://")):
+                    if is_template:
+                        update_template_record(
+                            item,
+                            item.get("name", "Template"),
+                            file_type=item.get("type", "Other"),
+                            target=target,
+                            note=item.get("note", ""),
+                            date_added=item.get("date_added", ""),
+                        )
+                    else:
+                        rename_task_target(
+                            item,
+                            item.get("name", "Untitled task"),
+                            new_target=target,
+                            new_file_type=item.get("type", "Other"),
+                            new_status=item.get("status", STATUS_PENDING),
+                        )
+                else:
+                    if item.get("target_kind") == "folder":
+                        selected = await ctx.pick_directory("Choose replacement folder")
+                    else:
+                        picked = await ctx.file_picker.pick_files(dialog_title="Choose replacement file", allow_multiple=False)
+                        selected = picked[0].path if picked else ""
+                    if not selected:
+                        return
+                    if is_template:
+                        update_template_record(
+                            item,
+                            item.get("name", "Template"),
+                            file_type=item.get("type", "Other"),
+                            target=selected,
+                            note=item.get("note", ""),
+                            date_added=item.get("date_added", ""),
+                        )
+                    else:
+                        replacement = create_task_from_source(
+                            item.get("name", "Untitled task"),
+                            selected,
+                            file_type=item.get("type", "Other"),
+                            note=item.get("note", ""),
+                            status=item.get("status", STATUS_PENDING),
+                        )
+                        for key in ("name", "type", "detected_type", "link", "target_kind", "shortcut_path", "file_key"):
+                            item[key] = replacement.get(key)
+                if push_undo and not is_template:
+                    push_undo({"kind": "task_restore", "action": "Relink broken item", "task_id": item.get("id"), "before": before, "after": dict(item)})
+                save_repaired(f"{item.get('name', 'Item')} relinked successfully.")
+            except Exception as exc:
+                show_message(ctx.page, "Relink failed", str(exc))
 
         def remove_record(_event):
             if create_snapshot:
@@ -412,7 +472,35 @@ def render_health(ctx: DashboardContext) -> None:
 
     def snapshot_row(snapshot):
         def restore(_event):
-            show_message(ctx.page, "Not Implemented", "Restore flow will be migrated.")
+            def confirm_restore(_confirm_event):
+                try:
+                    restored_tasks, _restored_templates = restore_snapshot(snapshot.get("path", ""))
+                    ctx.all_tasks.clear()
+                    ctx.all_tasks.extend(restored_tasks)
+                    restored_settings = load_settings()
+                    ctx.settings.clear()
+                    ctx.settings.update(restored_settings)
+                    restored_work = restored_settings.get("work_folder_path")
+                    if restored_work:
+                        ctx.set_work_folder(restored_work)
+                    ctx.page.pop_dialog()
+                    ctx.render_current()
+                    show_message(ctx.page, "Snapshot restored", f"Restored {snapshot.get('reason', 'snapshot')}.")
+                except Exception as exc:
+                    show_message(ctx.page, "Restore failed", str(exc))
+
+            ctx.page.show_dialog(
+                ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Restore snapshot?", size=20, weight=ft.FontWeight.W_800, color=TEXT),
+                    content=ft.Text("Current tasks, templates, settings, and calendar data will be backed up before this snapshot is restored.", color=MUTED),
+                    actions=[
+                        ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
+                        ft.Button("Restore", icon=ft.Icons.RESTORE, on_click=confirm_restore, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                    ],
+                )
+            )
+            ctx.page.update()
         def open_snapshot_folder(_event):
             import os
             path = Path(snapshot.get("path", ""))
@@ -570,7 +658,7 @@ def render_health(ctx: DashboardContext) -> None:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     controls=[
                         ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.HISTORY, color=MUTED), ft.Text("Activity", size=22, weight=ft.FontWeight.W_800, color=TEXT)]),
-                        ft.Button("Undo", icon=ft.Icons.UNDO, on_click=lambda _e: show_message(ctx.page, "Not Implemented", "Undo action will be migrated later."), style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12)))
+                        ft.Button("Undo", icon=ft.Icons.UNDO, on_click=ctx.undo_last, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12)))
                     ]
                 ),
                 ft.Container(padding=pad_sym(horizontal=12, vertical=10), border_radius=14, bgcolor="#F8FAFC", content=ft.Text("Undo restores the latest tracked rename/move/edit when possible.", size=12, color=MUTED)),

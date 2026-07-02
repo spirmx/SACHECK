@@ -10,7 +10,18 @@ from pathlib import Path
 
 from config.category import EXTENSION_TYPES, URL_RULES
 from core import file_intelligence
-from core.app_paths import ACTIVITY_LOG_FILE, APP_SETTINGS_FILE, DATA_FILE, SNAPSHOT_DIR, TEMPLATE_FILE, UNDO_STACK_FILE, is_dev_runtime, work_folder
+from core.app_paths import (
+    ACTIVITY_LOG_FILE,
+    APP_SETTINGS_FILE,
+    CALENDAR_CACHE_FILE,
+    CALENDAR_FILE,
+    DATA_FILE,
+    SNAPSHOT_DIR,
+    TEMPLATE_FILE,
+    UNDO_STACK_FILE,
+    is_dev_runtime,
+    work_folder,
+)
 from core.create_tools import create_project_folder, tool_default_name, write_blank_file
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
 
@@ -31,15 +42,70 @@ CREATE_TOOLS = [
 ]
 
 
+def _snapshot_recovery_value(path: Path, fallback):
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return None
+    key = None
+    for candidate, candidate_key in (
+        (DATA_FILE, "tasks"),
+        (TEMPLATE_FILE, "templates"),
+        (APP_SETTINGS_FILE, "settings"),
+    ):
+        try:
+            if resolved == candidate.resolve():
+                key = candidate_key
+                break
+        except OSError:
+            continue
+    if not key or not SNAPSHOT_DIR.exists():
+        return None
+    try:
+        snapshots = sorted(SNAPSHOT_DIR.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    except OSError:
+        return None
+    for snapshot in snapshots:
+        try:
+            with snapshot.open("r", encoding="utf-8") as file:
+                payload = json.load(file)
+        except (OSError, json.JSONDecodeError):
+            continue
+        value = payload.get(key) if isinstance(payload, dict) else None
+        if isinstance(value, type(fallback)):
+            return value
+    return None
+
+
+def _quarantine_broken_json(path: Path) -> Path | None:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = path.with_name(f"{path.stem}.broken-{stamp}-{uuid.uuid4().hex[:6]}{path.suffix}")
+    try:
+        path.replace(backup)
+        return backup
+    except OSError:
+        return None
+
+
 def load_json(path, fallback):
     if not path.exists():
         return fallback
     try:
         with path.open("r", encoding="utf-8") as file:
             data = json.load(file)
-        return data if isinstance(data, type(fallback)) else fallback
+        if isinstance(data, type(fallback)):
+            return data
     except (OSError, json.JSONDecodeError):
-        return fallback
+        pass
+    _quarantine_broken_json(path)
+    recovered = _snapshot_recovery_value(path, fallback)
+    if recovered is not None:
+        try:
+            save_json(path, recovered)
+        except OSError:
+            pass
+        return recovered
+    return fallback
 
 
 def retry_file_operation(operation, *, attempts=4, delay=0.18, label="File operation"):
@@ -122,6 +188,78 @@ def save_templates(templates):
     save_json(TEMPLATE_FILE, templates)
 
 
+def _normalize_calendar_events(events):
+    clean = []
+    changed = False
+    for event in events:
+        if not isinstance(event, dict):
+            changed = True
+            continue
+        if not event.get("id"):
+            event["id"] = str(uuid.uuid4())
+            changed = True
+        normalized_date = str(event.get("date") or "")[:10]
+        if normalized_date != event.get("date"):
+            event["date"] = normalized_date
+            changed = True
+        clean.append(event)
+    return clean, changed
+
+
+def load_calendar_events():
+    for path in (CALENDAR_FILE, CALENDAR_CACHE_FILE):
+        if not path.exists():
+            continue
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                events = json.load(file)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(events, list):
+            continue
+        clean, changed = _normalize_calendar_events(events)
+        if path != CALENDAR_FILE or changed:
+            save_calendar_events(clean)
+        return clean
+    legacy_events = load_settings().get("calendar_events", [])
+    raw = [event for event in legacy_events if isinstance(event, dict)] if isinstance(legacy_events, list) else []
+    events, _ = _normalize_calendar_events(raw)
+    if events:
+        save_calendar_events(events)
+    return events
+
+
+def save_calendar_events(events):
+    clean_events = [event for event in events if isinstance(event, dict)]
+    save_json(CALENDAR_FILE, clean_events)
+    save_json(CALENDAR_CACHE_FILE, clean_events)
+
+
+def event_occurs_on(event, day):
+    raw_start = str(event.get("date") or "")[:10]
+    try:
+        start = datetime.strptime(raw_start, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    if day < start:
+        return False
+    until_raw = str(event.get("recurrence_until") or "")[:10]
+    if until_raw:
+        try:
+            if day > datetime.strptime(until_raw, "%Y-%m-%d").date():
+                return False
+        except ValueError:
+            pass
+    recurrence = str(event.get("recurrence") or "none").lower()
+    if recurrence == "daily":
+        return True
+    if recurrence == "weekly":
+        return day.weekday() == start.weekday()
+    if recurrence == "monthly":
+        return day.day == start.day
+    return day == start
+
+
 def load_settings():
     return load_json(APP_SETTINGS_FILE, {})
 
@@ -165,6 +303,7 @@ def create_snapshot(reason: str):
         "reason": reason,
         "tasks": load_tasks(),
         "templates": load_templates(),
+        "calendar_events": load_calendar_events(),
         "settings": settings,
     }
     save_json(path, data)
@@ -195,6 +334,8 @@ def restore_snapshot(snapshot_path: str):
     create_snapshot("Before snapshot restore")
     save_tasks(data.get("tasks", []))
     save_templates(data.get("templates", []))
+    if "calendar_events" in data:
+        save_calendar_events(data.get("calendar_events", []))
     save_settings(data.get("settings", {}))
     log_activity("Restore snapshot", f"Restored snapshot from {data.get('time', Path(snapshot_path).stem)}", {"file": snapshot_path})
     return load_tasks(), load_templates()
@@ -402,9 +543,24 @@ def is_under_work(target: str) -> bool:
     try:
         path = Path(target).resolve()
         root = work_folder().resolve()
-        return str(path).casefold().startswith(str(root).casefold())
-    except OSError:
+        path.relative_to(root)
+        return True
+    except (OSError, ValueError):
         return False
+
+
+def is_managed_item_path(target: str) -> bool:
+    """True only for an item below Work/<type>/<status-or-Template>."""
+    if not target:
+        return False
+    try:
+        path = Path(target).resolve()
+        relative = path.relative_to(work_folder().resolve())
+    except (OSError, ValueError):
+        return False
+    if len(relative.parts) < 3:
+        return False
+    return relative.parts[1] in {*STATUS_FOLDERS.values(), "Template"}
 
 
 def status_folder(status: str, file_type: str = "Other") -> Path:
@@ -752,7 +908,7 @@ def update_template_record(template, name: str, file_type: str = "Other", target
             if not old or normalized_file_key(old) == except_key:
                 continue
             path = Path(old)
-            if not path.exists() or not is_under_work(str(path)):
+            if not path.exists() or not is_managed_item_path(str(path)):
                 continue
             if path.is_dir():
                 retry_file_operation(lambda p=path: shutil.rmtree(p), label=f"Delete old template folder {path.name}")
@@ -784,7 +940,7 @@ def update_template_record(template, name: str, file_type: str = "Other", target
         raise FileNotFoundError(f"Template target not found: {requested_target}")
 
     requested_key = normalized_file_key(str(requested_path))
-    if requested_key in old_keys and is_under_work(str(requested_path)):
+    if requested_key in old_keys and is_managed_item_path(str(requested_path)):
         suffix = "" if requested_path.is_dir() else requested_path.suffix
         desired_stem = Path(safe_name).stem if Path(safe_name).suffix and not requested_path.is_dir() else safe_name
         desired_name = desired_stem if requested_path.is_dir() else f"{desired_stem}{suffix}"
@@ -826,7 +982,7 @@ def delete_item_target(item) -> bool:
     deleted = False
     for target in dict.fromkeys(targets):
         path = Path(target)
-        if not path.exists() or not is_under_work(str(path)):
+        if not path.exists() or not is_managed_item_path(str(path)):
             continue
         if path.is_dir():
             retry_file_operation(lambda p=path: shutil.rmtree(p), label=f"Delete folder {path.name}")
@@ -861,7 +1017,7 @@ def rename_task_target(task, new_name: str, new_target: str = "", new_file_type:
         task["target_kind"] = "url"
         shortcut_text = task.get("shortcut_path") or ""
         shortcut = Path(shortcut_text) if shortcut_text else None
-        if shortcut and shortcut.exists() and is_under_work(str(shortcut)):
+        if shortcut and shortcut.exists() and is_managed_item_path(str(shortcut)):
             destination_folder = status_folder(resolved_status, resolved_type)
             destination_folder.mkdir(parents=True, exist_ok=True)
             target_path = destination_folder / f"{safe_name}.url"
@@ -885,7 +1041,7 @@ def rename_task_target(task, new_name: str, new_target: str = "", new_file_type:
     old_shortcut = task.get("shortcut_path") or ""
     if task.get("target_kind") == "url" and old_shortcut:
         shortcut_path = Path(old_shortcut)
-        if shortcut_path.exists() and is_under_work(str(shortcut_path)):
+        if shortcut_path.exists() and is_managed_item_path(str(shortcut_path)):
             retry_file_operation(lambda: shortcut_path.unlink(), label=f"Delete old shortcut {shortcut_path.name}")
 
     if current_path and current_path.exists() and requested_path and normalized_file_key(str(current_path)) == normalized_file_key(str(requested_path)):
@@ -893,7 +1049,7 @@ def rename_task_target(task, new_name: str, new_target: str = "", new_file_type:
         desired_stem = Path(safe_name).stem if Path(safe_name).suffix and not current_path.is_dir() else safe_name
         desired_name = desired_stem if current_path.is_dir() else f"{desired_stem}{suffix}"
         destination_folder = current_path.parent
-        if is_under_work(str(current_path)):
+        if is_managed_item_path(str(current_path)):
             destination_folder = status_folder(resolved_status, resolved_type)
             destination_folder.mkdir(parents=True, exist_ok=True)
         target_path = destination_folder / desired_name

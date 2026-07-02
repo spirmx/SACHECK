@@ -48,6 +48,8 @@ def show_startup_loader(
     page.theme_mode = ft.ThemeMode.LIGHT
     page.theme = ft.Theme(font_family="Segoe UI")
     try:
+        page.window.title_bar_hidden = True
+        page.window.title_bar_buttons_hidden = True
         page.window.maximized = False
         page.window.width = 800
         page.window.height = 560
@@ -145,7 +147,6 @@ def show_startup_loader(
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=12,
                         controls=[
-                            logo,
                             ft.Text(app_name, size=24, weight=ft.FontWeight.W_900, color=TEXT),
                             ft.Container(
                                 padding=ft.Padding.symmetric(horizontal=10, vertical=4),

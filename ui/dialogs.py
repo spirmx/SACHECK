@@ -472,8 +472,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             page.pop_dialog()
             save_and_render(f"Copied to Waiting as {copied.get('name', 'Untitled task')}.")
 
-        # For dialogs without duplicate guard passed in context, we just skip it for now and directly run it
-        # TODO: wire run_with_duplicate_guard from DashboardContext
+        # create_task_from_source always chooses a numbered destination when a name already exists.
         create_copy()
 
     def add_detail_item_to_board(_event):

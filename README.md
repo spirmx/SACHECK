@@ -33,6 +33,121 @@ Latest changes:
 - Does not clear Work folders, settings, cache, or local user data.
 - Work folders, settings, cache, and user data are preserved during update.
 
+## Local 1.0.9 Regression Recovery (Not Published Yet)
+
+The 1.0.9 screen extraction originally moved Template and Calendar UI code out of
+`ui/flet_dashboard.py`, but some 1.0.8 behavior was replaced by placeholders.
+The current working tree restores that behavior. These changes are local and must
+not be published until they have been tested and explicitly approved.
+
+Restored behavior:
+
+- Template reads only the `Template` folder inside every work category.
+- Add File Template uses the native file picker and copies the selected file into the correct category's `Template` folder.
+- Add Link Template creates a `.url` shortcut in the correct category's `Template` folder.
+- Templates are grouped by work category and expose their real folder location.
+- Template actions include copy to Waiting, open, open folder, copy path, details, and delete.
+- Calendar Add/Edit/Delete Event works again, including time, type, color, note, daily reminder, and event-time alarm options.
+- Calendar events are stored outside the install directory with a recovery cache, so an installer or Git-based app update does not remove them.
+
+## Work Folder System
+
+Each work category has the same four folders:
+
+```text
+<selected Work folder>\
+  Word\
+    Waiting\
+    Doing\
+    Success\
+    Template\
+  Excel\
+    Waiting\
+    Doing\
+    Success\
+    Template\
+  <other categories>\
+    Waiting\
+    Doing\
+    Success\
+    Template\
+```
+
+Folder responsibilities:
+
+- `Waiting` contains work that has not started.
+- `Doing` contains active work.
+- `Success` contains completed work.
+- `Template` contains reusable source files, folders, and `.url` shortcuts.
+
+The Work Board scanner reads only `Waiting`, `Doing`, and `Success`. The Template
+Library scanner reads only `<category>\Template`. A file in `Waiting`, `Doing`, or
+`Success` must never appear as a Template.
+
+## Template System
+
+Template records are indexed in `%APPDATA%\SA CHECK\data\templates.json`, while
+the actual reusable files remain in `<selected Work folder>\<category>\Template`.
+The JSON index stores metadata such as notes, usage count, and last-used time; the
+folder is the source of truth for whether the reusable file or shortcut exists.
+
+When a Template is used, SA CHECK copies it to the same category's `Waiting`
+folder and creates a normal Work Board record. The original Template stays in the
+`Template` folder.
+
+## Calendar System and Update Safety
+
+Calendar events are stored in two user-owned files outside `C:\SACHECK`:
+
+```text
+Primary: %APPDATA%\SA CHECK\data\calendar_events.json
+Cache:   %APPDATA%\SA CHECK\cache\calendar\calendar_events.json
+```
+
+Writes are atomic. If the primary event file is missing or invalid, SA CHECK
+recovers it from the cache. Existing 1.0.8 events previously stored inside
+`app_settings.json` are migrated automatically on first load.
+
+Snapshots now include tasks, templates, settings, and Calendar events. Restoring
+a new-format snapshot restores Calendar events as well.
+
+The installer may replace files under `C:\SACHECK`, but it must never delete or
+overwrite `%APPDATA%\SA CHECK` or the selected Work folder.
+
+## Startup Integrity and Repair (Root Cause of the 1.0.9 Revert)
+
+On startup, `core/startup_preflight.py` hashes every source file listed in
+`sacheck_integrity.json` and, when Online mode is enabled, downloads and overwrites
+any file whose hash does not match the expected value. When running from source,
+a local fix therefore fails the hash check and is silently reverted to the pinned
+version on the next launch. This is the update-and-repair behavior that made 1.0.9
+appear to "lose" the restored Template and Calendar code.
+
+Because of this, any source change must be paired with a regenerated integrity
+manifest, otherwise startup repair reverts the change:
+
+```text
+.venv\Scripts\python.exe tools\build_integrity_manifest.py
+```
+
+`sacheck_integrity.json` has been regenerated from the corrected source so startup
+repair now recognizes the fixed files and no longer reverts them. `inspect_integrity`
+reports zero failed files, so no repair download runs. When publishing, the fixed
+source and the regenerated `sacheck_integrity.json` / `sacheck_update.json` must be
+committed together so a fresh install does not reintroduce the placeholders.
+
+## Main Systems
+
+- Work Board: tracks Waiting, Doing, and Success by category.
+- Work Browser: browses and organizes files in the selected Work folder.
+- Template Library: scans only category Template folders and creates reusable copies.
+- Calendar: displays work status dates and persistent user-created events.
+- Sync: rescans Work and Template folders without deleting user-owned data.
+- Snapshots and undo: create local recovery points before important changes.
+- Health Center: checks data paths, Work folders, snapshots, and update readiness.
+- Offline/Online mode: all work stays local; internet is used only for update checks and downloads when enabled.
+- Safe updater: replaces application files while preserving Work, AppData, settings, cache, templates, and Calendar data.
+
 ## App Concept
 
 SA CHECK is offline-first. Users can work without internet. Internet is only used for checking and downloading app updates when Online mode is enabled.

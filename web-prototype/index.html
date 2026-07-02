@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07111f" />
+  <title>SA CHECK — Intelligence OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+  <div class="aurora aurora-a" aria-hidden="true"></div>
+  <div class="aurora aurora-b" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <button class="brand" data-screen="overview" aria-label="SA CHECK Home">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>SA CHECK</strong><small>INTELLIGENCE OS</small></span>
+    </button>
+
+    <nav class="nav-list" aria-label="Main navigation">
+      <button class="nav-item active" data-screen="overview" data-label="Command Center">
+        <span class="nav-icon" data-icon="grid"></span><span>Command Center</span><b>01</b>
+      </button>
+      <button class="nav-item" data-screen="board" data-label="Work Board">
+        <span class="nav-icon" data-icon="board"></span><span>Work Board</span><b>02</b>
+      </button>
+      <button class="nav-item" data-screen="templates" data-label="Templates">
+        <span class="nav-icon" data-icon="layers"></span><span>Templates</span><b>03</b>
+      </button>
+      <button class="nav-item" data-screen="calendar" data-label="Calendar">
+        <span class="nav-icon" data-icon="calendar"></span><span>Calendar</span><b>04</b>
+      </button>
+      <button class="nav-item" data-screen="intelligence" data-label="Intelligence">
+        <span class="nav-icon" data-icon="spark"></span><span>Intelligence</span><b>05</b>
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="system-health">
+        <div class="health-ring"><span>98</span></div>
+        <div><strong>System healthy</strong><small>Synced 2 min ago</small></div>
+      </div>
+      <button class="profile-chip">
+        <span class="avatar">H</span>
+        <span><strong>HOYTURBRO</strong><small>Workspace owner</small></span>
+        <span class="more">•••</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="page-identity">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu"><span></span><span></span></button>
+        <div><small>SA CHECK / <span id="breadcrumb">COMMAND CENTER</span></small><h1 id="pageTitle">Command Center</h1></div>
+      </div>
+
+      <div class="top-actions">
+        <button class="search-trigger" id="searchTrigger">
+          <span class="nav-icon" data-icon="search"></span>
+          <span>ค้นหางาน หรือถาม SA Intelligence...</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <button class="icon-btn intelligence-pulse" id="briefingBtn" aria-label="Intelligence briefing">
+          <span class="nav-icon" data-icon="spark"></span><i></i>
+        </button>
+        <button class="icon-btn" id="notificationBtn" aria-label="Notifications">
+          <span class="nav-icon" data-icon="bell"></span><em>3</em>
+        </button>
+        <button class="primary-btn magnetic" id="quickAddBtn"><span>＋</span> Quick Add</button>
+      </div>
+    </header>
+
+    <section class="screen-host" id="screenHost" aria-live="polite"></section>
+  </main>
+
+  <div class="command-backdrop" id="commandBackdrop" hidden>
+    <div class="command-palette" role="dialog" aria-modal="true" aria-label="Smart command palette">
+      <div class="command-input-wrap">
+        <span class="nav-icon" data-icon="spark"></span>
+        <input id="commandInput" autocomplete="off" placeholder="ลองพิมพ์ “งานด่วน”, “doing word”, “เปิด calendar”..." />
+        <kbd>ESC</kbd>
+      </div>
+      <div class="command-hint"><span>SA INTELLIGENCE</span><p>ค้นหาแบบเข้าใจบริบท พร้อมคำสั่งลัด</p></div>
+      <div class="command-results" id="commandResults"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal-card" id="modalCard"></div>
+  </div>
+
+  <div class="notification-panel" id="notificationPanel" hidden></div>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

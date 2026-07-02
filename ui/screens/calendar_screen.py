@@ -23,12 +23,16 @@ def render_calendar(ctx: DashboardContext) -> None:
         "selected": date.today()
     })
 
-    # We should normally load events here. For this refactor, we mock load_calendar_events if not present.
     try:
-        from core.flet_data import load_calendar_events
+        from core.flet_data import load_calendar_events, event_occurs_on
         calendar_events = load_calendar_events()
     except ImportError:
         calendar_events = []
+        def event_occurs_on(event, day):
+            try:
+                return datetime.strptime(str(event.get("date") or "")[:10], "%Y-%m-%d").date() == day
+            except (ValueError, TypeError):
+                return False
 
     status_filter = calendar_state.get("status", "All")
     calendar_items = []
@@ -47,10 +51,13 @@ def render_calendar(ctx: DashboardContext) -> None:
             return str(task.get("done_date"))[:10]
         return str(task.get("status_date") or task.get("date_added") or datetime.now().date().isoformat())[:10]
 
-    for event in calendar_events:
-        event_day = event_date_value(event)
-        if event_day:
-            events_by_day.setdefault(event_day, []).append(event)
+    grid_first = date(calendar_state["year"], calendar_state["month"], 1)
+    grid_start = grid_first - timedelta(days=grid_first.weekday())
+    for offset in range(42):
+        cell_day = grid_start + timedelta(days=offset)
+        for event in calendar_events:
+            if event_occurs_on(event, cell_day):
+                events_by_day.setdefault(cell_day, []).append(event)
 
     for task in ctx.all_tasks:
         try:
@@ -192,7 +199,7 @@ def render_calendar(ctx: DashboardContext) -> None:
     def event_chip(event):
         color, bg = event_style(event)
         def show_event(_e):
-            show_message(ctx.page, "Event", f"{event.get('title')}\n\n{event.get('note', '')}")
+            ctx.show_calendar_event_dialog(event=event)
 
         return ft.Container(
             height=21,
@@ -372,7 +379,7 @@ def render_calendar(ctx: DashboardContext) -> None:
         event_time = event.get("time", "09:00")
 
         def show_event(_e):
-            show_message(ctx.page, "Event", f"{event.get('title')}\n\n{event.get('note', '')}")
+            ctx.show_calendar_event_dialog(event=event)
 
         return ft.Container(
             height=116,
@@ -474,7 +481,7 @@ def render_calendar(ctx: DashboardContext) -> None:
                     controls=[
                         ft.IconButton(icon=ft.Icons.CHEVRON_LEFT, tooltip="Previous month", on_click=lambda _e: shift_month(-1)),
                         ft.Button("Today", icon=ft.Icons.TODAY_OUTLINED, on_click=lambda _e: (calendar_state.update({"year": today.year, "month": today.month, "selected": today}), refresh_calendar())),
-                        ft.Button("Add Event", icon=ft.Icons.ADD_ALERT_OUTLINED, on_click=lambda _e: show_message(ctx.page, "Not Implemented", "Add event dialog will be migrated later."), style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))),
+                        ft.Button("Add Event", icon=ft.Icons.ADD_ALERT_OUTLINED, on_click=lambda _e: ctx.show_calendar_event_dialog(selected_date=calendar_state.get("selected")), style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))),
                         ft.IconButton(icon=ft.Icons.CHEVRON_RIGHT, tooltip="Next month", on_click=lambda _e: shift_month(1)),
                     ],
                 ),

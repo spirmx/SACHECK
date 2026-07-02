@@ -35,9 +35,6 @@ def infer_type_from_url(target: str, url_extension_types: dict, url_rules: list)
     suffix = Path(path).suffix.lower()
     if suffix in url_extension_types:
         return url_extension_types[suffix]
-    for extension, file_type in url_extension_types.items():
-        if extension and extension in combined:
-            return file_type
 
     for rule in url_rules:
         rule_host = rule.get("host")
@@ -53,6 +50,11 @@ def infer_type_from_url(target: str, url_extension_types: dict, url_rules: list)
         if rule_path_contains and rule_path_contains.lower() not in combined:
             continue
         return rule.get("type", "Other")
+
+    path_query = f"{path}?{query}"
+    for extension, file_type in url_extension_types.items():
+        if extension and extension in path_query:
+            return file_type
 
     if "office.com" in host or "sharepoint.com" in host or "onedrive.live.com" in host:
         if any(token in combined for token in ("word", "docx", "document")):

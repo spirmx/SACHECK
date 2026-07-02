@@ -3,6 +3,7 @@ import shutil
 import flet as ft
 from pathlib import Path
 
+from config.category import EXTENSION_TYPES
 from core.flet_constants import (
     BORDER, DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, MUTED, MUTED_2,
     PRIMARY, TEXT, WHITE, BG, STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE,
@@ -12,8 +13,6 @@ from core.flet_data import (
     DATA_FILE, APP_NAME, FILE_TYPES, type_color_choices, load_tasks,
     ensure_status_folders, save_settings
 )
-from core.flet_theme import apply_app_theme
-from core.flet_utils import t
 from core.app_paths import is_dev_runtime
 from ui.dialogs import show_message
 from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, type_style, app_logo_control, profile_media_control, app_theme_preview, app_theme_mockup, color_swatch, nav_button
@@ -23,17 +22,27 @@ def render_settings(ctx: DashboardContext) -> None:
     ctx.header_title.value = "Settings"
     ctx.header_subtitle.value = f"{APP_NAME} / Configuration"
 
-    # We mock or lazily import functions that the original render_settings needs
+    t = ctx.t
     try:
-        from core.flet_data import load_templates, list_snapshots, check_for_updates, status_theme
+        from core.flet_data import load_templates, list_snapshots
     except ImportError:
-        load_templates, list_snapshots, check_for_updates = lambda: [], lambda x: [], lambda manual: None
-        status_theme = lambda status: ("#FFFFFF", "#000000")
+        load_templates, list_snapshots = lambda: [], lambda _limit=12: []
+    status_theme = ctx.status_theme
 
     # Local state access
     root_work_str = ctx.settings.get("root_work") or ctx.settings.get("work_folder_path") or ""
     root_work = Path(root_work_str) if root_work_str else Path(ctx.root_work)
-    custom_types = ctx.settings.get("custom_types", [])
+    custom_types = ctx.settings.get("custom_file_types")
+    if not isinstance(custom_types, list):
+        custom_types = []
+        ctx.settings["custom_file_types"] = custom_types
+    legacy_custom_types = ctx.settings.pop("custom_types", None)
+    if isinstance(legacy_custom_types, list):
+        known_names = {str(item.get("name", "")).casefold() for item in custom_types if isinstance(item, dict)}
+        for item in legacy_custom_types:
+            if isinstance(item, dict) and str(item.get("name", "")).casefold() not in known_names:
+                custom_types.append(item)
+        save_settings(ctx.settings)
 
     # The original file has many fields, we need to create them here or use existing
     theme_switch = ft.Switch(value=ctx.settings.get("theme") == "Dark", label="Dark theme mode")
@@ -119,12 +128,8 @@ def render_settings(ctx: DashboardContext) -> None:
             selected = await ctx.pick_directory("Choose SA CHECK Work folder")
             if not selected:
                 return
-            selected_path = Path(selected)
-            selected_path.mkdir(parents=True, exist_ok=True)
-            ctx.settings["work_folder_path"] = str(selected_path)
-            ctx.settings.pop("root_work", None)
-            save_settings(ctx.settings)
-            show_message(ctx.page, "Work folder", f"DEV Work folder changed to:\n{selected_path}")
+            selected_path = ctx.set_work_folder(Path(selected))
+            show_message(ctx.page, "Work folder", f"Work folder changed to:\n{selected_path}")
             ctx.render_current()
         except Exception as e:
             show_message(ctx.page, "Error", str(e))
@@ -136,9 +141,9 @@ def render_settings(ctx: DashboardContext) -> None:
                 allow_multiple=False,
                 allowed_extensions=["png", "jpg", "jpeg", "webp", "bmp", "gif"],
             )
-            if not picked or not picked.files:
+            if not picked:
                 return
-            source = Path(picked.files[0].path)
+            source = Path(picked[0].path)
             profile_dir = DATA_FILE.parent / "profile_media"
             profile_dir.mkdir(parents=True, exist_ok=True)
             target = profile_dir / f"profile{source.suffix.lower()}"
@@ -157,9 +162,9 @@ def render_settings(ctx: DashboardContext) -> None:
                 allow_multiple=False,
                 allowed_extensions=["png", "jpg", "jpeg", "webp", "bmp", "gif", "ico"],
             )
-            if not picked or not picked.files:
+            if not picked:
                 return
-            source = Path(picked.files[0].path)
+            source = Path(picked[0].path)
             icon_dir = DATA_FILE.parent / "custom_type_icons"
             icon_dir.mkdir(parents=True, exist_ok=True)
             target = icon_dir / f"{source.stem}_{len(list(icon_dir.glob('*')))}{source.suffix.lower()}"
@@ -175,8 +180,8 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.settings["app_theme_preset"] = app_theme_select.value or "Ocean Pro"
         ctx.settings["status_theme_preset"] = status_theme_select.value or "Classic Blue"
         save_settings(ctx.settings)
-        apply_app_theme(ctx.settings)
-        ctx.page.bgcolor = BG
+        palette = ctx.apply_app_theme(ctx.settings)
+        ctx.page.bgcolor = palette.get("bg", BG)
         ctx.page.theme_mode = ft.ThemeMode.DARK if theme_switch.value else ft.ThemeMode.LIGHT
         ctx.render_current()
         show_message(ctx.page, "Settings", "Theme saved.")
@@ -203,10 +208,10 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.settings["overload_doing_limit"] = int(overload_doing_select.value or 4)
         ctx.settings["overload_total_limit"] = int(overload_total_select.value or 10)
         save_settings(ctx.settings)
-        apply_app_theme(ctx.settings)
-        ctx.page.bgcolor = BG
+        palette = ctx.apply_app_theme(ctx.settings)
+        ctx.page.bgcolor = palette.get("bg", BG)
         ctx.page.theme_mode = ft.ThemeMode.DARK if theme_switch.value else ft.ThemeMode.LIGHT
-        ctx.page.update()
+        ctx.render_current()
         show_message(ctx.page, "Settings", "Settings saved.")
 
     def reset_smart_defaults(_event):
@@ -242,8 +247,8 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.settings["app_theme_preset"] = "Ocean Pro"
         ctx.settings["status_theme_preset"] = "Classic Blue"
         save_settings(ctx.settings)
-        apply_app_theme(ctx.settings)
-        ctx.page.bgcolor = BG
+        palette = ctx.apply_app_theme(ctx.settings)
+        ctx.page.bgcolor = palette.get("bg", BG)
         ctx.page.theme_mode = ft.ThemeMode.LIGHT
         show_message(ctx.page, "Settings", "UI defaults restored.")
         ctx.render_current()
@@ -269,7 +274,7 @@ def render_settings(ctx: DashboardContext) -> None:
             extension
             for item in custom_types
             for extension in parse_extensions(",".join(item.get("extensions", [])) if isinstance(item.get("extensions", []), list) else str(item.get("extensions", "")))
-        }
+        } | {str(extension).lower() for extension in EXTENSION_TYPES}
         duplicate_extensions = [extension for extension in extensions if extension in existing_extensions]
         if duplicate_extensions:
             show_message(ctx.page, "Extension already mapped", f"{', '.join(duplicate_extensions[:3])} already belongs to another type.")
@@ -543,7 +548,7 @@ def render_settings(ctx: DashboardContext) -> None:
                                 ],
                             ),
                             ft.Row(spacing=10, controls=[
-                                ft.Button("Check now", icon=ft.Icons.REFRESH, disabled=is_dev_runtime(), on_click=lambda _e: check_for_updates(manual=True)),
+                                ft.Button("Check now", icon=ft.Icons.REFRESH, disabled=is_dev_runtime(), on_click=lambda _e: ctx.check_for_updates(manual=True)),
                                 ft.Button("Version notes", icon=ft.Icons.FACT_CHECK_OUTLINED, on_click=show_version_notes),
                             ]),
                         ],

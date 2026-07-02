@@ -28,8 +28,8 @@ def _default_status_theme(_status):
 class DashboardContext:
     """Portable context object for screen renderers.
 
-    The development copy currently has an in-progress screen extraction. These
-    defaults keep older call sites working while new screen modules are wired in.
+    Defaults keep older call sites working while screen modules remain decoupled
+    from the dashboard controller.
     """
 
     page: ft.Page
@@ -56,10 +56,14 @@ class DashboardContext:
     show_settings: Callable = _noop
     show_health: Callable = _noop
     show_calendar: Callable = _noop
+    show_calendar_event_dialog: Callable = _noop
     show_templates: Callable = _noop
     update_sidebar: Callable = _noop
     pick_directory: Callable = _noop
     check_for_updates: Callable = _noop
+    update_channel_url: Callable = _noop
+    apply_app_theme: Callable = _identity
+    set_work_folder: Callable = _identity
     reset_filters: Callable = _noop
     undo_last: Callable = _noop
     add_or_update_from_path: Callable = _noop

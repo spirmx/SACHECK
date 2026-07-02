@@ -1,21 +1,41 @@
-import flet as ft
+import os
 from datetime import datetime
+from pathlib import Path
 
-from core.flet_constants import BORDER, MUTED, MUTED_2, PRIMARY, TEXT, WHITE
-from core.flet_data import load_templates, ensure_status_folders, create_task_from_tool, save_tasks, APP_NAME, CREATE_TOOLS
-from ui.dialogs import show_task_detail, show_message
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_sym, task_icon
+import flet as ft
+
+from core.flet_constants import BORDER, MUTED, MUTED_2, PRIMARY, STATUS_PENDING, TEXT, WHITE
+from core.flet_data import (
+    create_snapshot,
+    create_task_from_source,
+    create_template_from_source,
+    delete_item_target,
+    ensure_status_folders,
+    infer_type,
+    item_target,
+    load_templates,
+    log_activity,
+    normalized_file_key,
+    open_folder,
+    open_target,
+    push_undo,
+    save_templates,
+)
+from ui.dialogs import show_message, show_task_detail
+from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, row_action_button, task_icon
 from ui.shared import DashboardContext
+
 
 def render_templates(ctx: DashboardContext) -> None:
     ctx.header_title.value = "Template Library"
     ctx.header_subtitle.value = "SA CHECK / Reusable Assets"
+
     templates = load_templates()
     query = ctx.state.get("template_search", "").strip().casefold()
-    ordered_template_types = ["Word", "Excel", "PowerPoint", "PDF", "Design", "Code", "Other"]
+    ordered_template_types = list(ctx.file_types()) or ["Word", "Excel", "PowerPoint", "PDF", "Design", "Code", "Other"]
 
     selected_template_type = {"value": ctx.state.get("template_filter", "All template types")}
-    template_list = ft.ListView(expand=True, spacing=14)
+    template_list = ft.ListView(expand=True, spacing=12)
 
     def on_template_type_change(e):
         ctx.state["template_filter"] = e.control.value
@@ -25,63 +45,222 @@ def render_templates(ctx: DashboardContext) -> None:
         ctx.state["template_search"] = e.control.value or ""
         ctx.render_current()
 
+    def commit_templates(records, message):
+        save_templates(records)
+        ctx.render_current()
+        if message:
+            show_message(ctx.page, "Templates", message, kind="success")
+
     def add_template_dialog(kind):
-        name_field = ft.TextField(label="Template Name", hint_text="Example: Monthly Report", border_radius=12, border_color=BORDER)
-        type_field = dropdown(250, "Word", ordered_template_types)
+        is_file = kind == "file"
+        title = "Add File Template" if is_file else "Add Link Template"
+        name_field = ft.TextField(label="Template name (optional)", border_radius=12, border_color=BORDER)
+        type_field = dropdown(300, "Auto-detect", ["Auto-detect", *ordered_template_types])
         target_field = ft.TextField(
-            label="Template File or URL",
-            hint_text="C:\\Templates\\report.docx" if kind == "file" else "https://docs.google.com/...",
+            label="Local file path" if is_file else "Link (URL)",
+            value="" if is_file else "https://",
             border_radius=12,
-            border_color=BORDER
+            border_color=BORDER,
+            expand=True,
         )
-        note_field = ft.TextField(label="Notes (optional)", multiline=True, min_lines=3, max_lines=3, border_radius=12, border_color=BORDER)
+        note_field = ft.TextField(label="Note (optional)", multiline=True, min_lines=2, max_lines=3, border_radius=12, border_color=BORDER)
+        detected_label = ft.Text("Type is detected automatically.", size=12, color=MUTED)
 
-        def save_new_template(_e):
-            if not name_field.value or not target_field.value:
-                show_message(ctx.page, "Missing info", "Name and target are required.")
-                return
-            new_item = {
-                "id": str(datetime.now().timestamp()),
-                "name": name_field.value,
-                "type": type_field.value,
-                "date_added": datetime.now().strftime("%Y-%m-%d"),
-                "target_kind": kind,
-                "shortcut_path" if kind == "file" else "link": target_field.value,
-                "note": note_field.value,
-                "usage_count": 0,
-            }
-            templates.append(new_item)
+        def refresh_detection(_e=None):
+            value = (target_field.value or "").strip()
+            if value and value != "https://":
+                detected_label.value = f"Detected type: {infer_type(value)}"
+                detected_label.color = PRIMARY
+            else:
+                detected_label.value = "Type is detected automatically."
+                detected_label.color = MUTED
             try:
-                from core.flet_data import save_templates
-                save_templates(templates)
-                ctx.page.pop_dialog()
-                ctx.render_current()
-                show_message(ctx.page, "Template added", f"Saved: {name_field.value}", kind="success")
+                detected_label.update()
+            except Exception:
+                pass
+
+        target_field.on_change = refresh_detection
+
+        async def browse(_e):
+            picked = await ctx.file_picker.pick_files(dialog_title="Choose template file", allow_multiple=False)
+            path = picked[0].path if picked else ""
+            if path:
+                target_field.value = path
+                if not (name_field.value or "").strip():
+                    name_field.value = Path(path).stem
+                refresh_detection()
+                ctx.page.update()
+
+        def paste_url(_e):
+            try:
+                value = ctx.page.clipboard.get()
+            except Exception:
+                value = ""
+            if value:
+                target_field.value = str(value)
+                refresh_detection()
+                ctx.page.update()
+
+        def effective_type():
+            return "Other" if type_field.value == "Auto-detect" else type_field.value
+
+        def save_template(_e):
+            target = (target_field.value or "").strip()
+            if not target or target == "https://":
+                show_message(ctx.page, "Missing info", "Please choose a file or enter a link first.")
+                return
+            try:
+                display_name = (name_field.value or "").strip() or (Path(target).stem if is_file else target)
+                record = create_template_from_source(display_name, target, file_type=effective_type(), note=note_field.value or "")
             except Exception as exc:
-                show_message(ctx.page, "Save failed", str(exc))
+                show_message(ctx.page, "Save failed", str(exc), kind="danger")
+                return
+            templates.append(record)
+            try:
+                ctx.page.pop_dialog()
+            except Exception:
+                pass
+            commit_templates(templates, f"Saved template: {record.get('name')} ({record.get('type')})")
 
-        def pick_file_for_template(_e):
-            ctx.page.pop_dialog()
-            ctx.pick_directory(add_template_dialog, kind) # Note: not actually pick_directory, needs pick_file in full implementation, fallback below
-            show_message(ctx.page, "Not supported", "File picker not fully wired for templates in this refactored version yet. Please paste the path.")
-            # Re-show dialog
-            add_template_dialog(kind)
+        target_row = ft.Row(
+            spacing=10,
+            controls=[
+                target_field,
+                ft.Button("Browse" if is_file else "Paste URL", on_click=browse if is_file else paste_url, width=130 if is_file else 110),
+            ],
+        )
+        ctx.page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Text(title, size=22, weight=ft.FontWeight.W_800, color=TEXT),
+                content=ft.Column(
+                    width=560,
+                    height=420,
+                    spacing=12,
+                    scroll=ft.ScrollMode.AUTO,
+                    controls=[
+                        name_field,
+                        target_row,
+                        ft.Column(
+                            spacing=6,
+                            controls=[
+                                ft.Text("File type" if is_file else "Link type", size=12, weight=ft.FontWeight.W_700, color=MUTED),
+                                ft.Row(spacing=14, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[type_field, detected_label]),
+                            ],
+                        ),
+                        note_field,
+                    ],
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
+                    ft.Button("Save Template", on_click=save_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+            )
+        )
+        ctx.page.update()
 
-        pick_btn = ft.Button("Browse File", icon=ft.Icons.FOLDER_OPEN, on_click=pick_file_for_template) if kind == "file" else ft.Container()
+    def use_template(t_item):
+        ensure_status_folders()
+        name_field = ft.TextField(label="New Work Item Name", value=t_item.get("name", "Task"), border_radius=12, border_color=BORDER)
+
+        def create_from_template(_ev):
+            try:
+                create_snapshot("Before use template")
+                source = item_target(t_item)
+                new_task = create_task_from_source(
+                    name_field.value,
+                    source,
+                    file_type=t_item.get("type", "Other"),
+                    note=f"From template: {t_item.get('name', '')}",
+                    status=STATUS_PENDING,
+                )
+                ctx.all_tasks.append(new_task)
+                t_item["usage_count"] = int(t_item.get("usage_count", 0)) + 1
+                t_item["last_used"] = datetime.now().isoformat()
+                save_templates(templates)
+                push_undo({"kind": "task_restore", "action": "Use template", "task_id": new_task.get("id"), "before": {}, "after": dict(new_task)})
+                log_activity("Use template", f"Created {name_field.value} from template.", {"task_id": new_task.get("id")})
+                try:
+                    ctx.page.pop_dialog()
+                except Exception:
+                    pass
+                ctx.save_and_render(f"Created '{name_field.value}' in Waiting.")
+            except Exception as exc:
+                show_message(ctx.page, "Failed to create", str(exc), kind="danger")
 
         ctx.page.show_dialog(
             ft.AlertDialog(
                 modal=True,
-                title=ft.Text(f"Add {'File' if kind == 'file' else 'Link'} Template", size=20, weight=ft.FontWeight.W_800, color=TEXT),
+                title=ft.Text("Use Template", size=20, weight=ft.FontWeight.W_800, color=TEXT),
                 content=ft.Column(
-                    width=500,
-                    height=400,
-                    spacing=16,
-                    controls=[name_field, type_field, ft.Row(spacing=8, controls=[target_field, pick_btn]) if kind == "file" else target_field, note_field],
+                    width=420,
+                    height=120,
+                    spacing=14,
+                    controls=[ft.Text(f"Copy '{t_item.get('name')}' into Waiting. The template stays untouched.", size=14, color=MUTED), name_field],
                 ),
                 actions=[
                     ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
-                    ft.Button("Save Template", on_click=save_new_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                    ft.Button("Create", on_click=create_from_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+            )
+        )
+        ctx.page.update()
+
+    def open_template(t_item):
+        try:
+            open_target(t_item)
+        except Exception as exc:
+            show_message(ctx.page, "Open failed", str(exc), kind="danger")
+
+    def open_template_folder(t_item):
+        try:
+            open_folder(t_item)
+        except Exception as exc:
+            show_message(ctx.page, "Open folder failed", str(exc), kind="danger")
+
+    def copy_target(t_item):
+        target = item_target(t_item)
+        try:
+            ctx.page.clipboard.set(target or "")
+            show_message(ctx.page, "Copied", "Template path copied to clipboard.", kind="success")
+        except Exception as exc:
+            show_message(ctx.page, "Copy failed", str(exc), kind="danger")
+
+    def delete_template(t_item):
+        def confirm_delete(_e):
+            try:
+                ctx.page.pop_dialog()
+            except Exception:
+                pass
+            create_snapshot("Before delete template")
+            try:
+                delete_item_target(t_item)
+            except Exception as exc:
+                show_message(ctx.page, "Delete failed", str(exc), kind="danger")
+                return
+            item_id = t_item.get("id")
+            item_key = t_item.get("file_key") or normalized_file_key(item_target(t_item))
+            remaining = [
+                rec
+                for rec in templates
+                if not (
+                    (item_id and rec.get("id") == item_id)
+                    or (item_key and (rec.get("file_key") or normalized_file_key(item_target(rec))) == item_key)
+                )
+            ]
+            log_activity("Delete template", f"Removed template {t_item.get('name')}", {"id": item_id})
+            commit_templates(remaining, f"Deleted template: {t_item.get('name')}")
+
+        ctx.page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Delete Template", size=20, weight=ft.FontWeight.W_800, color=TEXT),
+                content=ft.Text(f"Delete '{t_item.get('name')}' and its file in Template? This cannot be undone except via snapshot.", size=14, color=MUTED),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
+                    ft.Button("Delete", on_click=confirm_delete, style=ft.ButtonStyle(bgcolor="#E11D48", color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
                 ],
             )
         )
@@ -89,112 +268,116 @@ def render_templates(ctx: DashboardContext) -> None:
 
     def template_card(t_item):
         icon, icon_color = task_icon(t_item.get("type", "Other"))
-
-        def use_template(_e):
-            # Show a dialog to create a new task based on this template
-            from ui.dialogs import action_button
-
-            task_name = ft.TextField(label="New Task Name", value=f"New {t_item.get('name', 'Task')}", border_radius=12, border_color=BORDER)
-
-            def create_from_template(_ev):
-                try:
-                    ensure_status_folders()
-                    # Logic to copy the template file to the work directory and create a task
-                    # Since this is a UI refactor, I am preserving the flow.
-                    from core.flet_data import create_task_from_source, create_snapshot, push_undo, log_activity, save_templates
-                    create_snapshot("Before use template")
-
-                    target = t_item.get("shortcut_path") or t_item.get("link")
-                    new_task = create_task_from_source(
-                        task_name.value,
-                        target,
-                        file_type=t_item.get("type", "Other"),
-                        note=f"Created from template: {t_item.get('name')}",
-                        status=STATUS_PENDING
-                    )
-
-                    ctx.all_tasks.append(new_task)
-
-                    t_item["usage_count"] = t_item.get("usage_count", 0) + 1
-                    t_item["last_used"] = datetime.now().isoformat()
-                    save_templates(templates)
-
-                    push_undo({"kind": "task_restore", "action": "Use template", "task_id": new_task.get("id"), "before": {}, "after": dict(new_task)})
-                    log_activity("Use template", f"Created {task_name.value} from template.", {"task_id": new_task.get("id")})
-
-                    ctx.page.pop_dialog()
-                    ctx.save_and_render(f"Created '{task_name.value}' in Waiting.")
-                    from core.flet_data import open_target
-                    open_target(new_task)
-
-                except Exception as exc:
-                    show_message(ctx.page, "Failed to create", str(exc), kind="danger")
-
-            ctx.page.show_dialog(
-                ft.AlertDialog(
-                    title=ft.Text("Use Template", size=20, weight=ft.FontWeight.W_800),
-                    content=ft.Column(
-                        width=400, height=100, spacing=16,
-                        controls=[
-                            ft.Text(f"Create a new work item from '{t_item.get('name')}'?", size=14),
-                            task_name
-                        ]
-                    ),
-                    actions=[
-                        ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
-                        ft.Button("Create", on_click=create_from_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE))
-                    ]
-                )
-            )
-            ctx.page.update()
-
-        return ft.Container(
-            height=72,
+        is_url = t_item.get("target_kind") == "url"
+        subtitle = "Link" if is_url else (item_target(t_item) or "")
+        card = ft.Container(
             bgcolor=WHITE,
             border=border_all(1, BORDER),
-            border_radius=16,
-            padding=14,
+            border_radius=14,
+            padding=12,
+            animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
             content=ft.Row(
-                spacing=14,
+                spacing=12,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.Container(width=44, height=44, border_radius=12, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=22, color=icon_color)),
+                    ft.Container(width=42, height=42, border_radius=12, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=20, color=icon_color)),
                     ft.Column(
-                        spacing=4,
+                        spacing=3,
                         expand=True,
                         controls=[
-                            ft.Text(t_item.get("name", "Unnamed Template"), size=16, weight=ft.FontWeight.W_800, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Text(t_item.get("name", "Unnamed Template"), size=15, weight=ft.FontWeight.W_800, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.Row(
                                 spacing=8,
                                 controls=[
                                     ft.Text(t_item.get("type", "Other"), size=12, color=MUTED),
                                     ft.Text("•", size=12, color=MUTED_2),
-                                    ft.Text(f"Used {t_item.get('usage_count', 0)} times", size=12, color=MUTED),
+                                    ft.Text(f"Used {int(t_item.get('usage_count', 0))}x", size=12, color=MUTED),
+                                    ft.Text("•", size=12, color=MUTED_2),
+                                    ft.Text(subtitle, size=12, color=MUTED_2, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
                                 ]
-                            )
-                        ]
+                            ),
+                        ],
                     ),
-                    ft.Button("Use", icon=ft.Icons.PLAY_ARROW_ROUNDED, on_click=use_template, height=40, style=ft.ButtonStyle(bgcolor="#EFF6FF", color=PRIMARY, shape=ft.RoundedRectangleBorder(radius=10))),
-                    ft.IconButton(icon=ft.Icons.INFO_OUTLINE, tooltip="Details", on_click=lambda _e: show_task_detail(ctx.page, t_item, ctx.save_and_render, ctx.all_tasks, is_template=True, template_to_work=use_template, template_records=templates, runtime_file_types_fn=ctx.file_types)),
-                ]
-            )
+                    row_action_button("Use", ft.Icons.PLAY_ARROW_ROUNDED, lambda _e, item=t_item: use_template(item), primary=True),
+                    ft.IconButton(icon=ft.Icons.OPEN_IN_NEW, tooltip="Open", icon_color=MUTED, on_click=lambda _e, item=t_item: open_template(item)),
+                    ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Open Folder", icon_color=MUTED, on_click=lambda _e, item=t_item: open_template_folder(item)),
+                    ft.IconButton(icon=ft.Icons.CONTENT_COPY, tooltip="Copy Path", icon_color=MUTED, on_click=lambda _e, item=t_item: copy_target(item)),
+                    ft.IconButton(
+                        icon=ft.Icons.INFO_OUTLINE,
+                        tooltip="Detail",
+                        icon_color=MUTED,
+                        on_click=lambda _e, item=t_item: show_task_detail(ctx.page, item, ctx.save_and_render, ctx.all_tasks, is_template=True, template_to_work=lambda _x=None, it=t_item: use_template(it), template_records=templates, runtime_file_types_fn=ctx.file_types),
+                    ),
+                    ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Delete", icon_color="#E11D48", on_click=lambda _e, item=t_item: delete_template(item)),
+                ],
+            ),
+        )
+
+        def on_hover(e):
+            hovered = e.data == "true"
+            card.border = border_all(1.5, PRIMARY if hovered else BORDER)
+            card.bgcolor = "#FBFDFF" if hovered else WHITE
+            card.shadow = ft.BoxShadow(spread_radius=0, blur_radius=16, color="#14000000", offset=ft.Offset(0, 5)) if hovered else None
+            card.update()
+
+        card.on_hover = on_hover
+        return card
+
+    def type_folder_card(type_name, items):
+        icon, icon_color = task_icon(type_name)
+        return ft.Container(
+            bgcolor=WHITE,
+            border=border_all(1, BORDER),
+            border_radius=16,
+            clip_behavior=ft.ClipBehavior.HARD_EDGE,
+            shadow=ft.BoxShadow(spread_radius=0, blur_radius=10, color="#0A000000", offset=ft.Offset(0, 4)),
+            content=ft.ExpansionTile(
+                expanded=False,
+                maintain_state=True,
+                tile_padding=pad_only(left=12, right=8),
+                controls_padding=pad_only(left=10, right=10, bottom=10),
+                title=ft.Row(
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=5, height=34, border_radius=999, bgcolor=icon_color),
+                        ft.Container(width=34, height=34, border_radius=10, bgcolor="#F1F5F9", border=border_all(1, BORDER), alignment=CENTER, content=ft.Icon(icon, size=17, color=icon_color)),
+                        ft.Column(
+                            spacing=1,
+                            expand=True,
+                            controls=[
+                                ft.Text(type_name, size=14, weight=ft.FontWeight.W_900, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.Text(f"{len(items)} template(s)", size=11, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ],
+                        ),
+                        ft.Container(padding=pad_sym(horizontal=10, vertical=4), border_radius=999, bgcolor="#EFF6FF", content=ft.Text(str(len(items)), size=12, weight=ft.FontWeight.W_800, color=PRIMARY)),
+                    ],
+                ),
+                controls=[ft.Column(spacing=8, controls=[template_card(t) for t in items])],
+            ),
         )
 
     def render_template_list():
-        filtered = templates
+        filtered = list(templates)
         if selected_template_type["value"] != "All template types":
             filtered = [t for t in filtered if t.get("type") == selected_template_type["value"]]
         if query:
-            filtered = [t for t in filtered if query in t.get("name", "").casefold() or query in t.get("note", "").casefold()]
+            filtered = [t for t in filtered if query in (t.get("name", "") or "").casefold() or query in (t.get("note", "") or "").casefold()]
 
         if ctx.settings.get("template_ranking_enabled", True):
-            filtered.sort(key=lambda x: (-x.get("usage_count", 0), x.get("name", "").casefold()))
+            filtered.sort(key=lambda x: (-int(x.get("usage_count", 0)), (x.get("name", "") or "").casefold()))
         else:
-            filtered.sort(key=lambda x: x.get("name", "").casefold())
+            filtered.sort(key=lambda x: (x.get("name", "") or "").casefold())
 
-        template_list.controls = [template_card(t) for t in filtered]
+        groups = {}
+        for t in filtered:
+            groups.setdefault(t.get("type", "Other"), []).append(t)
+
+        ordered_keys = [t for t in ordered_template_types if t in groups] + [k for k in groups if k not in ordered_template_types]
+
+        template_list.controls = [type_folder_card(type_name, groups[type_name]) for type_name in ordered_keys]
         if not template_list.controls:
-            template_list.controls.append(ft.Container(expand=True, alignment=CENTER, content=ft.Text("No templates found.", color=MUTED_2, size=15)))
+            template_list.controls.append(ft.Container(expand=True, alignment=CENTER, padding=40, content=ft.Text("No templates found. Add one, or drop files into a <type>/Template folder and Sync.", color=MUTED_2, size=15)))
 
     search_templates = ft.TextField(
         hint_text="Search templates...",
@@ -211,22 +394,21 @@ def render_templates(ctx: DashboardContext) -> None:
     render_template_list()
 
     toolbar = ft.Container(
-        height=78,
         bgcolor="#F8FBFF",
         border=border_all(1, "#BFDBFE"),
         border_radius=18,
         padding=pad_sym(horizontal=18, vertical=12),
         content=ft.Row(
-            spacing=14,
+            spacing=12,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
-                ft.Text("Filter by:", size=15, color=MUTED),
-                dropdown(250, selected_template_type["value"], ["All template types", *ordered_template_types], on_template_type_change),
+                ft.Text("Filter:", size=15, color=MUTED),
+                dropdown(230, selected_template_type["value"], ["All template types", *ordered_template_types], on_template_type_change),
                 search_templates,
                 ft.Container(expand=True),
-                ft.Button("Add File Template", icon=ft.Icons.NOTE_ADD_OUTLINED, on_click=lambda _e: add_template_dialog("file"), height=46),
-                ft.Button("Add Link Template", icon=ft.Icons.ADD_LINK, on_click=lambda _e: add_template_dialog("link"), height=46),
-                ft.IconButton(icon=ft.Icons.SYNC, tooltip="Sync templates", icon_color=MUTED, on_click=ctx.sync_now),
+                ft.Button("Add File", icon=ft.Icons.NOTE_ADD_OUTLINED, on_click=lambda _e: add_template_dialog("file"), height=46),
+                ft.Button("Add Link", icon=ft.Icons.ADD_LINK, on_click=lambda _e: add_template_dialog("link"), height=46),
+                ft.IconButton(icon=ft.Icons.SYNC, tooltip="Sync templates from Template folders", icon_color=MUTED, on_click=ctx.sync_now),
             ],
         ),
     )
@@ -245,7 +427,7 @@ def render_templates(ctx: DashboardContext) -> None:
         bgcolor="#F8FBFF",
         border=border_all(1, "#DBEAFE"),
         border_radius=22,
-        padding=18,
+        padding=14,
         content=template_list,
     )
     ctx.main_body.controls = [toolbar, summary, library]
