@@ -541,13 +541,15 @@ def render_health(ctx: DashboardContext) -> None:
         ok = bool(check.get("ok"))
         color = "#16A34A" if ok else "#DC2626"
         bg = "#F0FDF4" if ok else "#FEF2F2"
-        return ft.Container(
+        tile = ft.Container(
             expand=True,
             height=82,
             bgcolor=bg,
             border=border_all(1, "#BBF7D0" if ok else "#FECACA"),
             border_radius=14,
             padding=14,
+            animate=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
+            animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
             content=ft.Row(
                 spacing=10,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -564,6 +566,15 @@ def render_health(ctx: DashboardContext) -> None:
                 ],
             ),
         )
+
+        def _tile_hover(event):
+            hovering = event.data == "true"
+            tile.scale = 1.015 if hovering else 1
+            tile.shadow = ft.BoxShadow(spread_radius=0, blur_radius=16, color="#16000000", offset=ft.Offset(0, 6)) if hovering else None
+            tile.update()
+
+        tile.on_hover = _tile_hover
+        return tile
 
     health_check_card = ft.Container(
         bgcolor=WHITE,
