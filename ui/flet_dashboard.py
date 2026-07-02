@@ -22,7 +22,7 @@ from pathlib import Path
 import flet as ft
 
 from ui.shared import DashboardContext
-from ui.screens import render_board, render_browser, render_calendar, render_templates, render_health, render_settings
+from ui.screens import render_overview, render_board, render_browser, render_calendar, render_templates, render_health, render_settings
 
 from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, TEMPLATE_FILE, app_folder, is_dev_runtime, work_folder
 
@@ -46,6 +46,7 @@ STATUS_PENDING = "pending"
 STATUS_PROGRESS = "progress"
 STATUS_DONE = "done"
 
+SCREEN_OVERVIEW = "overview"
 SCREEN_BOARD = "board"
 SCREEN_BROWSER = "browser"
 
@@ -1445,7 +1446,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
     startup_manifest = getattr(startup_result, "manifest", None) if startup_result else None
     startup_update_available = bool(getattr(startup_result, "update_available", False)) if startup_result else False
     state = {
-        "screen": SCREEN_BOARD,
+        "screen": SCREEN_OVERVIEW,
         "search": "",
         "view": "All work",
         "type": "All types",
@@ -1822,6 +1823,10 @@ def dashboard_main(page: ft.Page, startup_result=None):
             items.sort(key=lambda task: task.get("name", "").casefold())
         elif state["sort"] == "Oldest":
             items.sort(key=lambda task: task.get("date_added", ""))
+        elif state["sort"] == "Priority":
+            items.sort(key=lambda task: task.get("priority", 0) or 0, reverse=True)
+        elif state["sort"] == "Progress":
+            items.sort(key=lambda task: task.get("progress", 0) or 0, reverse=True)
         else:
             items.sort(key=lambda task: task.get("date_added", ""), reverse=True)
         return items
@@ -2052,7 +2057,9 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 t=t,
             )
 
-            if state["screen"] == SCREEN_BROWSER:
+            if state["screen"] == SCREEN_OVERVIEW:
+                render_overview(ctx)
+            elif state["screen"] == SCREEN_BROWSER:
                 render_browser(ctx)
             elif state["screen"] == SCREEN_CALENDAR:
                 render_calendar(ctx)
@@ -2074,6 +2081,10 @@ def dashboard_main(page: ft.Page, startup_result=None):
     def show_board(_e=None):
         reset_filters(render=False)
         state["screen"] = SCREEN_BOARD
+        render_current()
+
+    def show_overview(_e=None):
+        state["screen"] = SCREEN_OVERVIEW
         render_current()
 
     def show_browser(_e=None):
@@ -3821,6 +3832,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             ft.Container(height=14),
             ft.Text("MENU", size=10, weight=ft.FontWeight.W_900, color=MUTED_2),
             ft.Container(height=4),
+            nav_item(ft.Icons.SPACE_DASHBOARD_OUTLINED, "Home", SCREEN_OVERVIEW, show_overview),
             nav_item(ft.Icons.DASHBOARD_ROUNDED, "Board", SCREEN_BOARD, show_board),
             nav_item(ft.Icons.FOLDER_OUTLINED, "Files", SCREEN_BROWSER, show_browser),
             nav_item(ft.Icons.CALENDAR_TODAY_OUTLINED, "Calendar", SCREEN_CALENDAR, show_calendar),
@@ -3881,6 +3893,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
     export_button = ft.IconButton(icon=ft.Icons.IOS_SHARE_OUTLINED, tooltip="Export report", icon_color=MUTED, on_click=export_report)
     about_button = ft.IconButton(icon=ft.Icons.INFO_OUTLINED, tooltip="About SA CHECK", icon_color=MUTED, on_click=show_about)
 
+    palette_button = ft.IconButton(icon=ft.Icons.SEARCH, tooltip="Search or jump (Ctrl+K)", icon_color=MUTED, on_click=lambda _e: open_command_palette())
+
     header = ft.Container(
         height=96,
         bgcolor=WHITE,
@@ -3904,7 +3918,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         ),
                     ],
                 ),
-                ft.Row(spacing=10, controls=[about_button, export_button, sync_button, quick_add]),
+                ft.Row(spacing=10, controls=[palette_button, about_button, export_button, sync_button, quick_add]),
             ],
         ),
     )
@@ -3980,6 +3994,133 @@ th{{background:#eff6ff;color:#1d4ed8}}
             ],
         ),
     )
+
+    def open_command_palette(_e=None):
+        if state.get("cmd_palette_open"):
+            return
+        nav_commands = [
+            ("Board", ft.Icons.DASHBOARD_ROUNDED, show_board),
+            ("Browser", ft.Icons.FOLDER_OUTLINED, show_browser),
+            ("Calendar", ft.Icons.CALENDAR_TODAY_OUTLINED, show_calendar),
+            ("Templates", ft.Icons.ARTICLE_OUTLINED, show_templates),
+            ("Health", ft.Icons.HEALTH_AND_SAFETY_OUTLINED, show_health),
+            ("Settings", ft.Icons.SETTINGS_OUTLINED, show_settings),
+            ("Create new work", ft.Icons.ADD_CIRCLE_OUTLINE, show_create_new),
+            ("Sync now", ft.Icons.SYNC, sync_now),
+        ]
+        results = ft.ListView(spacing=4, height=330)
+
+        def close(_event=None):
+            if not state.get("cmd_palette_open"):
+                return
+            state["cmd_palette_open"] = False
+            page.pop_dialog()
+            page.update()
+
+        def run_cmd(handler):
+            close()
+            try:
+                handler()
+            except Exception:
+                pass
+
+        def open_task(task):
+            close()
+            show_task_detail(page, task, save_and_render, all_tasks)
+
+        def result_row(icon, title, subtitle, on_click, color=None):
+            accent = color or PRIMARY
+            return ft.Container(
+                on_click=lambda _e: on_click(),
+                border_radius=10,
+                padding=pad_sym(horizontal=10, vertical=8),
+                content=ft.Row(
+                    spacing=11,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=30, height=30, border_radius=8, bgcolor=accent + "1A", alignment=CENTER, content=ft.Icon(icon, size=16, color=accent)),
+                        ft.Column(spacing=0, expand=True, controls=[
+                            ft.Text(title, size=13, weight=ft.FontWeight.W_700, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Text(subtitle, size=10, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                        ]),
+                        ft.Icon(ft.Icons.KEYBOARD_RETURN, size=13, color=MUTED_2),
+                    ],
+                ),
+            )
+
+        def render(query):
+            q = (query or "").strip().casefold()
+            rows = []
+            for label, icon, handler in nav_commands:
+                if not q or q in label.casefold():
+                    rows.append(result_row(icon, label, "Command", lambda h=handler: run_cmd(h)))
+            if q:
+                matched = []
+                for task in all_tasks:
+                    haystack = f"{task.get('name', '')} {task.get('type', '')} {task.get('note', '')}".casefold()
+                    if q in haystack:
+                        matched.append(task)
+                    if len(matched) >= 8:
+                        break
+                for task in matched:
+                    task_ic, task_color = task_icon(task.get("type", "Other"))
+                    rows.append(result_row(task_ic, task.get("name", "Untitled task"), f"{task.get('type', 'Other')} work", lambda t=task: open_task(t), color=task_color))
+            if not rows:
+                rows.append(ft.Container(padding=16, alignment=CENTER, content=ft.Text("No matches", size=12, color=MUTED_2)))
+            results.controls = rows
+            try:
+                page.update()
+            except Exception:
+                pass
+
+        query_field = ft.TextField(
+            hint_text="Jump to a screen or search work...",
+            autofocus=True,
+            border_radius=10,
+            border_color=BORDER,
+            focused_border_color=PRIMARY,
+            bgcolor=WHITE,
+            text_size=14,
+            prefix_icon=ft.Icons.SEARCH,
+            on_change=lambda e: render(e.control.value),
+        )
+        render("")
+        state["cmd_palette_open"] = True
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=False,
+                content=ft.Container(
+                    width=560,
+                    content=ft.Column(
+                        spacing=12,
+                        tight=True,
+                        controls=[
+                            query_field,
+                            results,
+                            ft.Text("Ctrl+K open  ·  Esc close", size=10, color=MUTED_2),
+                        ],
+                    ),
+                ),
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+                on_dismiss=lambda _e: state.update({"cmd_palette_open": False}),
+            )
+        )
+        page.update()
+
+    def on_global_key(event):
+        try:
+            key = str(getattr(event, "key", "")).lower()
+            if (getattr(event, "ctrl", False) or getattr(event, "meta", False)) and key == "k":
+                open_command_palette()
+            elif key == "escape" and state.get("cmd_palette_open"):
+                state["cmd_palette_open"] = False
+                page.pop_dialog()
+                page.update()
+        except Exception:
+            pass
+
+    page.on_keyboard_event = on_global_key
 
     page.add(
         ft.Column(
@@ -4763,195 +4904,6 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
         )
     )
     page.update()
-
-
-def task_card(page, task, save_and_render, all_tasks):
-    icon, icon_color = task_icon(task.get("type", "Other"))
-
-    def copy_target(_event):
-        page.clipboard.set(task.get("link", ""))
-        show_message(page, "Copied", "Task target copied to clipboard.")
-
-    def try_open(_event):
-        if not open_target(task):
-            show_message(page, "Cannot open", "The target file or link was not found.")
-
-    def try_folder(_event):
-        if not open_folder(task):
-            show_message(page, "Cannot open folder", "No valid folder was found for this task.")
-
-    def open_detail(_event):
-        show_task_detail(page, task, save_and_render, all_tasks)
-
-    def move_to(status):
-        before = dict(task)
-        create_snapshot("Before card status move")
-        if load_settings().get("move_files_on_status", True):
-            try:
-                rename_task_target(task, task.get("name", "Untitled task"), task.get("link", ""), new_file_type=task.get("type", "Other"), new_status=status)
-            except Exception as exc:
-                show_message(page, "Move failed", str(exc))
-                return
-        else:
-            apply_status_date(task, status)
-        push_undo({"kind": "task_restore", "action": "Move status", "task_id": task.get("id"), "before": before, "after": dict(task)})
-        log_activity("Move status", f"{task.get('name', 'Untitled task')} moved.", {"task_id": task.get("id"), "before": before, "after": dict(task)})
-        save_and_render("Status updated.")
-
-    menu = ft.PopupMenuButton(
-        icon=ft.Icons.MORE_VERT,
-        icon_size=19,
-        icon_color=MUTED_2,
-        items=[
-            ft.PopupMenuItem(content="Folder", icon=ft.Icons.FOLDER_OPEN_OUTLINED, on_click=try_folder),
-            ft.PopupMenuItem(content="Copy path", icon=ft.Icons.CONTENT_COPY, on_click=copy_target),
-            ft.PopupMenuItem(content="Edit date", icon=ft.Icons.EVENT_OUTLINED, on_click=lambda _e: show_task_date_dialog(page, task, save_and_render, all_tasks)),
-            ft.PopupMenuItem(content="Move to Waiting", icon=ft.Icons.RADIO_BUTTON_UNCHECKED, on_click=lambda _e: move_to(STATUS_PENDING)),
-            ft.PopupMenuItem(content="Move to Doing", icon=ft.Icons.PLAY_CIRCLE_OUTLINE, on_click=lambda _e: move_to(STATUS_PROGRESS)),
-            ft.PopupMenuItem(content="Move to Success", icon=ft.Icons.CHECK_CIRCLE_OUTLINE, on_click=lambda _e: move_to(STATUS_DONE)),
-        ],
-    )
-
-    return ft.Container(
-        height=58,
-        bgcolor=WHITE,
-        border=border_all(1, BORDER),
-        border_radius=14,
-        padding=pad_only(left=14, right=2),
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=10, color="#10000000", offset=ft.Offset(0, 4)),
-        content=ft.Row(
-            spacing=10,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Container(width=34, height=34, border_radius=10, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=17, color=icon_color)),
-                ft.Text(task.get("name", "Untitled task"), size=15, color=TEXT, weight=ft.FontWeight.W_600, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
-                row_action_button("Open", ft.Icons.OPEN_IN_NEW, try_open, width=104),
-                row_action_button("Detail", ft.Icons.INFO_OUTLINE, open_detail, width=108),
-                menu,
-            ],
-        ),
-    )
-
-
-def grouped_task_card(page, task, save_and_render, all_tasks):
-    return task_card(page, task, save_and_render, all_tasks)
-
-
-def type_group_card(page, file_type, tasks, save_and_render, all_tasks, total_count=None):
-    icon, icon_color = task_icon(file_type)
-    controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in tasks]
-    return ft.Container(
-        bgcolor=WHITE,
-        border=border_all(1, BORDER),
-        border_radius=13,
-        clip_behavior=ft.ClipBehavior.HARD_EDGE,
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=12, color="#10000000", offset=ft.Offset(0, 4)),
-        content=ft.ExpansionTile(
-            expanded=False,
-            maintain_state=True,
-            tile_padding=pad_only(left=10, right=8),
-            controls_padding=pad_only(left=8, right=8, bottom=8),
-            collapsed_bgcolor=WHITE,
-            bgcolor=WHITE,
-            title=ft.Row(
-                spacing=9,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(width=28, height=28, border_radius=9, bgcolor="#F8FAFC", alignment=CENTER, content=ft.Icon(ft.Icons.KEYBOARD_ARROW_DOWN_ROUNDED, size=16, color=MUTED)),
-                    ft.Container(width=30, height=30, border_radius=9, bgcolor="#EFF6FF", alignment=CENTER, content=ft.Icon(icon, size=16, color=icon_color)),
-                    ft.Text(file_type, size=13, weight=ft.FontWeight.W_800, color=TEXT, expand=True),
-                    ft.Container(padding=pad_sym(horizontal=8, vertical=3), border_radius=999, bgcolor="#F8FAFC", content=ft.Text(str(total_count if total_count is not None else len(tasks)), size=11, weight=ft.FontWeight.W_800, color=MUTED)),
-                ],
-            ),
-            controls=[ft.Column(spacing=10, controls=controls)],
-        ),
-    )
-
-
-def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key="", group_limits=None, on_more=None):
-    global_key = f"{column_key}:__all__"
-    limit = (group_limits or {}).get(global_key, DEFAULT_BATCH_SIZE)
-    visible_tasks, resolved_limit = visible_slice(tasks, limit, DEFAULT_BATCH_SIZE)
-    hidden_count = max(0, len(tasks) - len(visible_tasks))
-    grouped = {}
-    totals = {}
-    for task in tasks:
-        file_type = task.get("type", "Other")
-        totals[file_type] = totals.get(file_type, 0) + 1
-    for task in visible_tasks:
-        grouped.setdefault(task.get("type", "Other"), []).append(task)
-    controls = []
-    ordered_types = [file_type for file_type in runtime_file_types() if file_type in grouped]
-    ordered_types.extend(sorted(file_type for file_type in grouped if file_type not in ordered_types))
-    for file_type in ordered_types:
-        controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, total_count=totals.get(file_type, len(grouped[file_type]))))
-    if hidden_count:
-        def load_more(_event):
-            if group_limits is not None:
-                group_limits[global_key] = next_visible_limit(resolved_limit, len(tasks), DEFAULT_BATCH_SIZE)
-            if on_more:
-                on_more()
-
-        controls.append(
-            ft.Container(
-                height=46,
-                border_radius=10,
-                bgcolor="#F8FAFC",
-                alignment=CENTER,
-                content=ft.Button(
-                    f"Show {min(DEFAULT_BATCH_SIZE, hidden_count)} more ({hidden_count} left)",
-                    icon=ft.Icons.EXPAND_MORE,
-                    on_click=load_more,
-                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
-                ),
-            )
-        )
-    return controls
-
-
-def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, grouped=True, group_limits=None, on_more=None):
-    if tasks:
-        controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
-        body = ft.ListView(spacing=12, expand=True, controls=controls)
-    else:
-        body = ft.Container(expand=True, alignment=CENTER, content=ft.Text("No tasks yet", size=14, weight=ft.FontWeight.W_500, color=MUTED_2))
-    return ft.Container(
-        expand=True,
-        bgcolor=tint,
-        border=border_all(1, BORDER),
-        border_radius=18,
-        padding=10,
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=16, color="#0C000000", offset=ft.Offset(0, 5)),
-        content=ft.Column(
-            spacing=12,
-            controls=[
-                ft.Container(
-                    height=44,
-                    padding=pad_sym(horizontal=12, vertical=0),
-                    border_radius=12,
-                    bgcolor=accent,
-                    shadow=ft.BoxShadow(spread_radius=0, blur_radius=12, color="#18000000", offset=ft.Offset(0, 4)),
-                    content=ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            ft.Row(
-                                spacing=10,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                controls=[
-                                    ft.Container(width=6, height=26, border_radius=999, bgcolor="#FFFFFF99"),
-                                    ft.Text(title, size=16, weight=ft.FontWeight.W_800, color=WHITE),
-                                    ft.Container(padding=pad_sym(horizontal=8, vertical=3), border_radius=999, bgcolor="#FFFFFFE8", content=ft.Text(str(len(tasks)), size=11, weight=ft.FontWeight.W_900, color=accent)),
-                                ],
-                            ),
-                            ft.Icon(ft.Icons.MORE_VERT, size=20, color="#FFFFFFCC"),
-                        ],
-                    ),
-                ),
-                ft.Container(expand=True, content=body),
-            ],
-        ),
-    )
 
 
 def main(page: ft.Page):

@@ -235,7 +235,10 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
         status_field = dropdown(520, current_status_label, status_options)
         target_field = ft.TextField(label="Target path / URL", value=target, border_radius=12, border_color=BORDER)
         date_field = ft.TextField(label="Calendar date", value=task_calendar_date(task), hint_text="YYYY-MM-DD", border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.EVENT_OUTLINED)
-        note_field = ft.TextField(label="Note / description", value=task.get("note", ""), multiline=True, min_lines=10, max_lines=10, border_radius=12, border_color=BORDER)
+        note_field = ft.TextField(label="Note / description", value=task.get("note", ""), multiline=True, min_lines=6, max_lines=6, border_radius=12, border_color=BORDER)
+        progress_field = ft.TextField(label="Progress %", value=str(task.get("progress", 0)), width=150, border_radius=12, border_color=BORDER, keyboard_type=ft.KeyboardType.NUMBER)
+        priority_field = ft.TextField(label="Priority (0-10)", value=str(task.get("priority", 0)), width=150, border_radius=12, border_color=BORDER, keyboard_type=ft.KeyboardType.NUMBER)
+        tags_field = ft.TextField(label="Tags (comma separated)", value=", ".join([str(tag) for tag in (task.get("tags") or [])]), border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.LABEL_OUTLINE)
 
         def save_edit(_save_event):
             new_target = target_field.value.strip()
@@ -262,6 +265,15 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             task["type"] = new_type
             task["detected_type"] = task.get("detected_type") or task["type"]
             task["note"] = note_field.value.strip()
+            try:
+                task["progress"] = max(0, min(100, int(progress_field.value or 0)))
+            except (TypeError, ValueError):
+                task["progress"] = int(task.get("progress") or 0)
+            try:
+                task["priority"] = max(0, int(priority_field.value or 0))
+            except (TypeError, ValueError):
+                task["priority"] = int(task.get("priority") or 0)
+            task["tags"] = [tag.strip() for tag in (tags_field.value or "").split(",") if tag.strip()]
             set_task_calendar_date(task, parsed_date)
             push_undo({"kind": "task_restore", "action": "Edit task", "task_id": task.get("id"), "before": before, "after": dict(task)})
             log_activity("Edit task", f"{task.get('name', 'Untitled task')} edited.", {"task_id": task.get("id"), "before": before, "after": dict(task)})
@@ -314,9 +326,12 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
                             padding=22,
                             content=ft.Column(
                                 spacing=16,
+                                scroll=ft.ScrollMode.AUTO,
                                 controls=[
                                     ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.EDIT_NOTE_OUTLINED, color=MUTED), ft.Text("Detailed Notes", size=22, weight=ft.FontWeight.W_800, color=TEXT)]),
                                     note_field,
+                                    ft.Row(spacing=12, controls=[progress_field, priority_field]),
+                                    tags_field,
                                 ],
                             ),
                         ),
@@ -689,6 +704,8 @@ def task_card(page, task, save_and_render, all_tasks):
         icon_size=19,
         icon_color=MUTED_2,
         items=[
+            ft.PopupMenuItem(content="Open", icon=ft.Icons.OPEN_IN_NEW, on_click=try_open),
+            ft.PopupMenuItem(content="Details", icon=ft.Icons.INFO_OUTLINE, on_click=open_detail),
             ft.PopupMenuItem(content="Folder", icon=ft.Icons.FOLDER_OPEN_OUTLINED, on_click=try_folder),
             ft.PopupMenuItem(content="Copy path", icon=ft.Icons.CONTENT_COPY, on_click=copy_target),
             ft.PopupMenuItem(content="Edit date", icon=ft.Icons.EVENT_OUTLINED, on_click=lambda _e: show_task_date_dialog(page, task, save_and_render, all_tasks)),
@@ -698,24 +715,69 @@ def task_card(page, task, save_and_render, all_tasks):
         ],
     )
 
-    return ft.Container(
+    status_key = task.get("status", STATUS_PENDING)
+    prog_color = {STATUS_PENDING: "#2563EB", STATUS_PROGRESS: "#D97706", STATUS_DONE: "#16A34A"}.get(status_key, "#2563EB")
+    try:
+        progress = max(0, min(100, int(task.get("progress", 0))))
+    except (TypeError, ValueError):
+        progress = 0
+    try:
+        priority = int(task.get("priority", 0))
+    except (TypeError, ValueError):
+        priority = 0
+
+    row_controls = [
+        ft.Container(width=26, height=26, border_radius=8, bgcolor=icon_color, alignment=CENTER, content=ft.Icon(icon, size=15, color=WHITE)),
+    ]
+    if priority > 0:
+        priority_color = "#DC2626" if priority >= 7 else ("#D97706" if priority >= 4 else "#2563EB")
+        row_controls.append(ft.Container(width=7, height=7, border_radius=99, bgcolor=priority_color, tooltip=f"Priority {priority}"))
+    row_controls.extend([
+        ft.Text(task.get("name", "Untitled task"), size=13, color=TEXT, weight=ft.FontWeight.W_500, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
+        menu,
+    ])
+
+    card = ft.Container(
         height=44,
         bgcolor=WHITE,
         border=border_all(1, BORDER),
         border_radius=10,
-        padding=pad_only(left=10, right=2),
-        content=ft.Row(
-            spacing=8,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        clip_behavior=ft.ClipBehavior.HARD_EDGE,
+        ink=True,
+        on_click=open_detail,
+        tooltip="Open details",
+        animate=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
+        animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
+        content=ft.Stack(
             controls=[
-                ft.Container(width=26, height=26, border_radius=8, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=15, color=icon_color)),
-                ft.Text(task.get("name", "Untitled task"), size=13, color=TEXT, weight=ft.FontWeight.W_500, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
-                row_action_button("Open", ft.Icons.OPEN_IN_NEW, try_open, width=88),
-                row_action_button("Detail", ft.Icons.INFO_OUTLINE, open_detail, width=92),
-                menu,
+                ft.Container(
+                    expand=True,
+                    padding=pad_only(left=10, right=2, bottom=3),
+                    content=ft.Row(
+                        spacing=8,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=row_controls,
+                    ),
+                ),
+                ft.Container(
+                    bottom=0,
+                    left=0,
+                    right=0,
+                    content=ft.ProgressBar(value=progress / 100, height=3, color=prog_color, bgcolor="#EEF2F6"),
+                ),
             ],
         ),
     )
+
+    def on_card_hover(event):
+        hovering = event.data == "true"
+        card.scale = 1.012 if hovering else 1
+        card.border = border_all(1, "#CBD5E1" if hovering else BORDER)
+        card.shadow = ft.BoxShadow(spread_radius=0, blur_radius=14, color="#1A000000", offset=ft.Offset(0, 6)) if hovering else None
+        card.update()
+
+    card.on_hover = on_card_hover
+    return card
 
 
 def grouped_task_card(page, task, save_and_render, all_tasks):

@@ -50,20 +50,24 @@ def render_board(ctx: DashboardContext) -> None:
         ctx.state.update({"sort": e.control.value, "group_limits": {}})
         ctx.render_current()
 
+    ctx.search_field.expand = False
+    ctx.search_field.width = 340
+
     filters = ft.Container(
-        height=50,
         bgcolor=WHITE,
         border=border_all(1, BORDER),
         border_radius=12,
-        padding=pad_sym(horizontal=12, vertical=6),
+        padding=pad_sym(horizontal=12, vertical=8),
         content=ft.Row(
             spacing=10,
+            run_spacing=8,
+            wrap=True,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 ctx.search_field,
-                dropdown(170, ctx.state["view"], ["All work", "Waiting", "Doing", "Completed"], on_view_change),
-                dropdown(170, ctx.state["type"], ["All types", *ctx.file_types()], on_type_change),
-                dropdown(160, ctx.state["sort"], ["Newest", "Oldest", "Name"], on_sort_change),
+                dropdown(150, ctx.state["view"], ["All work", "Waiting", "Doing", "Completed"], on_view_change),
+                dropdown(150, ctx.state["type"], ["All types", *ctx.file_types()], on_type_change),
+                dropdown(150, ctx.state["sort"], ["Newest", "Oldest", "Name", "Priority", "Progress"], on_sort_change),
                 ft.Container(padding=pad_sym(horizontal=11, vertical=8), border_radius=999, bgcolor="#F8FAFC", content=ft.Text(f"{len(visible)} shown", size=12, weight=ft.FontWeight.W_800, color=MUTED)),
                 ft.Button("Reset", icon=ft.Icons.RESTART_ALT, on_click=lambda _e: ctx.reset_filters(), style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))),
             ],

@@ -280,7 +280,7 @@ def render_templates(ctx: DashboardContext) -> None:
                 spacing=12,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.Container(width=42, height=42, border_radius=12, bgcolor="#F1F5F9", alignment=CENTER, content=ft.Icon(icon, size=20, color=icon_color)),
+                    ft.Container(width=42, height=42, border_radius=12, bgcolor=icon_color, alignment=CENTER, content=ft.Icon(icon, size=20, color=WHITE)),
                     ft.Column(
                         spacing=3,
                         expand=True,
