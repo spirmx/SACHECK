@@ -748,23 +748,19 @@ def task_card(page, task, save_and_render, all_tasks):
         tooltip="Open details",
         animate=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
         animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
-        content=ft.Stack(
+        content=ft.Column(
+            spacing=0,
             controls=[
                 ft.Container(
                     expand=True,
-                    padding=pad_only(left=10, right=2, bottom=3),
+                    padding=pad_only(left=10, right=2),
                     content=ft.Row(
                         spacing=8,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=row_controls,
                     ),
                 ),
-                ft.Container(
-                    bottom=0,
-                    left=0,
-                    right=0,
-                    content=ft.ProgressBar(value=progress / 100, height=3, color=prog_color, bgcolor="#EEF2F6"),
-                ),
+                ft.ProgressBar(value=progress / 100, height=3, color=prog_color, bgcolor="#EEF2F6"),
             ],
         ),
     )
@@ -859,11 +855,32 @@ def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key=""
     return controls
 
 def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, grouped=True, group_limits=None, on_more=None, file_types_fn=None, expanded_keys=None):
+    header = ft.Container(
+        height=36,
+        padding=pad_sym(horizontal=10, vertical=0),
+        border_radius=10,
+        bgcolor=accent,
+        content=ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Row(
+                    spacing=8,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=4, height=20, border_radius=999, bgcolor="#FFFFFF99"),
+                        ft.Text(title, size=14, weight=ft.FontWeight.W_700, color=WHITE),
+                        ft.Container(padding=pad_sym(horizontal=7, vertical=2), border_radius=999, bgcolor="#FFFFFFE8", content=ft.Text(str(len(tasks)), size=11, weight=ft.FontWeight.W_800, color=accent)),
+                    ],
+                ),
+                ft.Icon(ft.Icons.MORE_VERT, size=18, color="#FFFFFFCC"),
+            ],
+        ),
+    )
     if tasks:
-        controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn, expanded_keys) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
-        body = ft.ListView(spacing=7, expand=True, controls=controls)
+        card_controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn, expanded_keys) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
     else:
-        body = ft.Container(expand=True, alignment=CENTER, content=ft.Text("No tasks yet", size=13, weight=ft.FontWeight.W_500, color=MUTED_2))
+        card_controls = [ft.Container(padding=24, alignment=CENTER, content=ft.Text("No tasks yet", size=13, weight=ft.FontWeight.W_500, color=MUTED_2))]
     return ft.Container(
         expand=True,
         bgcolor=tint,
@@ -871,31 +888,9 @@ def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, 
         border_radius=14,
         padding=8,
         content=ft.Column(
-            spacing=8,
-            controls=[
-                ft.Container(
-                    height=36,
-                    padding=pad_sym(horizontal=10, vertical=0),
-                    border_radius=10,
-                    bgcolor=accent,
-                    content=ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            ft.Row(
-                                spacing=8,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                controls=[
-                                    ft.Container(width=4, height=20, border_radius=999, bgcolor="#FFFFFF99"),
-                                    ft.Text(title, size=14, weight=ft.FontWeight.W_700, color=WHITE),
-                                    ft.Container(padding=pad_sym(horizontal=7, vertical=2), border_radius=999, bgcolor="#FFFFFFE8", content=ft.Text(str(len(tasks)), size=11, weight=ft.FontWeight.W_800, color=accent)),
-                                ],
-                            ),
-                            ft.Icon(ft.Icons.MORE_VERT, size=18, color="#FFFFFFCC"),
-                        ],
-                    ),
-                ),
-                ft.Container(expand=True, content=body),
-            ],
+            spacing=7,
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
+            controls=[header, *card_controls],
         ),
     )

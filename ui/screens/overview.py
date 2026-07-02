@@ -181,30 +181,8 @@ def render_overview(ctx: DashboardContext) -> None:
         ],
     )
 
-    body = ft.Column(
-        spacing=14,
-        controls=[hero, metrics, mini],
-        opacity=0,
-        offset=ft.Offset(0, 0.03),
-        animate_opacity=ft.Animation(240, _EASE),
-        animate_offset=ft.Animation(240, _EASE),
-    )
+    body = ft.Column(spacing=14, controls=[hero, metrics, mini])
 
     ctx.main_body.spacing = 14
     ctx.main_body.controls = [body]
     ctx.page.update()
-
-    def _enter():
-        try:
-            time.sleep(0.03)
-            body.opacity = 1
-            body.offset = ft.Offset(0, 0)
-            body.update()
-        except Exception:
-            pass
-
-    try:
-        ctx.page.run_thread(_enter)
-    except Exception:
-        body.opacity = 1
-        body.offset = ft.Offset(0, 0)

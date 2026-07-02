@@ -79,6 +79,7 @@ def render_board(ctx: DashboardContext) -> None:
     board = ft.Row(
         spacing=10,
         expand=True,
+        vertical_alignment=ft.CrossAxisAlignment.STRETCH,
         controls=[
             kanban_column(
                 ctx.page, "Waiting List", waiting, *ctx.status_theme(STATUS_PENDING),

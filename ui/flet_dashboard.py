@@ -4128,7 +4128,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             expand=True,
             controls=[
                 title_bar,
-                ft.Row(spacing=0, expand=True, controls=[sidebar, content]),
+                ft.Row(spacing=0, expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH, controls=[sidebar, content]),
             ],
         )
     )
