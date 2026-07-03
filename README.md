@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.0.0`
+Version: `2.0.1`
 
-This release introduces the V2 Command Center, richer work metadata, improved Board performance, and automated regression coverage.
+This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.0.0` retains the complete Flet workflow while improving navigation, visual feedback, Board reliability, and maintainability.
+`2.0.1` retains the complete V2 Flet workflow and makes Board filters safe at desktop and narrow window sizes.
 
 Latest changes:
 

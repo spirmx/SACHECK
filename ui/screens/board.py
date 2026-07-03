@@ -54,14 +54,15 @@ def render_board(ctx: DashboardContext) -> None:
     ctx.search_field.width = 340
 
     filters = ft.Container(
+        height=58,
         bgcolor=WHITE,
         border=border_all(1, BORDER),
         border_radius=12,
         padding=pad_sym(horizontal=12, vertical=8),
         content=ft.Row(
             spacing=10,
-            run_spacing=8,
-            wrap=True,
+            wrap=False,
+            scroll=ft.ScrollMode.AUTO,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 ctx.search_field,

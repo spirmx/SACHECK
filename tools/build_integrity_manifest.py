@@ -36,7 +36,7 @@ def main() -> None:
     entries = [entry(path, "source") for path in files if path.is_file()]
     entries.extend(entry(ROOT / name, "all") for name in EXTERNAL_ASSETS if (ROOT / name).is_file())
     payload = {
-        "version": "2.0.0",
+        "version": "2.0.1",
         "algorithm": "sha256",
         "system_files": entries,
     }
@@ -48,25 +48,24 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             existing_update = {}
     installer = ROOT / "release" / "SA_CHECK_Installer.exe"
-    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "2.0.0" else ""
+    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "2.0.1" else ""
     installer_url = os.environ.get("SACHECK_INSTALLER_URL", "").strip() or existing_url
     if installer.is_file() and not installer_url:
         installer_url = f"{RAW_BASE_URL}/release/SA_CHECK_Installer.exe"
     installer_hash = sha256(installer) if installer.is_file() else ""
     update_payload = {
-        "version": "2.0.0",
+        "version": "2.0.1",
         "release_date": "2026-07-03",
         "required": False,
         "release_status": "ready" if installer_hash else "installer_build_required",
         "installer_url": installer_url if installer_hash else "",
         "installer_sha256": installer_hash,
         "installer_size": installer.stat().st_size if installer_hash else 0,
-        "repair_version": "2.0.0",
+        "repair_version": "2.0.1",
         "notes": [
-            "Added the Command Center overview, command palette, and cleaner interactive cards.",
-            "Expanded the work model with progress, priority, tags, and members.",
-            "Improved Board performance, group persistence, and layout reliability.",
-            "Added automated core tests and headless smoke tests for every screen.",
+            "Fixed the Board gray error panel caused by a wrapped filter row in Flutter layout.",
+            "Made Board filters horizontally scrollable at narrow window sizes.",
+            "Added a regression smoke check for the safe Board filter layout.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

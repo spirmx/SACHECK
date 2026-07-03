@@ -95,6 +95,14 @@ def check_migration():
     assert bad["progress"] == 100 and bad["priority"] == 0 and bad["tags"] == [], bad
 
 
+def check_board_layout(ctx):
+    """Guard against Flutter's gray error box from a wrapped filter Row."""
+    filters = ctx.main_body.controls[1]
+    assert filters.height == 58, filters.height
+    assert filters.content.wrap is False, filters.content.wrap
+    assert filters.content.scroll == ft.ScrollMode.AUTO, filters.content.scroll
+
+
 def main():
     failures = []
     try:
@@ -110,6 +118,8 @@ def main():
         ctx.state["screen"] = name
         try:
             fn(ctx)
+            if name == "board":
+                check_board_layout(ctx)
             print(f"[ok]   screen: {name}")
         except Exception:
             print(f"[FAIL] screen: {name}")

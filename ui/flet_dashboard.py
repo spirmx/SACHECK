@@ -93,16 +93,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.0.1"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.0",
+        "version": "2.0.1",
         "date": "2026-07-03",
         "latest": True,
+        "items": [
+            "Fixed the Board gray error panel caused by a wrapped filter row in Flutter layout.",
+            "Made Board filters horizontally scrollable at narrow window sizes.",
+            "Added a regression smoke check for the safe Board filter layout.",
+        ],
+    },
+    {
+        "version": "2.0.0",
+        "date": "2026-07-03",
+        "latest": False,
         "items": [
             "Added the Command Center overview, command palette, and cleaner interactive cards.",
             "Expanded the work model with progress, priority, tags, and members.",
