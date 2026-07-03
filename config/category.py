@@ -32,7 +32,7 @@ CATEGORIES = {
     "Video": {"color": "#ef4444", "icon": "VID", "label": "Video", "icon_file": ""},
     "Audio": {"color": "#14b8a6", "icon": "AUD", "label": "Audio", "icon_file": ""},
     "Archive": {"color": "#a16207", "icon": "ZIP", "label": "Archive", "icon_file": ""},
-    "Code": {"color": "#334155", "icon": "DEV", "label": "Code", "icon_file": ""},
+    "Code": {"color": "#334155", "icon": "COD", "label": "Code", "icon_file": ""},
     "Data": {"color": "#0f766e", "icon": "DB", "label": "Data", "icon_file": ""},
     "Link": {"color": "#0ea5e9", "icon": "L", "label": "Link", "icon_file": 
              "link.png"},

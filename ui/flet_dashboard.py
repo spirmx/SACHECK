@@ -24,7 +24,7 @@ import flet as ft
 from ui.shared import DashboardContext
 from ui.screens import render_overview, render_board, render_browser, render_calendar, render_templates, render_health, render_settings
 
-from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, TEMPLATE_FILE, app_folder, is_dev_runtime, work_folder
+from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, TEMPLATE_FILE, app_folder, work_folder
 
 
 BG = "#F8FAFC"
@@ -92,17 +92,28 @@ def bundled_asset_path(*parts):
     return str(base.joinpath("assets", *parts))
 
 
-APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
-APP_VERSION = "1.0.9-02 Abillity"
+APP_NAME = "SA CHECK"
+APP_VERSION = "2.0.0"
 MANUAL_VERSION = "2026-06-18-user-guide"
-DEFAULT_UPDATE_CHANNEL_URL = "" if is_dev_runtime() else "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
+DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
+        "version": "2.0.0",
+        "date": "2026-07-03",
+        "latest": True,
+        "items": [
+            "Added the Command Center overview, command palette, and cleaner interactive cards.",
+            "Expanded the work model with progress, priority, tags, and members.",
+            "Improved Board performance, group persistence, and layout reliability.",
+            "Added automated core tests and headless smoke tests for every screen.",
+        ],
+    },
+    {
         "version": "1.0.9-02 Abillity",
         "date": "2026-06-30",
-        "latest": True,
+        "latest": False,
         "items": [
             "Removed the black native startup frame by keeping the window hidden until the loader is ready.",
             "Replaced the Flet executable and title-bar icon with the SA CHECK logo.",

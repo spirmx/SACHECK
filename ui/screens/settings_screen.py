@@ -13,7 +13,6 @@ from core.flet_data import (
     DATA_FILE, APP_NAME, FILE_TYPES, type_color_choices, load_tasks,
     ensure_status_folders, save_settings
 )
-from core.app_paths import is_dev_runtime
 from ui.dialogs import show_message
 from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, type_style, app_logo_control, profile_media_control, app_theme_preview, app_theme_mockup, color_swatch, nav_button
 from ui.shared import DashboardContext
@@ -55,12 +54,6 @@ def render_settings(ctx: DashboardContext) -> None:
     template_rank_switch = ft.Switch(value=ctx.settings.get("template_ranking_enabled", True), label="Smart templates (rank by usage & recency)")
     update_checks_switch = ft.Switch(value=ctx.settings.get("update_checks_enabled", True), label="Check for app updates on startup")
     offline_mode_switch = ft.Switch(value=ctx.settings.get("offline_mode", False), label="Offline Mode (disables update checks and telemetry, hides Online status)")
-    if is_dev_runtime():
-        update_checks_switch.value = False
-        update_checks_switch.disabled = True
-        offline_mode_switch.value = True
-        offline_mode_switch.disabled = True
-
     interval_select = dropdown(100, str(ctx.settings.get("sync_interval_seconds", 5)), ["1", "3", "5", "10", "30", "60"])
     snapshot_select = dropdown(100, str(ctx.settings.get("snapshot_retention", 25)), ["5", "10", "25", "50", "100"])
     update_interval_select = dropdown(100, str(ctx.settings.get("update_check_interval_minutes", DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)), ["15", "30", "60", "120", "240", "1440"])
@@ -150,7 +143,7 @@ def render_settings(ctx: DashboardContext) -> None:
             shutil.copy2(source, target)
             ctx.settings["profile_media_path"] = str(target)
             save_settings(ctx.settings)
-            show_message(ctx.page, "Profile media", "DEV profile media updated.")
+            show_message(ctx.page, "Profile media", "Profile media updated.")
             ctx.render_current()
         except Exception as e:
             show_message(ctx.page, "Profile media failed", str(e))
@@ -198,8 +191,8 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.settings["smart_health_enabled"] = bool(smart_health_switch.value)
         ctx.settings["workload_hints_enabled"] = bool(workload_switch.value)
         ctx.settings["template_ranking_enabled"] = bool(template_rank_switch.value)
-        ctx.settings["update_checks_enabled"] = False if is_dev_runtime() else bool(update_checks_switch.value)
-        ctx.settings["offline_mode"] = True if is_dev_runtime() else bool(offline_mode_switch.value)
+        ctx.settings["update_checks_enabled"] = bool(update_checks_switch.value)
+        ctx.settings["offline_mode"] = bool(offline_mode_switch.value)
         ctx.settings["update_check_interval_minutes"] = int(update_interval_select.value or DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)
         ctx.settings["sync_interval_seconds"] = int(interval_select.value or 5)
         ctx.settings["snapshot_retention"] = int(snapshot_select.value or 25)
@@ -529,7 +522,7 @@ def render_settings(ctx: DashboardContext) -> None:
                         spacing=10,
                         controls=[
                             ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, color=PRIMARY), ft.Text("System Updates", size=14, weight=ft.FontWeight.W_800, color=TEXT)]),
-                            ft.Text(("DEV mode: update checks are disabled and never touch the production installer." if is_dev_runtime() else f"Current version: {APP_VERSION}. Update checks only use internet for app updates; normal work stays offline-first."), size=12, color=MUTED),
+                            ft.Text(f"Current version: {APP_VERSION}. Update checks only use internet for app updates; normal work stays offline-first.", size=12, color=MUTED),
                             update_checks_switch,
                             offline_mode_switch,
                             ft.Row(
@@ -548,7 +541,7 @@ def render_settings(ctx: DashboardContext) -> None:
                                 ],
                             ),
                             ft.Row(spacing=10, controls=[
-                                ft.Button("Check now", icon=ft.Icons.REFRESH, disabled=is_dev_runtime(), on_click=lambda _e: ctx.check_for_updates(manual=True)),
+                                ft.Button("Check now", icon=ft.Icons.REFRESH, on_click=lambda _e: ctx.check_for_updates(manual=True)),
                                 ft.Button("Version notes", icon=ft.Icons.FACT_CHECK_OUTLINED, on_click=show_version_notes),
                             ]),
                         ],

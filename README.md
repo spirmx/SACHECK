@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `1.0.9-02 Abillity`
+Version: `2.0.0`
 
-This release removes the black native startup frame, applies the SA CHECK icon at executable level, and turns the loader into a full-window loading surface.
+This release introduces the V2 Command Center, richer work metadata, improved Board performance, and automated regression coverage.
 
-`1.0.9-02 Abillity` keeps the native window hidden until the centered loader is ready, then hands off to the dashboard without showing an empty black frame.
+`2.0.0` retains the complete Flet workflow while improving navigation, visual feedback, Board reliability, and maintainability.
 
 Latest changes:
 

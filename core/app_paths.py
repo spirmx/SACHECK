@@ -5,23 +5,13 @@ import os
 from pathlib import Path
 
 
-DEV_PROFILE_DIRNAME = ".dev_profile"
-DEV_WORK_DIRNAME = ".dev_work"
-
-
 def app_folder() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[1]
 
 
-def is_dev_runtime() -> bool:
-    return os.environ.get("SACHECK_DEV_SANDBOX", "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def user_data_folder() -> Path:
-    if is_dev_runtime():
-        return app_folder() / DEV_PROFILE_DIRNAME
     root = os.environ.get("APPDATA")
     if root:
         return Path(root) / "SA CHECK"
@@ -77,8 +67,6 @@ def migrate_folder_contents_if_needed(old_relative: str, new_relative: str):
 
 
 def work_root() -> Path:
-    if is_dev_runtime():
-        return app_folder() / DEV_WORK_DIRNAME
     return Path.home() / "Documents" / "SA CHECK Work"
 
 

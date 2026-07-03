@@ -19,14 +19,13 @@ from core.app_paths import (
     SNAPSHOT_DIR,
     TEMPLATE_FILE,
     UNDO_STACK_FILE,
-    is_dev_runtime,
     work_folder,
 )
 from core.create_tools import create_project_folder, tool_default_name, write_blank_file
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
 
-APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
-APP_VERSION = "1.0.9-02 Abillity"
+APP_NAME = "SA CHECK"
+APP_VERSION = "2.0.0"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 

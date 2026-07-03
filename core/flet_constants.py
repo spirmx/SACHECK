@@ -1,6 +1,3 @@
-from core.app_paths import is_dev_runtime
-
-
 BG = "#F8FAFC"
 WHITE = "#FFFFFF"
 TEXT = "#0F172A"
@@ -25,8 +22,8 @@ GAP_BASE = 10
 ROW_HEIGHT = 44
 CARD_RADIUS = 12
 
-APP_NAME = "SA CHECK DEV" if is_dev_runtime() else "SA CHECK"
-APP_VERSION = "1.0.9-02 Abillity"
+APP_NAME = "SA CHECK"
+APP_VERSION = "2.0.0"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -58,4 +55,3 @@ try:
     FILE_TYPES = [name for name in CATEGORIES.keys()]
 except Exception:
     FILE_TYPES = ["Word", "Excel", "PDF", "Figma", "Miro", "Canva", "Slide", "Google Sheet", "Diagram", "Web", "Project", "Library", "Link", "Other"]
-from core.app_paths import is_dev_runtime

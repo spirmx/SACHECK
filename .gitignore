@@ -3,14 +3,6 @@
 *.pyo
 .venv/
 venv/
-.dev_profile/
-.dev_work/
-DEV_ENGINE*.bat
-DEV_RUN_README.txt
-RUN_DEV.bat
-SETUP_DEV.bat
-SA CHECK DEV*.lnk
-tools/dev_engine*.py
 build/
 dist/
 *.spec

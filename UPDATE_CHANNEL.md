@@ -1,6 +1,6 @@
 # SA CHECK Update Channel
 
-Current source version: `1.0.9-02 Abillity`
+Current source version: `2.0.0`
 
 SA CHECK is offline-first. Normal work, Work folders, settings, and user cache must remain local and usable without internet. Online access is used only for checking and downloading app updates.
 
@@ -38,7 +38,7 @@ Use `sacheck_update_manifest.example.json` as the template:
   "release_date": "2026-06-20",
   "required": false,
   "installer_url": "DIRECT_DOWNLOAD_URL_TO_SA_CHECK_INSTALLER_EXE",
-  "repair_version": "1.0.9",
+  "repair_version": "2.0.0",
   "notes": [
     "Short note for users.",
     "Another change."

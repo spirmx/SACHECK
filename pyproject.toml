@@ -1,6 +1,6 @@
 [project]
 name = "sacheck"
-version = "1.0.9.post2"
+version = "2.0.0"
 description = "SA CHECK desktop work board"
 dependencies = [
   "flet==0.85.3",
@@ -19,8 +19,6 @@ hide_window_on_start = true
 exclude = [
   ".venv",
   ".git",
-  ".dev_profile",
-  ".dev_work",
   "app",
   "build",
   "dist",
@@ -29,13 +27,6 @@ exclude = [
   "design",
   "installer",
   "tools",
-  "DEV_ENGINE.bat",
-  "DEV_ENGINE_UI.bat",
-  "DEV_RUN_README.txt",
-  "RUN_DEV.bat",
-  "SETUP_DEV.bat",
-  "SA CHECK DEV.lnk",
-  "SA CHECK DEV ENGINE UI.lnk",
   "__pycache__",
 ]
 

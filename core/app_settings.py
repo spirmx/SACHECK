@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from core.app_paths import APP_SETTINGS_FILE, SETTINGS_LOG_FILE, app_folder, is_dev_runtime
+from core.app_paths import APP_SETTINGS_FILE, SETTINGS_LOG_FILE, app_folder
 
 try:
     import winreg
@@ -12,7 +12,7 @@ except ImportError:
 
 
 STARTUP_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-STARTUP_VALUE_NAME = "SACHECK_DEV" if is_dev_runtime() else "SACHECK"
+STARTUP_VALUE_NAME = "SACHECK"
 THEME_NAMES = {"Light", "Dark"}
 
 

@@ -13,7 +13,7 @@ from typing import Callable
 
 
 StatusCallback = Callable[[str, str, float], None]
-PROTECTED_TOP_LEVEL = {".dev_profile", ".dev_work", "cache", "data", "work"}
+PROTECTED_TOP_LEVEL = {"cache", "data", "work"}
 ALLOWED_TOP_LEVEL = {"app.py", "flet_app.py", "assets", "config", "core", "stores", "ui"}
 
 
@@ -47,7 +47,7 @@ def _read_json_url(url: str, timeout: float) -> dict:
     separator = "&" if "?" in url else "?"
     request = urllib.request.Request(
         f"{url}{separator}startup={int(time.time())}",
-        headers={"User-Agent": "SA-CHECK-Startup/1.0.9", "Accept": "application/vnd.github+json"},
+        headers={"User-Agent": "SA-CHECK-Startup/2.0.0", "Accept": "application/vnd.github+json"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = response.read(2 * 1024 * 1024)
@@ -127,7 +127,7 @@ def inspect_integrity(app_root: Path, frozen: bool = False) -> tuple[list[dict],
 
 
 def _download_verified(url: str, expected_sha256: str, target: Path, timeout: float) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": "SA-CHECK-Repair/1.0.9"})
+    request = urllib.request.Request(url, headers={"User-Agent": "SA-CHECK-Repair/2.0.0"})
     target.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
     try:
