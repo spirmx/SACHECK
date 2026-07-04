@@ -434,11 +434,9 @@ def render_settings(ctx: DashboardContext) -> None:
                     content=ft.Column(
                         spacing=8,
                         controls=[
-                            ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.INFO_OUTLINED, color=PRIMARY), ft.Text("Credits", size=14, weight=ft.FontWeight.W_800, color=TEXT)]),
+                            ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.INFO_OUTLINED, color=PRIMARY), ft.Text("About this app", size=14, weight=ft.FontWeight.W_800, color=TEXT)]),
                             ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[app_logo_control(48, 14), ft.Column(spacing=3, controls=[ft.Text(APP_NAME, size=17, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Desktop Work Board", size=12, color=MUTED)])]),
-                            ft.Text("Developer / Creator: HOYTURBRO", size=13, weight=ft.FontWeight.W_800, color=TEXT, selectable=True),
-                            ft.Text("Publisher: HOYTURBRO", size=12, color=MUTED, selectable=True),
-                            ft.Text("Alias: Hoyturbro | Product: SA CHECK Desktop Work Board | Copyright (c) 2026 HOYTURBRO", size=12, color=MUTED, selectable=True),
+                            ft.Text(f"Version {APP_VERSION} | Local-first workspace", size=12, color=MUTED, selectable=True),
                             ft.Row(spacing=10, controls=[ft.Button("About SA CHECK", icon=ft.Icons.INFO_OUTLINED, on_click=show_about), ft.Button("User guide", icon=ft.Icons.HELP_OUTLINE, on_click=show_help)]),
                         ],
                     ),

@@ -459,8 +459,8 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             pass
         return f"Added: {task.get('date_added', '-')}"
 
-    def copy_target(_event):
-        page.clipboard.set(target)
+    async def copy_target(_event):
+        await page.clipboard.set(target)
         show_message(page, "Copied", "Path copied.")
 
     def copy_to_waiting(_event):
@@ -669,8 +669,8 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
 def task_card(page, task, save_and_render, all_tasks):
     icon, icon_color = task_icon(task.get("type", "Other"))
 
-    def copy_target(_event):
-        page.clipboard.set(task.get("link", ""))
+    async def copy_target(_event):
+        await page.clipboard.set(task.get("link", ""))
         show_message(page, "Copied", "Task target copied to clipboard.")
 
     def try_open(_event):

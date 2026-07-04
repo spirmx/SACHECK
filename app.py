@@ -3,6 +3,7 @@ import ctypes
 import sys
 
 from ui.flet_dashboard import main
+from core.app_lifecycle import SingleInstanceGuard, activate_existing_window
 
 APP_USER_MODEL_ID = "Hoyturbro.SACHECK"
 APP_NAME = "SA CHECK"
@@ -17,6 +18,14 @@ def configure_windows_app_id():
         pass
 
 
-if __name__ == "__main__":
+def run():
     configure_windows_app_id()
-    ft.run(main, name=APP_NAME, assets_dir="assets")
+    with SingleInstanceGuard() as instance:
+        if instance.already_running:
+            activate_existing_window(APP_NAME)
+            return
+        ft.run(main, name=APP_NAME, assets_dir="assets")
+
+
+if __name__ == "__main__":
+    run()

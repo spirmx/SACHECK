@@ -25,7 +25,7 @@ from core.create_tools import create_project_folder, tool_default_name, write_bl
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.0.2"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -290,14 +290,6 @@ def status_theme(status):
         STATUS_DONE: ("#F0FDF4", "#16A34A"),
     }
     return palette.get(status, ("#F8FAFC", "#2563EB"))
-
-
-def update_channel_url():
-    return ""
-
-
-def check_for_updates(manual=False):
-    return None
 
 
 def migrate_work_folder(new_root):

@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import sys
 import traceback
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -46,21 +47,22 @@ def sample_tasks():
     return data.normalize_tasks(tasks)
 
 
-def make_ctx():
+def make_ctx(root_work=None):
     tasks = sample_tasks()
+    root_work = Path(root_work or "C:/tmp/sacheck-smoke-work")
     ctx = DashboardContext(
         page=MagicMock(),
         state={"screen": "overview", "view": "All work", "type": "All types", "sort": "Newest", "group_limits": {}, "search": "", "expanded_groups": set()},
         settings={},
         all_tasks=tasks,
-        root_work=Path("C:/tmp/sacheck-smoke-work"),
+        root_work=root_work,
         header_title=ft.Text(),
         header_subtitle=ft.Text(),
         progress_badge=ft.Text(),
         main_body=ft.Column(),
         search_field=ft.TextField(),
         file_picker=MagicMock(),
-        current_browser_path={"path": Path("C:/tmp/sacheck-smoke-work")},
+        current_browser_path={"path": root_work},
     )
     ctx.file_types = lambda: ["Word", "Excel", "PDF", "Figma", "Slide", "Other"]
     ctx.filtered_tasks = lambda: tasks
@@ -103,6 +105,74 @@ def check_board_layout(ctx):
     assert filters.content.scroll == ft.ScrollMode.AUTO, filters.content.scroll
 
 
+def control_types(control):
+    found = [type(control).__name__]
+    children = []
+    for attr in ("controls",):
+        value = getattr(control, attr, None)
+        if isinstance(value, list):
+            children.extend(value)
+    for attr in ("content", "title"):
+        value = getattr(control, attr, None)
+        if value is not None:
+            children.append(value)
+    for child in children:
+        found.extend(control_types(child))
+    return found
+
+
+def control_texts(control):
+    found = []
+    value = getattr(control, "value", None)
+    if isinstance(control, ft.Text) and isinstance(value, str):
+        found.append(value)
+    children = []
+    value = getattr(control, "controls", None)
+    if isinstance(value, list):
+        children.extend(value)
+    for attr in ("content", "title"):
+        value = getattr(control, attr, None)
+        if value is not None:
+            children.append(value)
+    for child in children:
+        found.extend(control_texts(child))
+    return found
+
+
+def check_health_layout(ctx):
+    assert ctx.header_title.value == "System Health"
+    assert len(ctx.main_body.controls) == 5
+    text = " | ".join(
+        item
+        for control in ctx.main_body.controls
+        for item in control_texts(control)
+    )
+    for required in (
+        "Know what needs attention.",
+        "Core system checks",
+        "What needs attention",
+        "Repair Center",
+        "Backup & Activity",
+    ):
+        assert required in text, required
+
+
+def check_browser_layout():
+    with tempfile.TemporaryDirectory(prefix="sacheck-browser-smoke-") as temp:
+        root = Path(temp)
+        (root / "Folder A").mkdir()
+        (root / "Folder A" / "child.txt").write_text("child", encoding="utf-8")
+        (root / "sample.docx").write_text("document", encoding="utf-8")
+        ctx = make_ctx(root)
+        ctx.state["screen"] = "browser"
+        render_browser(ctx)
+        assert len(ctx.main_body.controls) == 3
+        names = []
+        for control in ctx.main_body.controls:
+            names.extend(control_types(control))
+        assert "ExpansionTile" not in names, "Files must not eagerly render folder children"
+
+
 def main():
     failures = []
     try:
@@ -114,12 +184,23 @@ def main():
         failures.append("migration")
 
     for name, fn in SCREENS:
+        if name == "browser":
+            try:
+                check_browser_layout()
+                print("[ok]   screen: browser")
+            except Exception:
+                print("[FAIL] screen: browser")
+                traceback.print_exc()
+                failures.append("browser")
+            continue
         ctx = make_ctx()
         ctx.state["screen"] = name
         try:
             fn(ctx)
             if name == "board":
                 check_board_layout(ctx)
+            if name == "health":
+                check_health_layout(ctx)
             print(f"[ok]   screen: {name}")
         except Exception:
             print(f"[FAIL] screen: {name}")

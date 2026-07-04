@@ -3,10 +3,14 @@
 *.pyo
 .venv/
 venv/
+.claude/
 build/
 dist/
 *.spec
 *.log
+*.tmp
+*.bak
+*.old
 .DS_Store
 Thumbs.db
 data/*.json

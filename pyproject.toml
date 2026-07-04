@@ -1,6 +1,6 @@
 [project]
 name = "sacheck"
-version = "2.0.1"
+version = "2.0.2"
 description = "SA CHECK desktop work board"
 dependencies = [
   "flet==0.85.3",
@@ -17,8 +17,10 @@ copyright = "Copyright (c) 2026 HOYTURBRO"
 module = "app"
 hide_window_on_start = true
 exclude = [
+  ".claude",
   ".venv",
   ".git",
+  ".github",
   "app",
   "build",
   "dist",
@@ -27,7 +29,13 @@ exclude = [
   "design",
   "installer",
   "tools",
+  "web-prototype",
   "__pycache__",
+  "**/__pycache__",
+  "*.pyc",
+  "*.pyo",
+  "*.tmp",
+  "*.log",
 ]
 
 [tool.flet.windows]

@@ -24,6 +24,7 @@ from core.flet_constants import (
 )
 from core.flet_data import (
     create_snapshot,
+    file_type_config,
     file_meta,
     infer_type,
     list_work_items_page,
@@ -70,12 +71,30 @@ def breadcrumb_controls(ctx: DashboardContext):
 
 
 def type_style_fn(file_type):
-    from ui.flet_dashboard import type_style # Workaround for now
-    return type_style(file_type)
+    config = file_type_config(str(file_type or "Other")) or {}
+    accent = str(config.get("color") or "#64748B")
+    palettes = {
+        "Word": ("#EFF6FF", "#BFDBFE"),
+        "Excel": ("#F0FDF4", "#BBF7D0"),
+        "Google Sheet": ("#ECFDF5", "#A7F3D0"),
+        "PDF": ("#FEF2F2", "#FECACA"),
+        "Slide": ("#FFF7ED", "#FED7AA"),
+        "Image": ("#FDF2F8", "#FBCFE8"),
+        "Video": ("#FFF1F2", "#FECDD3"),
+        "Code": ("#F1F5F9", "#CBD5E1"),
+        "Project": ("#F5F3FF", "#DDD6FE"),
+    }
+    bg, outline = palettes.get(str(file_type or "Other"), ("#F8FAFC", "#E2E8F0"))
+    return bg, outline, accent
 
 def status_style_values_fn(status, fallback_type="Other"):
-    from ui.flet_dashboard import status_style_values # Workaround
-    return status_style_values(status, fallback_type)
+    if status == STATUS_PENDING:
+        return WAITING_BG, "#BFDBFE", WAITING_TEXT
+    if status == STATUS_PROGRESS:
+        return DOING_BG, "#FED7AA", DOING_TEXT
+    if status == STATUS_DONE:
+        return DONE_BG, "#BBF7D0", DONE_TEXT
+    return type_style_fn(fallback_type)
 
 
 def render_browser(ctx: DashboardContext) -> None:
@@ -175,15 +194,8 @@ def render_browser(ctx: DashboardContext) -> None:
 
         return {"kind": "folder" if path.is_dir() else "file", "task": None, "path": path, "type": path_type, "status": status, "key": key}
 
-    def children_for(path, limit=60):
-        children, _total = list_work_items_page(path, 0, limit)
-        if query:
-            children = [child for child in children if query in child.name.casefold() or query in str(child).casefold()]
-        children.sort(key=item_sort_value, reverse=bool(ctx.state.get("browser_desc")))
-        return children
-
     total_items = len(all_items)
-    ctx.progress_badge.value = "Synced (Realtime)" if ctx.settings.get("realtime_sync_enabled", True) else "Manual sync"
+    ctx.progress_badge.value = f"{len(all_items)} / {total_raw} indexed"
     selected_record = None
     preview_slot = {"control": None}
 
@@ -283,8 +295,8 @@ def render_browser(ctx: DashboardContext) -> None:
             detail_task = task or make_task(path.stem if path.is_file() else path.name, str(path), target_kind="folder" if path.is_dir() else "file", task_type=record["type"], note=file_meta(path) if path.is_file() else "Folder")
             show_task_detail(ctx.page, detail_task, ctx.save_and_render, ctx.all_tasks, runtime_file_types_fn=ctx.file_types)
 
-        def copy_record(_event):
-            ctx.page.clipboard.set(str(path))
+        async def copy_record(_event):
+            await ctx.page.clipboard.set(str(path))
             show_message(ctx.page, "Copied", "Path copied.")
 
         return ft.Container(
@@ -332,52 +344,9 @@ def render_browser(ctx: DashboardContext) -> None:
         )
 
     def folder_card(path, level=0):
-        record = record_for_path(path)
-        visible_records.append(record)
-        child_paths = children_for(path, 28 if level == 0 else 0) if path.is_dir() else []
-        child_controls = []
-        if path.is_dir():
-            for child in child_paths:
-                child_controls.append(record_row(record_for_path(child), compact=True))
-            if not child_controls:
-                child_controls.append(ft.Container(height=44, alignment=CENTER, content=ft.Text("Empty folder", size=12, color=MUTED_2)))
-        icon, icon_color = task_icon(record["type"])
-        title_text = path.name
-        subtitle = f"{len(child_paths)} items" if path.is_dir() else file_meta(path)
-        if record.get("task"):
-            subtitle = f"Tracked | {STATUS_LABELS.get(record.get('status'), 'Waiting')} | {subtitle}"
-        if not path.is_dir():
-            return record_row(record)
-        group_bg, group_border, group_accent = browser_folder_style(path, record)
-        icon_bg = "#FFFFFF"
-        icon = ft.Icons.FOLDER_OUTLINED
-        icon_color = group_accent
-        return ft.Container(
-            bgcolor=group_bg,
-            border=border_all(1, group_border),
-            border_radius=16,
-            clip_behavior=ft.ClipBehavior.HARD_EDGE,
-            shadow=ft.BoxShadow(spread_radius=0, blur_radius=10, color="#0A000000", offset=ft.Offset(0, 4)) if level == 0 else None,
-            content=ft.ExpansionTile(
-                expanded=False,
-                maintain_state=True,
-                tile_padding=pad_only(left=12, right=8),
-                controls_padding=pad_only(left=10, right=10, bottom=10),
-                title=ft.Row(
-                    spacing=10,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    controls=[
-                        ft.Container(width=5, height=34, border_radius=999, bgcolor=group_accent),
-                        ft.Container(width=34, height=34, border_radius=10, bgcolor=icon_bg, border=border_all(1, group_border), alignment=CENTER, content=ft.Icon(icon, size=17, color=icon_color)),
-                        ft.Column(spacing=1, expand=True, controls=[ft.Text(title_text, size=14, weight=ft.FontWeight.W_900, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS), ft.Text(subtitle, size=11, color=MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)]),
-                        status_badge(record),
-                        row_action_button("Open", ft.Icons.FOLDER_OPEN_OUTLINED, lambda _e, p=path: go_to_browser_path(ctx, p), width=96),
-                        row_action_button("Detail", ft.Icons.INFO_OUTLINE, lambda _e, r=record: set_selected(r), width=98),
-                    ],
-                ),
-                controls=[ft.Column(spacing=8, controls=child_controls)],
-            ),
-        )
+        # Keep the main index flat. Children are loaded only in the preview
+        # panel after selection, preventing hundreds of hidden controls.
+        return record_row(record_for_path(path))
 
     organizer_controls = [folder_card(path) for path in all_items]
     if total_raw > len(all_items):
@@ -397,6 +366,21 @@ def render_browser(ctx: DashboardContext) -> None:
     if not selected_record and visible_records:
         selected_record = visible_records[0]
     ctx.state["browser_selected"] = selected_record["key"] if selected_record else ""
+
+    def remember_search(event):
+        ctx.state["browser_search"] = event.control.value or ""
+
+    def apply_search(event=None):
+        if event is not None and getattr(event, "control", None) is not None:
+            value = getattr(event.control, "value", None)
+            if value is not None:
+                ctx.state["browser_search"] = value or ""
+        ctx.state.update({"browser_limit": 160, "browser_selected": ""})
+        ctx.render_current()
+
+    def clear_search(_event=None):
+        ctx.state.update({"browser_search": "", "browser_limit": 160, "browser_selected": ""})
+        ctx.render_current()
 
     toolbar = ft.Container(
         height=118,
@@ -422,7 +406,7 @@ def render_browser(ctx: DashboardContext) -> None:
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
                         ft.TextField(
-                            hint_text="Search this folder...",
+                            hint_text="Search this folder — press Enter",
                             prefix_icon=ft.Icons.SEARCH,
                             value=ctx.state.get("browser_search", ""),
                             height=44,
@@ -430,8 +414,11 @@ def render_browser(ctx: DashboardContext) -> None:
                             border_radius=14,
                             border_color=BORDER,
                             bgcolor="#F8FAFC",
-                            on_change=lambda e: (ctx.state.update({"browser_search": e.control.value or "", "browser_limit": 160, "browser_selected": ""}), ctx.render_current()),
+                            on_change=remember_search,
+                            on_submit=apply_search,
                         ),
+                        ft.IconButton(icon=ft.Icons.SEARCH, tooltip="Apply search", on_click=apply_search),
+                        ft.IconButton(icon=ft.Icons.CLOSE, tooltip="Clear search", visible=bool(query), on_click=clear_search),
                         dropdown(160, ctx.state.get("browser_sort", "Name"), ["Name", "Modified", "Type", "Size"], lambda e: (ctx.state.update({"browser_sort": e.control.value, "browser_selected": ""}), ctx.render_current())),
                         ft.IconButton(icon=ft.Icons.SOUTH if ctx.state.get("browser_desc") else ft.Icons.NORTH, tooltip="Toggle sort direction", on_click=lambda _e: (ctx.state.update({"browser_desc": not ctx.state.get("browser_desc"), "browser_selected": ""}), ctx.render_current())),
                         ft.PopupMenuButton(
@@ -461,7 +448,7 @@ def render_browser(ctx: DashboardContext) -> None:
 
     def preview_panel(record):
         if not record:
-            return ft.Container(width=380, bgcolor=WHITE, border=border_all(1, BORDER), border_radius=22, padding=22, alignment=CENTER, content=ft.Text("Select a file to preview", color=MUTED_2))
+            return ft.Container(bgcolor=WHITE, border=border_all(1, BORDER), border_radius=22, padding=22, alignment=CENTER, content=ft.Text("Select a file to preview", color=MUTED_2))
         path = record["path"]
         task = record.get("task")
         is_dir = path.is_dir()
@@ -485,8 +472,7 @@ def render_browser(ctx: DashboardContext) -> None:
         sub_query = str(ctx.state.setdefault("browser_sub_search", {}).get(sub_key, "") or "").strip().casefold()
         if is_dir:
             try:
-                all_sub_items = sorted(path.iterdir(), key=lambda item: (not item.is_dir(), item.name.casefold()))
-                sub_raw_total = len(all_sub_items)
+                all_sub_items, sub_raw_total = list_work_items_page(path, 0, 120)
                 if sub_query:
                     all_sub_items = [item for item in all_sub_items if sub_query in item.name.casefold() or sub_query in str(item).casefold()]
                 sub_total = len(all_sub_items)
@@ -516,8 +502,8 @@ def render_browser(ctx: DashboardContext) -> None:
             detail_task = board_task or make_task(path.stem if path.is_file() else path.name, str(path), target_kind="folder" if is_dir else "file", task_type=item_type, note=file_meta(path) if path.is_file() else "Folder")
             show_task_detail(ctx.page, detail_task, ctx.save_and_render, ctx.all_tasks, runtime_file_types_fn=ctx.file_types)
 
-        def copy_selected_path(_event):
-            ctx.page.clipboard.set(str(path))
+        async def copy_selected_path(_event):
+            await ctx.page.clipboard.set(str(path))
             show_message(ctx.page, "Copied", "Path copied.")
 
         def rename_selected(_event):
@@ -562,13 +548,13 @@ def render_browser(ctx: DashboardContext) -> None:
                 ctx.page.update()
 
         return ft.Container(
-            width=380,
             bgcolor=preview_bg,
             border=border_all(1, preview_border),
             border_radius=22,
             padding=22,
             content=ft.Column(
                 spacing=16,
+                scroll=ft.ScrollMode.AUTO,
                 controls=[
                     ft.Row(
                         spacing=12,
@@ -636,7 +622,37 @@ def render_browser(ctx: DashboardContext) -> None:
             ),
         )
 
-    preview_host = ft.Container(content=preview_panel(selected_record))
+    preview_host = ft.Container(width=380, content=preview_panel(selected_record))
     preview_slot["control"] = preview_host
-    ctx.main_body.controls = [toolbar, ft.Row(spacing=18, expand=True, controls=[listing, preview_host])]
+    folder_count = sum(1 for path in all_items if path.is_dir())
+    file_count = len(all_items) - folder_count
+    tracked_count = sum(1 for path in all_items if normalized_file_key(str(path)) in task_by_key)
+
+    def metric(label, value, icon, color, bg):
+        return ft.Container(
+            expand=True,
+            height=70,
+            padding=pad_sym(horizontal=14, vertical=10),
+            border=border_all(1, BORDER),
+            border_radius=16,
+            bgcolor=WHITE,
+            content=ft.Row(
+                spacing=11,
+                controls=[
+                    ft.Container(width=38, height=38, border_radius=12, bgcolor=bg, alignment=CENTER, content=ft.Icon(icon, size=19, color=color)),
+                    ft.Column(spacing=1, alignment=ft.MainAxisAlignment.CENTER, controls=[ft.Text(str(value), size=19, weight=ft.FontWeight.W_900, color=TEXT), ft.Text(label, size=10, weight=ft.FontWeight.W_800, color=MUTED_2)]),
+                ],
+            ),
+        )
+
+    index_summary = ft.Row(
+        spacing=12,
+        controls=[
+            metric("VISIBLE", len(all_items), ft.Icons.BOLT_OUTLINED, "#2563EB", "#EFF6FF"),
+            metric("FOLDERS", folder_count, ft.Icons.FOLDER_OUTLINED, "#7C3AED", "#F5F3FF"),
+            metric("FILES", file_count, ft.Icons.INSERT_DRIVE_FILE_OUTLINED, "#0891B2", "#ECFEFF"),
+            metric("TRACKED", tracked_count, ft.Icons.VERIFIED_OUTLINED, "#059669", "#ECFDF5"),
+        ],
+    )
+    ctx.main_body.controls = [toolbar, index_summary, ft.Row(spacing=18, expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH, controls=[listing, preview_host])]
     ctx.page.update()

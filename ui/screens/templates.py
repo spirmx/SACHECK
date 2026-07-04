@@ -91,9 +91,9 @@ def render_templates(ctx: DashboardContext) -> None:
                 refresh_detection()
                 ctx.page.update()
 
-        def paste_url(_e):
+        async def paste_url(_e):
             try:
-                value = ctx.page.clipboard.get()
+                value = await ctx.page.clipboard.get()
             except Exception:
                 value = ""
             if value:
@@ -222,11 +222,13 @@ def render_templates(ctx: DashboardContext) -> None:
 
     def copy_target(t_item):
         target = item_target(t_item)
-        try:
-            ctx.page.clipboard.set(target or "")
-            show_message(ctx.page, "Copied", "Template path copied to clipboard.", kind="success")
-        except Exception as exc:
-            show_message(ctx.page, "Copy failed", str(exc), kind="danger")
+        async def worker():
+            try:
+                await ctx.page.clipboard.set(target or "")
+                show_message(ctx.page, "Copied", "Template path copied to clipboard.", kind="success")
+            except Exception as exc:
+                show_message(ctx.page, "Copy failed", str(exc), kind="danger")
+        ctx.page.run_task(worker)
 
     def delete_template(t_item):
         def confirm_delete(_e):

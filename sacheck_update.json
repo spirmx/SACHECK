@@ -1,28 +1,28 @@
 {
-  "version": "2.0.1",
-  "release_date": "2026-07-03",
+  "version": "2.0.2",
+  "release_date": "2026-07-04",
   "required": false,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "bb6052badd2d351668c98693b56856e20f92bf7dd889ef095c0469349b5cd624",
-  "installer_size": 63227388,
-  "repair_version": "2.0.1",
+  "installer_sha256": "a1b18bd109239786c1392fc68304985917b5ce0cb729fa880c4b1ce2e943c1c1",
+  "installer_size": 33282306,
+  "repair_version": "2.0.2",
   "notes": [
-    "Fixed the Board gray error panel caused by a wrapped filter row in Flutter layout.",
-    "Made Board filters horizontally scrollable at narrow window sizes.",
-    "Added a regression smoke check for the safe Board filter layout.",
+    "Rebuilt Health as a clear diagnostics dashboard with an explained score, system checks, and workload signals.",
+    "Added dedicated Repair Center and Backup & Activity views with safe relink and snapshot recovery actions.",
+    "Included the new Mission Control Home, 14-day Calendar alerts, indexed Files browser, and reliability fixes.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
     {
       "path": "app.py",
-      "sha256": "26c1a470f8b002c129ab72a93414850bd8edf86f5b6dee456807ae430e85caa9",
+      "sha256": "97f9a14076158fb45f0171618a849616b872cab5726bddeeb549608b1de16fec",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/app.py",
       "mode": "source"
     },
     {
       "path": "flet_app.py",
-      "sha256": "26c1a470f8b002c129ab72a93414850bd8edf86f5b6dee456807ae430e85caa9",
+      "sha256": "50273a9ddf11e7b4b604ef8d8cc062f774e018e57b61ce80f32a19e93934685e",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/flet_app.py",
       "mode": "source"
     },
@@ -42,6 +42,12 @@
       "path": "core/__init__.py",
       "sha256": "66eb8afae95098a2897595a56e691305027c034a43e33de4bcbd1b403a825f78",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/__init__.py",
+      "mode": "source"
+    },
+    {
+      "path": "core/app_lifecycle.py",
+      "sha256": "67f658902dfebb447c68543ea5dad0f4813be2c83bf06359d2b06fc5da86ddb1",
+      "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/app_lifecycle.py",
       "mode": "source"
     },
     {
@@ -70,13 +76,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "72ad9ad2c769667f04022c32ebb4529a80e3cbc316a485c697f04eff0e24466c",
+      "sha256": "7022704017c3d895ec42e10a532e60089a504b5b196e61a52b5ba7cb4796a6c2",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "619564faf2fdc2def3104cba44c2c27321ada09948648cf4178b0eb823b5d2bc",
+      "sha256": "51f6b46f5b86bbe96ac204a49e167add26a4ab995615bbe501607e2b9366e8bb",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -94,7 +100,7 @@
     },
     {
       "path": "core/startup_preflight.py",
-      "sha256": "2dca2f0b9120936175957f5920afaad765e9019ca48a8550533bc390e44b2773",
+      "sha256": "b4a296fd16225648ce5c4ec7901c75eb307e35618497a99283fe81ba9e3497fc",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -106,13 +112,13 @@
     },
     {
       "path": "ui/dialogs.py",
-      "sha256": "25af4eaedaadb38553ec40814353be6901041567778d0bc0560abb8c5606661b",
+      "sha256": "55c2bd13b958e722fd5312337f2af0bccdb8f353bec950abf3fd1f86ca910a24",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/dialogs.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "2cee51ea32b199cea12454146ef5dee37b189a4c5675062868cb69271791e5a8",
+      "sha256": "2eeb9b1b8b6f75b677dd75b6b768f0383eee50daa44f7df01ca4fcb9da584334",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
@@ -136,7 +142,7 @@
     },
     {
       "path": "ui/screens/browser.py",
-      "sha256": "58910b77db13ebaf663648cf5c3913ab2b4002e717012c9ea96f905d94a708c9",
+      "sha256": "6a5e336316ee8249c696c9254dc571bbca95a290dda3aa673d04ec85163313ad",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/browser.py",
       "mode": "source"
     },
@@ -148,25 +154,25 @@
     },
     {
       "path": "ui/screens/health.py",
-      "sha256": "5b8bc77d1e88a52bd66aaa2aa6a6c5bc3500dccc4db37b189d170cbbe2378eff",
+      "sha256": "9af0904e2495258d172d49f9e8f3fde4b475347d30916fe20f1f9c41baf47a09",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/health.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/overview.py",
-      "sha256": "79da685ac9098a572cabfcf900f33b6214fbd8e48b05757840c80ded0d31bdcf",
+      "sha256": "0f75a8a4217a4afda9bf2682f8efe7ad29ff6fa86bcbde933e09194e7c438c6a",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/overview.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/settings_screen.py",
-      "sha256": "a97823a673e070ea9d8e4d0f48ebf03314e81882f0fda679b2669356d66faeef",
+      "sha256": "d493ca0caa8cdf7ba84236c289ac9ce1cb3fb63270892e109d32a2d6c5770fa0",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/settings_screen.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/templates.py",
-      "sha256": "80a7f1815136dc65613de51d9400ac6d4a5005f4e9701a1f48fd7d0b192d44f6",
+      "sha256": "56f85c5dd62b9b5e0393fbbe787d6613833d0e7ad4578e2e9b35b9efa95b721f",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/templates.py",
       "mode": "source"
     },

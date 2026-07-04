@@ -1,12 +1,10 @@
 import json
 import os
-import shutil
 import subprocess
 import sys
 import uuid
 import urllib.error
 import urllib.request
-import webbrowser
 import calendar
 import csv
 import html
@@ -24,7 +22,7 @@ import flet as ft
 from ui.shared import DashboardContext
 from ui.screens import render_overview, render_board, render_browser, render_calendar, render_templates, render_health, render_settings
 
-from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, TEMPLATE_FILE, app_folder, work_folder
+from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, app_folder, work_folder
 
 
 BG = "#F8FAFC"
@@ -93,14 +91,14 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.0.2"
 MANUAL_VERSION = "2026-06-18-user-guide"
-DEFAULT_UPDATE_CHANNEL_URL = "https://api.github.com/repos/spirmx/SACHECK/contents/sacheck_update.json?ref=main"
+DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.1",
+        "version": "2.0.2",
         "date": "2026-07-03",
         "latest": True,
         "items": [
@@ -457,8 +455,6 @@ TH_TEXT = {
     "System": "ระบบ",
     "Credits": "เครดิต",
     "Desktop Work Board": "บอร์ดงานเดสก์ท็อป",
-    "Developer / Creator: HOYTURBRO": "ผู้พัฒนา / ผู้สร้าง: HOYTURBRO",
-    "Publisher: HOYTURBRO": "ผู้เผยแพร่: HOYTURBRO",
     "About SA CHECK": "เกี่ยวกับ SA CHECK",
     "User guide": "คู่มือ",
     "Work Folder Source": "แหล่งโฟลเดอร์งาน",
@@ -582,17 +578,6 @@ def border_all(width=1, color=BORDER):
 CENTER = ft.Alignment(0, 0)
 
 
-def load_json(path, fallback):
-    if not path.exists():
-        return fallback
-    try:
-        with path.open("r", encoding="utf-8") as file:
-            data = json.load(file)
-        return data if isinstance(data, type(fallback)) else fallback
-    except (OSError, json.JSONDecodeError):
-        return fallback
-
-
 def parse_version(value):
     text = str(value or "0").strip()
     match = re.search(r"(\d+)\.(\d+)\.(\d+)(?:[-._ ]+(\d+))?", text)
@@ -609,18 +594,6 @@ def is_core_platform_update(candidate, current=APP_VERSION):
     target = parse_version(candidate)
     installed = parse_version(current)
     return target[:2] > installed[:2]
-
-
-def is_forced_platform_update(candidate, current=APP_VERSION):
-    target = parse_version(candidate)
-    installed = parse_version(current)
-    if target[:2] > installed[:2]:
-        return True
-    if target[:2] == installed[:2] and target[2] - installed[2] >= 2:
-        return True
-    if target[:3] == installed[:3] and target[3] - installed[3] >= 3:
-        return True
-    return False
 
 
 def update_force_reason(candidate, manifest, dismissed_count):
@@ -695,73 +668,6 @@ def read_update_url(url, max_bytes=2 * 1024 * 1024, timeout=7):
         return response.read(max_bytes)
 
 
-def load_tasks():
-    return load_json(DATA_FILE, [])
-
-
-def save_tasks(tasks):
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with DATA_FILE.open("w", encoding="utf-8") as file:
-        json.dump(tasks, file, ensure_ascii=False, indent=2)
-
-
-def load_templates():
-    return load_json(TEMPLATE_FILE, [])
-
-
-def load_settings():
-    return load_json(APP_SETTINGS_FILE, {})
-
-
-def save_settings(settings):
-    APP_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with APP_SETTINGS_FILE.open("w", encoding="utf-8") as file:
-        json.dump(settings, file, ensure_ascii=False, indent=2)
-
-
-def infer_type(target):
-    text = str(target).lower()
-    if text.startswith(("http://", "https://")):
-        if "docs.google.com/spreadsheets" in text:
-            return "Google Sheet"
-        if "miro.com" in text:
-            return "Miro"
-        return "Web"
-    suffix = Path(target).suffix.lower()
-    if suffix in {".doc", ".docx", ".odt", ".rtf"}:
-        return "Word"
-    if suffix in {".xls", ".xlsx", ".csv"}:
-        return "Excel"
-    if suffix in {".url", ".html", ".htm"}:
-        return "Web"
-    if Path(target).is_dir():
-        return "Project"
-    return "Other"
-
-
-def make_task(name, target, target_kind=None, task_type=None, note="", status=STATUS_PENDING):
-    target_text = str(target).strip()
-    kind = target_kind or ("url" if target_text.startswith(("http://", "https://")) else ("folder" if Path(target_text).is_dir() else "file"))
-    resolved_type = task_type or infer_type(target_text)
-    return {
-        "id": str(uuid.uuid4()),
-        "name": name.strip() or Path(target_text).stem or "Untitled task",
-        "type": resolved_type,
-        "detected_type": resolved_type,
-        "link": target_text,
-        "target_kind": kind,
-        "shortcut_path": None,
-        "note": note.strip(),
-        "status": status,
-        "date_added": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "done_date": datetime.now().date().isoformat() if status == STATUS_DONE else None,
-        "source": "flet_quick_add",
-        "file_key": target_text.casefold(),
-        "project_stack": "",
-        "category_mismatch": False,
-    }
-
-
 def task_icon(task_type):
     mapping = {
         "Word": (ft.Icons.ARTICLE_OUTLINED, "#2563EB"),
@@ -775,50 +681,8 @@ def task_icon(task_type):
     return mapping.get(task_type, (ft.Icons.DESCRIPTION_OUTLINED, "#64748B"))
 
 
-def soft_shadow():
-    return ft.BoxShadow(spread_radius=0, blur_radius=10, color="#16000000", offset=ft.Offset(0, 3))
-
-
 NAV_BG = "#08111F"
 NAV_ACTIVE = "#1D4ED8"
-
-
-def nav_button(icon, active=False):
-    return ft.Container(
-        width=48,
-        height=48,
-        border_radius=12,
-        bgcolor=NAV_ACTIVE if active else "#0F1B2D",
-        border=border_all(1, "#93C5FD" if active else "#263449"),
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=8, color="#24000000", offset=ft.Offset(0, 3)) if active else None,
-        alignment=CENTER,
-        content=ft.Row(
-            spacing=0,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Container(width=4, height=26, border_radius=999, bgcolor="#FFFFFF" if active else "#0F1B2D"),
-                ft.Container(width=42, alignment=CENTER, content=ft.Icon(icon, size=22, color=WHITE if active else "#C3CEE0")),
-            ],
-        ),
-    )
-
-
-def stat_card(title, value):
-    return ft.Container(
-        expand=True,
-        height=72,
-        bgcolor=WHITE,
-        border=border_all(1, BORDER),
-        border_radius=12,
-        padding=pad_sym(horizontal=14, vertical=11),
-        content=ft.Column(
-            spacing=4,
-            controls=[
-                ft.Text(title, size=11, weight=ft.FontWeight.W_800, color=MUTED),
-                ft.Text(str(value), size=24, weight=ft.FontWeight.W_900, color=TEXT),
-            ],
-        ),
-    )
 
 
 def dropdown(width, value, options, on_select=None):
@@ -836,33 +700,6 @@ def dropdown(width, value, options, on_select=None):
         content_padding=pad_sym(horizontal=10),
         on_select=on_select,
     )
-
-
-def open_target(task):
-    target = task.get("link") or task.get("shortcut_path") or ""
-    if not target:
-        return False
-    if target.startswith(("http://", "https://")):
-        webbrowser.open(target)
-        return True
-    if Path(target).exists():
-        os.startfile(target)
-        return True
-    return False
-
-
-def open_folder(task):
-    for target in [task.get("link"), task.get("shortcut_path")]:
-        if not target:
-            continue
-        path = Path(target)
-        if path.is_dir():
-            os.startfile(str(path))
-            return True
-        if path.exists():
-            os.startfile(str(path.parent))
-            return True
-    return False
 
 
 ALERT_STYLES = {
@@ -1071,32 +908,6 @@ def type_style(file_type):
     return TYPE_PALETTE.get(file_type or "Other") or auto_type_style(file_type)
 
 
-def status_style_values(status, fallback_type="Other"):
-    if status == STATUS_PENDING:
-        return WAITING_BG, "#BFDBFE", WAITING_TEXT
-    if status == STATUS_PROGRESS:
-        return DOING_BG, "#FED7AA", DOING_TEXT
-    if status == STATUS_DONE:
-        return DONE_BG, "#BBF7D0", DONE_TEXT
-    return type_style(fallback_type)
-
-
-def file_meta(path):
-    try:
-        stat = path.stat()
-        size = stat.st_size
-        if size >= 1024 * 1024:
-            size_text = f"{size / (1024 * 1024):.1f} MB"
-        elif size >= 1024:
-            size_text = f"{size / 1024:.1f} KB"
-        else:
-            size_text = f"{size} B"
-        modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
-        return f"{modified}  |  {size_text}"
-    except OSError:
-        return "Unavailable"
-
-
 def bytes_label(size):
     try:
         value = float(size or 0)
@@ -1116,21 +927,6 @@ def update_size_label(downloaded, total=None):
     if total and total > 0:
         return f"{bytes_label(downloaded)} / {bytes_label(total)}"
     return f"{bytes_label(downloaded)} downloaded"
-
-
-def list_work_items(path):
-    items = []
-    try:
-        with os.scandir(path) as entries:
-            for entry in entries:
-                if entry.name.startswith("."):
-                    continue
-                entry_path = Path(entry.path)
-                items.append((entry.is_dir(), entry.name.casefold(), entry_path))
-    except OSError:
-        return []
-    items.sort(key=lambda item: (not item[0], item[1]))
-    return [item[2] for item in items[:250]]
 
 
 from core.flet_constants import (  # noqa: E402
@@ -1485,6 +1281,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "refreshing": False,
         "refresh_token": "",
         "closed": False,
+        "closing": False,
         "online_status": (
             "online"
             if getattr(startup_result, "online_checked", False)
@@ -1500,6 +1297,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "update_prompted_versions": set(),
         "health_filter": "All",
     }
+    shutdown_event = threading.Event()
 
     page.title = APP_NAME
     try:
@@ -1935,8 +1733,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 return
             os.startfile(str(path if is_dir else path.parent))
 
-        def copy_path(_e):
-            page.clipboard.set(str(path))
+        async def copy_path(_e):
+            await page.clipboard.set(str(path))
             show_message(page, "Copied", "Path copied.")
 
         def select_item(_event):
@@ -2163,9 +1961,9 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 refresh_detection()
                 page.update()
 
-        def paste_url(_e):
+        async def paste_url(_e):
             try:
-                value = page.clipboard.get()
+                value = await page.clipboard.get()
             except Exception:
                 value = ""
             if value:
@@ -2744,7 +2542,7 @@ table{{border-collapse:collapse;width:100%;background:white;border:1px solid #e2
 th,td{{border-bottom:1px solid #e2e8f0;padding:9px 10px;text-align:left;vertical-align:top;font-size:13px}}
 th{{background:#eff6ff;color:#1d4ed8}}
 </style></head><body>
-<h1>SA CHECK Report</h1><div class="muted">Generated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | Developer: HOYTURBRO</div>
+<h1>SA CHECK Report</h1><div class="muted">Generated {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</div>
 <div class="cards">{summary_cards}</div>
 <table><thead><tr>{''.join(f'<th>{html.escape(field)}</th>' for field in fields)}</tr></thead><tbody>{table_rows}</tbody></table>
 </body></html>""",
@@ -2775,9 +2573,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         spacing=12,
                         controls=[
                             ft.Container(border=border_all(1, "#DBEAFE"), border_radius=16, bgcolor="#F8FBFF", padding=14, content=ft.Column(spacing=6, controls=[
-                                ft.Text("Developer / Creator: HOYTURBRO", size=14, weight=ft.FontWeight.W_900, color=TEXT, selectable=True),
-                                ft.Text("Alias: Hoyturbro", size=13, color=MUTED, selectable=True),
-                                ft.Text("Publisher: HOYTURBRO", size=13, color=MUTED, selectable=True),
+                                ft.Text("Local-first desktop workspace", size=14, weight=ft.FontWeight.W_900, color=TEXT),
                                 ft.Text("Version: " + APP_VERSION + " | Guide: " + MANUAL_VERSION, size=12, color=MUTED, selectable=True),
                             ])),
                             ft.Container(border=border_all(1, BORDER), border_radius=16, bgcolor="#FFFFFF", padding=14, content=ft.Column(spacing=6, controls=[
@@ -3214,7 +3010,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             step(ft.Icons.INSTALL_DESKTOP_OUTLINED, "ติดตั้ง", "รัน SA_CHECK_Installer.exe แล้วระบบจะติดตั้งตัวแอพไว้ที่ C:\\SACHECK และสร้าง shortcut ให้", "#2563EB"),
             step(ft.Icons.UPDATE, "อัปเดต", "ถ้ามี installer เวอร์ชันใหม่ ให้กดติดตั้งทับที่ C:\\SACHECK ได้เลย โค้ด/คู่มือจะอัปเดต แต่ Work folder ที่เลือกไว้จะไม่โดนลบ", "#0F766E"),
             step(ft.Icons.DELETE_OUTLINE, "Uninstall", "ถอนการติดตั้งจะลบเฉพาะไฟล์ระบบแอพใน C:\\SACHECK ไม่ลบ Work1/Work2 หรือโฟลเดอร์งานที่ผู้ใช้เลือกไว้", "#DC2626"),
-            step(ft.Icons.VERIFIED_USER_OUTLINED, "Credits", "Developer / Creator: HOYTURBRO | Alias: Hoyturbro | Publisher: HOYTURBRO", "#0F766E"),
+            step(ft.Icons.VERIFIED_USER_OUTLINED, "About", "SA CHECK " + APP_VERSION + " | Local-first desktop workspace", "#0F766E"),
         ]
 
         guide_groups = []
@@ -3848,6 +3644,20 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 )
             )
 
+        def open_updater(_event=None):
+            if state.get("update_available") and state.get("update_manifest"):
+                show_update_prompt(state.get("update_manifest"))
+                return
+            check_for_updates(manual=True)
+
+        updater_label = (
+            f"Update {str((state.get('update_manifest') or {}).get('version') or '').strip()} ready"
+            if state.get("update_available")
+            else "Checking updates..."
+            if state.get("update_checking") or online_state == "checking"
+            else "App updater"
+        )
+
         return [
             brand,
             ft.Container(height=14),
@@ -3860,6 +3670,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             nav_item(ft.Icons.ARTICLE_OUTLINED, "Templates", SCREEN_TEMPLATES, show_templates),
             nav_item(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Health", SCREEN_HEALTH, show_health),
             nav_item(ft.Icons.SETTINGS_OUTLINED, "Settings", SCREEN_SETTINGS, show_settings),
+            nav_item(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, updater_label, "__updater__", open_updater),
             ft.Container(expand=True),
             *extras,
             nav_item(ft.Icons.HELP_OUTLINE, "Help & guide", "__help__", show_help),
@@ -3963,33 +3774,38 @@ th{{background:#eff6ff;color:#1d4ed8}}
         except Exception:
             pass
 
-    def _close(_e):
-        try:
-            page.window.close()
-        except Exception:
-            pass
+    def mark_closed(_e=None):
+        state["closed"] = True
+        shutdown_event.set()
 
-    def window_button(icon, on_click, danger=False):
-        button = ft.Container(
+    def _close(_e):
+        if state.get("closing"):
+            return
+        state["closing"] = True
+        mark_closed()
+        try:
+            save_settings(settings)
+        finally:
+            # The embedded Flutter runner can keep the native process alive
+            # after Window.close(). Explicit exit is deterministic and safe
+            # because task/calendar writes are persisted at mutation time.
+            os._exit(0)
+
+    def window_button(icon, on_click, danger=False, tooltip=""):
+        return ft.IconButton(
+            icon=icon,
+            on_click=on_click,
+            tooltip=tooltip,
             width=46,
             height=38,
+            padding=0,
             alignment=CENTER,
-            content=ft.Icon(icon, size=15, color=MUTED),
-            on_click=on_click,
-            animate=ft.Animation(90, ft.AnimationCurve.EASE_OUT),
+            icon_size=15,
+            icon_color=MUTED,
+            hover_color="#EF4444" if danger else "#EEF2F7",
+            highlight_color="#DC2626" if danger else "#E2E8F0",
+            splash_radius=20,
         )
-
-        def on_hover(e, control=button):
-            hot = e.data == "true"
-            control.bgcolor = ("#EF4444" if danger else "#EEF2F7") if hot else None
-            control.content.color = WHITE if (danger and hot) else MUTED
-            try:
-                control.update()
-            except Exception:
-                pass
-
-        button.on_hover = on_hover
-        return button
 
     title_bar = ft.Container(
         height=38,
@@ -4009,9 +3825,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     expand=True,
                     maximizable=True,
                 ),
-                window_button(ft.Icons.REMOVE, _minimize),
-                window_button(ft.Icons.CROP_SQUARE, _toggle_max),
-                window_button(ft.Icons.CLOSE, _close, danger=True),
+                window_button(ft.Icons.REMOVE, _minimize, tooltip="Minimize"),
+                window_button(ft.Icons.CROP_SQUARE, _toggle_max, tooltip="Restore / maximize"),
+                window_button(ft.Icons.CLOSE, _close, danger=True, tooltip="Close SA CHECK"),
             ],
         ),
     )
@@ -4142,6 +3958,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             pass
 
     page.on_keyboard_event = on_global_key
+    page.on_disconnect = mark_closed
+    page.on_close = mark_closed
 
     page.add(
         ft.Column(
@@ -4319,8 +4137,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             save_settings(settings)
 
     def realtime_sync_loop():
-        while not state.get("closed"):
-            time.sleep(sync_interval_seconds())
+        while not shutdown_event.wait(sync_interval_seconds()):
             try:
                 check_calendar_event_reminders()
                 if settings.get("realtime_sync_enabled", True) and auto_sync_from_work():
@@ -4720,8 +4537,8 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             pass
         return f"Added: {task.get('date_added', '-')}"
 
-    def copy_target(_event):
-        page.clipboard.set(target)
+    async def copy_target(_event):
+        await page.clipboard.set(target)
         show_message(page, "Copied", "Path copied.")
 
     def copy_to_waiting(_event):

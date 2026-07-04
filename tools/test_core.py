@@ -13,10 +13,13 @@ from __future__ import annotations
 import os
 import sys
 import traceback
+import uuid
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.flet_data as data  # noqa: E402
+from core.app_lifecycle import SingleInstanceGuard  # noqa: E402
 
 
 def test_safe_item_name():
@@ -80,6 +83,33 @@ def test_unique_target_and_resolve_type():
     assert data.resolve_add_type("https://www.figma.com/file/a", "Other") == "Figma"
 
 
+def test_single_instance_guard():
+    if sys.platform != "win32":
+        return
+    name = rf"Local\Hoyturbro.SACHECK.Test.{uuid.uuid4()}"
+    first = SingleInstanceGuard(name)
+    second = None
+    try:
+        assert first.already_running is False
+        second = SingleInstanceGuard(name)
+        assert second.already_running is True
+    finally:
+        if second:
+            second.close()
+        first.close()
+
+
+def test_lifecycle_and_package_hygiene():
+    root = Path(__file__).resolve().parents[1]
+    dashboard = (root / "ui" / "flet_dashboard.py").read_text(encoding="utf-8")
+    assert "state[\"closing\"] = True" in dashboard
+    assert "os._exit(0)" in dashboard
+    assert "shutdown_event.wait(sync_interval_seconds())" in dashboard
+    config = (root / "pyproject.toml").read_text(encoding="utf-8")
+    for excluded in ('".claude"', '".git"', '"**/__pycache__"', '"*.pyc"'):
+        assert excluded in config, excluded
+
+
 TESTS = [
     ("safe_item_name", test_safe_item_name),
     ("infer_type (extensions)", test_infer_type_extensions),
@@ -87,6 +117,8 @@ TESTS = [
     ("date_only", test_date_only),
     ("normalize progress/priority", test_normalize_progress_priority),
     ("resolve_add_type", test_unique_target_and_resolve_type),
+    ("single instance guard", test_single_instance_guard),
+    ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),
 ]
 
 

@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.0.1`
+Version: `2.0.2`
 
 This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.0.1` retains the complete V2 Flet workflow and makes Board filters safe at desktop and narrow window sizes.
+`2.0.2` adds Mission Control Home, a redesigned System Health dashboard, a dedicated Repair Center, and recovery activity views.
 
 Latest changes:
 
