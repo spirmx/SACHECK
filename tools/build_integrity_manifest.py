@@ -36,7 +36,7 @@ def main() -> None:
     entries = [entry(path, "source") for path in files if path.is_file()]
     entries.extend(entry(ROOT / name, "all") for name in EXTERNAL_ASSETS if (ROOT / name).is_file())
     payload = {
-        "version": "2.0.2",
+        "version": "2.0.3",
         "algorithm": "sha256",
         "system_files": entries,
     }
@@ -48,24 +48,24 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             existing_update = {}
     installer = ROOT / "release" / "SA_CHECK_Installer.exe"
-    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "2.0.2" else ""
+    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "2.0.3" else ""
     installer_url = os.environ.get("SACHECK_INSTALLER_URL", "").strip() or existing_url
     if installer.is_file() and not installer_url:
         installer_url = f"{RAW_BASE_URL}/release/SA_CHECK_Installer.exe"
     installer_hash = sha256(installer) if installer.is_file() else ""
     update_payload = {
-        "version": "2.0.2",
+        "version": "2.0.3",
         "release_date": "2026-07-04",
         "required": False,
         "release_status": "ready" if installer_hash else "installer_build_required",
         "installer_url": installer_url if installer_hash else "",
         "installer_sha256": installer_hash,
         "installer_size": installer.stat().st_size if installer_hash else 0,
-        "repair_version": "2.0.2",
+        "repair_version": "2.0.3",
         "notes": [
-            "Rebuilt Health as a clear diagnostics dashboard with an explained score, system checks, and workload signals.",
-            "Added dedicated Repair Center and Backup & Activity views with safe relink and snapshot recovery actions.",
-            "Included the new Mission Control Home, 14-day Calendar alerts, indexed Files browser, and reliability fixes.",
+            "Redesigned Board with a live workflow pulse, clearer filters, richer task cards, and flat task visibility by default.",
+            "Fixed Board columns disappearing after visiting a scrollable screen by restoring bounded Kanban layout state.",
+            "Migrated legacy Waiting, Doing, In Progress, Success, and Completed statuses so existing work appears correctly.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

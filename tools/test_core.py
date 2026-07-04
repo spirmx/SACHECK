@@ -73,6 +73,22 @@ def test_normalize_progress_priority():
     assert bad["priority"] == 0 and bad["tags"] == [], bad
 
 
+def test_normalize_legacy_statuses():
+    aliases = {
+        "Waiting": data.STATUS_PENDING,
+        "todo": data.STATUS_PENDING,
+        "Doing": data.STATUS_PROGRESS,
+        "In Progress": data.STATUS_PROGRESS,
+        "active": data.STATUS_PROGRESS,
+        "Success": data.STATUS_DONE,
+        "Completed": data.STATUS_DONE,
+        "unknown-status": data.STATUS_PENDING,
+    }
+    for raw, expected in aliases.items():
+        normalized = data.normalize_task_dates({"name": raw, "status": raw})
+        assert normalized["status"] == expected, normalized
+
+
 def test_unique_target_and_resolve_type():
     # resolve_add_type keeps a specific requested type, upgrades Other/Link
     assert data.resolve_add_type("C:/x/a.docx", "Word") == "Word"
@@ -116,6 +132,7 @@ TESTS = [
     ("infer_type (urls)", test_infer_type_urls),
     ("date_only", test_date_only),
     ("normalize progress/priority", test_normalize_progress_priority),
+    ("normalize legacy statuses", test_normalize_legacy_statuses),
     ("resolve_add_type", test_unique_target_and_resolve_type),
     ("single instance guard", test_single_instance_guard),
     ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),

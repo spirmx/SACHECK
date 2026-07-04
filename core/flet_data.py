@@ -25,7 +25,7 @@ from core.create_tools import create_project_folder, tool_default_name, write_bl
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.2"
+APP_VERSION = "2.0.3"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -150,7 +150,22 @@ def date_only(value: str | None) -> str:
 
 
 def normalize_task_dates(task):
-    status = task.get("status") or STATUS_PENDING
+    raw_status = str(task.get("status") or STATUS_PENDING).strip().casefold()
+    status_aliases = {
+        "waiting": STATUS_PENDING,
+        "wait": STATUS_PENDING,
+        "todo": STATUS_PENDING,
+        "pending": STATUS_PENDING,
+        "doing": STATUS_PROGRESS,
+        "active": STATUS_PROGRESS,
+        "progress": STATUS_PROGRESS,
+        "in progress": STATUS_PROGRESS,
+        "success": STATUS_DONE,
+        "done": STATUS_DONE,
+        "complete": STATUS_DONE,
+        "completed": STATUS_DONE,
+    }
+    status = status_aliases.get(raw_status, STATUS_PENDING)
     task["status"] = status
     if not task.get("date_added"):
         task["date_added"] = datetime.now().date().isoformat()

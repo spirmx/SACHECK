@@ -1,4 +1,4 @@
-#define MyAppVersion "2.0.2"
+#define MyAppVersion "2.0.3"
 #define MyAppPublisher "HOYTURBRO"
 #define MyAppExeName "SACHECK.exe"
 
@@ -42,11 +42,11 @@ CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
 UsePreviousTasks=yes
-VersionInfoVersion=2.0.2.0
+VersionInfoVersion=2.0.3.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=SA CHECK Desktop Work Board Installer
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=2.0.2.0
+VersionInfoProductVersion=2.0.3.0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

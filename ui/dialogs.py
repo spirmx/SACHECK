@@ -726,22 +726,16 @@ def task_card(page, task, save_and_render, all_tasks):
     except (TypeError, ValueError):
         priority = 0
 
-    row_controls = [
-        ft.Container(width=26, height=26, border_radius=8, bgcolor=icon_color, alignment=CENTER, content=ft.Icon(icon, size=15, color=WHITE)),
-    ]
-    if priority > 0:
-        priority_color = "#DC2626" if priority >= 7 else ("#D97706" if priority >= 4 else "#2563EB")
-        row_controls.append(ft.Container(width=7, height=7, border_radius=99, bgcolor=priority_color, tooltip=f"Priority {priority}"))
-    row_controls.extend([
-        ft.Text(task.get("name", "Untitled task"), size=13, color=TEXT, weight=ft.FontWeight.W_500, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
-        menu,
-    ])
+    priority_color = "#DC2626" if priority >= 7 else ("#D97706" if priority >= 4 else "#2563EB")
+    date_text = task_calendar_date(task)
+    tags = task.get("tags") if isinstance(task.get("tags"), list) else []
+    tag_text = f"#{str(tags[0])[:10]}" if tags else ""
 
     card = ft.Container(
-        height=44,
+        height=76,
         bgcolor=WHITE,
         border=border_all(1, BORDER),
-        border_radius=10,
+        border_radius=12,
         clip_behavior=ft.ClipBehavior.HARD_EDGE,
         ink=True,
         on_click=open_detail,
@@ -753,14 +747,37 @@ def task_card(page, task, save_and_render, all_tasks):
             controls=[
                 ft.Container(
                     expand=True,
-                    padding=pad_only(left=10, right=2),
-                    content=ft.Row(
-                        spacing=8,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=row_controls,
+                    padding=pad_only(left=10, top=7, right=3, bottom=6),
+                    content=ft.Column(
+                        spacing=5,
+                        controls=[
+                            ft.Row(
+                                spacing=8,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                controls=[
+                                    ft.Container(width=30, height=30, border_radius=9, bgcolor=icon_color + "18", alignment=CENTER, content=ft.Icon(icon, size=16, color=icon_color)),
+                                    ft.Text(task.get("name", "Untitled task"), size=12, color=TEXT, weight=ft.FontWeight.W_800, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
+                                    menu,
+                                ],
+                            ),
+                            ft.Row(
+                                spacing=6,
+                                controls=[
+                                    ft.Text(str(task.get("type") or "Other"), size=9, weight=ft.FontWeight.W_800, color=icon_color, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                    ft.Container(width=3, height=3, border_radius=99, bgcolor=MUTED_2),
+                                    ft.Icon(ft.Icons.EVENT_OUTLINED, size=11, color=MUTED_2),
+                                    ft.Text(date_text, size=9, color=MUTED_2),
+                                    ft.Container(expand=True),
+                                    ft.Container(width=7, height=7, border_radius=99, bgcolor=priority_color, tooltip=f"Priority {priority}", visible=priority > 0),
+                                    ft.Text(f"P{priority}", size=9, weight=ft.FontWeight.W_900, color=priority_color, visible=priority > 0),
+                                    ft.Text(tag_text, size=9, color=MUTED, visible=bool(tags)),
+                                    ft.Text(f"{progress}%", size=9, weight=ft.FontWeight.W_900, color=prog_color),
+                                ],
+                            ),
+                        ],
                     ),
                 ),
-                ft.ProgressBar(value=progress / 100, height=3, color=prog_color, bgcolor="#EEF2F6"),
+                ft.ProgressBar(value=progress / 100, height=4, color=prog_color, bgcolor="#EEF2F6"),
             ],
         ),
     )
@@ -854,41 +871,93 @@ def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key=""
         controls.append(type_group_card(page, file_type, grouped[file_type], save_and_render, all_tasks, f"{column_key}:{file_type}", group_limits, on_more, expanded_keys))
     return controls
 
-def kanban_column(page, title, tasks, tint, accent, save_and_render, all_tasks, grouped=True, group_limits=None, on_more=None, file_types_fn=None, expanded_keys=None):
+def kanban_column(
+    page,
+    title,
+    tasks,
+    tint,
+    accent,
+    save_and_render,
+    all_tasks,
+    grouped=True,
+    group_limits=None,
+    on_more=None,
+    file_types_fn=None,
+    expanded_keys=None,
+    subtitle="",
+    icon=None,
+    on_add=None,
+):
     header = ft.Container(
-        height=36,
-        padding=pad_sym(horizontal=10, vertical=0),
-        border_radius=10,
-        bgcolor=accent,
+        height=58,
+        padding=pad_sym(horizontal=12, vertical=8),
+        border_radius=13,
+        bgcolor=WHITE,
+        border=border_all(1, accent + "44"),
         content=ft.Row(
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 ft.Row(
-                    spacing=8,
+                    spacing=10,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(width=4, height=20, border_radius=999, bgcolor="#FFFFFF99"),
-                        ft.Text(title, size=14, weight=ft.FontWeight.W_700, color=WHITE),
-                        ft.Container(padding=pad_sym(horizontal=7, vertical=2), border_radius=999, bgcolor="#FFFFFFE8", content=ft.Text(str(len(tasks)), size=11, weight=ft.FontWeight.W_800, color=accent)),
+                        ft.Container(width=38, height=38, border_radius=11, bgcolor=tint, alignment=CENTER, content=ft.Icon(icon or ft.Icons.VIEW_KANBAN_OUTLINED, size=19, color=accent)),
+                        ft.Column(
+                            spacing=0,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.Text(title, size=14, weight=ft.FontWeight.W_900, color=TEXT),
+                                ft.Text(subtitle or "Workflow stage", size=9, color=MUTED_2),
+                            ],
+                        ),
                     ],
                 ),
-                ft.Icon(ft.Icons.MORE_VERT, size=18, color="#FFFFFFCC"),
+                ft.Row(
+                    spacing=3,
+                    controls=[
+                        ft.Container(width=30, height=24, border_radius=99, bgcolor=tint, alignment=CENTER, content=ft.Text(str(len(tasks)), size=10, weight=ft.FontWeight.W_900, color=accent)),
+                        ft.IconButton(icon=ft.Icons.ADD, icon_size=17, icon_color=accent, tooltip=f"Add to {title}", on_click=lambda _e: on_add(), visible=bool(on_add)),
+                    ],
+                ),
             ],
         ),
     )
     if tasks:
         card_controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn, expanded_keys) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
     else:
-        card_controls = [ft.Container(padding=24, alignment=CENTER, content=ft.Text("No tasks yet", size=13, weight=ft.FontWeight.W_500, color=MUTED_2))]
+        card_controls = [
+            ft.Container(
+                height=150,
+                border_radius=13,
+                border=ft.Border(
+                    left=ft.BorderSide(1, accent + "55"),
+                    top=ft.BorderSide(1, accent + "55"),
+                    right=ft.BorderSide(1, accent + "55"),
+                    bottom=ft.BorderSide(1, accent + "55"),
+                ),
+                bgcolor=WHITE,
+                alignment=CENTER,
+                content=ft.Column(
+                    spacing=7,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=44, height=44, border_radius=14, bgcolor=tint, alignment=CENTER, content=ft.Icon(icon or ft.Icons.INBOX_OUTLINED, size=21, color=accent)),
+                        ft.Text(f"No {title.lower()} work", size=12, weight=ft.FontWeight.W_900, color=TEXT),
+                        ft.Text("Items will appear here automatically.", size=9, color=MUTED_2),
+                    ],
+                ),
+            )
+        ]
     return ft.Container(
         expand=True,
-        bgcolor=tint,
+        bgcolor="#FBFCFE",
         border=border_all(1, BORDER),
-        border_radius=14,
-        padding=8,
+        border_radius=17,
+        padding=9,
         content=ft.Column(
-            spacing=7,
+            spacing=9,
             expand=True,
             scroll=ft.ScrollMode.AUTO,
             controls=[header, *card_controls],

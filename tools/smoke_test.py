@@ -95,14 +95,31 @@ def check_migration():
     assert done["progress"] == 100, done
     bad = data.normalize_task_dates({"name": "z", "status": "progress", "progress": "999", "priority": "x", "tags": "nope"})
     assert bad["progress"] == 100 and bad["priority"] == 0 and bad["tags"] == [], bad
+    status_cases = {
+        "Waiting": data.STATUS_PENDING,
+        "Doing": data.STATUS_PROGRESS,
+        "In Progress": data.STATUS_PROGRESS,
+        "Success": data.STATUS_DONE,
+        "Completed": data.STATUS_DONE,
+        "unknown-value": data.STATUS_PENDING,
+    }
+    for raw, expected in status_cases.items():
+        assert data.normalize_task_dates({"name": raw, "status": raw})["status"] == expected
 
 
 def check_board_layout(ctx):
-    """Guard against Flutter's gray error box from a wrapped filter Row."""
+    """Guard Board visibility after a scrollable screen and stale task data."""
+    assert ctx.main_body.scroll is None, "Board must reset scroll inherited from Home/Health"
+    assert len(ctx.main_body.controls) == 3
     filters = ctx.main_body.controls[1]
     assert filters.height == 58, filters.height
     assert filters.content.wrap is False, filters.content.wrap
     assert filters.content.scroll == ft.ScrollMode.AUTO, filters.content.scroll
+    board = ctx.main_body.controls[2]
+    assert isinstance(board, ft.Row) and len(board.controls) == 3
+    text = " | ".join(control_texts(board))
+    for task in ("Sample Word", "Sample Excel", "Sample PDF", "Design ref"):
+        assert task in text, task
 
 
 def control_types(control):
@@ -196,6 +213,8 @@ def main():
         ctx = make_ctx()
         ctx.state["screen"] = name
         try:
+            if name == "board":
+                ctx.main_body.scroll = ft.ScrollMode.AUTO
             fn(ctx)
             if name == "board":
                 check_board_layout(ctx)
