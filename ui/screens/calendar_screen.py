@@ -212,14 +212,10 @@ def render_calendar(ctx: DashboardContext) -> None:
         )
 
     def day_cell(day):
-        weekday_palette = [
-            ("#EEF4FF", "#BFD4FF"), ("#EAFBFF", "#A7E6F0"), ("#ECFDF3", "#A7E3B8"),
-            ("#FFFAE6", "#F4D783"), ("#FFF2E6", "#F0C29B"), ("#FDF2FA", "#E7A8D4"),
-            ("#FFF1F2", "#E9A4A8"),
-        ]
         is_current_month = day.month == month
         is_selected = day == selected_day
         is_today = day == today
+        is_weekend = day.weekday() >= 5
         raw_day_tasks = sorted(all_grouped_by_day.get(day, []), key=lambda item: (item.get("status", ""), item.get("name", "")))
         day_tasks = sorted(grouped_by_day.get(day, []), key=lambda item: (item.get("status", ""), item.get("name", "")))
         day_events = sorted(events_by_day.get(day, []), key=lambda item: item.get("title", ""))
@@ -227,19 +223,45 @@ def render_calendar(ctx: DashboardContext) -> None:
         doing_count = sum(1 for item in raw_day_tasks if item.get("status") == STATUS_PROGRESS)
         done_count = sum(1 for item in raw_day_tasks if item.get("status") == STATUS_DONE)
         visible_events = day_events[:1]
-        visible_tasks = day_tasks[: max(0, 2 - len(visible_events))]
-        weekday_bg, weekday_border = weekday_palette[day.weekday()]
-        day_notes = calendar_day_info(day)
-        cell_bg = "#DBEAFE" if is_today else (weekday_bg if is_current_month else "#F8FAFC")
-        cell_border = PRIMARY if is_selected else (weekday_border if is_current_month else BORDER)
+        holiday_name = thai_holidays.get((day.month, day.day))
+        is_holiday = bool(holiday_name) and is_current_month
+        reserved = 1 if is_holiday else 0
+        visible_tasks = day_tasks[: max(0, 2 - len(visible_events) - reserved)]
+        if is_today:
+            cell_bg = "#EFF6FF"
+        elif not is_current_month:
+            cell_bg = "#EEF1F5"
+        elif is_holiday:
+            cell_bg = "#FBF4FF"
+        elif is_weekend:
+            cell_bg = "#FFF6F6"
+        else:
+            cell_bg = WHITE
+        if is_today or is_selected:
+            cell_border = PRIMARY
+        elif not is_current_month:
+            cell_border = "#E7EBF0"
+        elif is_holiday:
+            cell_border = "#C4B5FD"
+        elif is_weekend:
+            cell_border = "#FBD5D5"
+        else:
+            cell_border = BORDER
+        day_num_color = (
+            WHITE if is_today
+            else "#C2CAD6" if not is_current_month
+            else "#7C3AED" if is_holiday
+            else "#DC2626" if is_weekend
+            else TEXT
+        )
         return ft.Container(
             expand=True,
-            height=90,
             bgcolor=cell_bg,
-            border=border_all(3 if is_today else (2 if is_selected else 1), PRIMARY if is_today else cell_border),
+            clip_behavior=ft.ClipBehavior.HARD_EDGE,
+            border=border_all(2 if (is_today or is_selected) else 1, cell_border),
             border_radius=14,
             padding=8,
-            shadow=ft.BoxShadow(spread_radius=1, blur_radius=14, color="#302563EB", offset=ft.Offset(0, 5)) if is_today else (ft.BoxShadow(spread_radius=0, blur_radius=8, color="#10000000", offset=ft.Offset(0, 3)) if is_current_month else None),
+            shadow=ft.BoxShadow(spread_radius=0, blur_radius=12, color="#242563EB", offset=ft.Offset(0, 4)) if is_today else None,
             on_click=lambda _e, value=day: select_day(value),
             content=ft.Column(
                 spacing=4,
@@ -257,7 +279,7 @@ def render_calendar(ctx: DashboardContext) -> None:
                                         border_radius=999,
                                         bgcolor=PRIMARY if is_today else None,
                                         alignment=CENTER,
-                                        content=ft.Text(str(day.day), size=13 if is_today else 12, weight=ft.FontWeight.W_900 if is_today else ft.FontWeight.W_800, color=WHITE if is_today else (TEXT if is_current_month else MUTED_2)),
+                                        content=ft.Text(str(day.day), size=13 if is_today else 12, weight=ft.FontWeight.W_900 if is_today else ft.FontWeight.W_800, color=day_num_color),
                                     ),
                                     ft.Container(
                                         height=18,
@@ -272,6 +294,21 @@ def render_calendar(ctx: DashboardContext) -> None:
                             ft.Text(f"W{waiting_count} D{doing_count} S{done_count}" if raw_day_tasks else "", size=9, color=MUTED_2),
                         ],
                     ),
+                    ft.Container(
+                        height=17,
+                        border_radius=7,
+                        bgcolor="#F3E8FF",
+                        border=border_all(1, "#D8B4FE"),
+                        padding=pad_sym(horizontal=5),
+                        content=ft.Row(
+                            spacing=4,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Icon(ft.Icons.CELEBRATION_OUTLINED, size=11, color="#7C3AED"),
+                                ft.Text(holiday_name or "", size=9, weight=ft.FontWeight.W_900, color="#6B21A8", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, expand=True),
+                            ],
+                        ),
+                    ) if is_holiday else ft.Container(height=0, width=0),
                     *[event_chip(event) for event in visible_events],
                     *[task_chip(task) for task in visible_tasks],
                     ft.Container(
@@ -281,19 +318,6 @@ def render_calendar(ctx: DashboardContext) -> None:
                         alignment=CENTER,
                         content=ft.Text(f"+{(len(day_tasks) - len(visible_tasks)) + (len(day_events) - len(visible_events))}", size=9, weight=ft.FontWeight.W_700, color=MUTED),
                     ) if (len(day_tasks) > len(visible_tasks) or len(day_events) > len(visible_events)) else ft.Container(height=0),
-                    ft.Row(
-                        spacing=4,
-                        controls=[
-                            ft.Container(
-                                height=13,
-                                padding=pad_sym(horizontal=5),
-                                border_radius=999,
-                                bgcolor=note_bg,
-                                content=ft.Text(code, size=8, weight=ft.FontWeight.W_900, color=note_color),
-                            )
-                            for code, _title, note_color, note_bg in day_notes[:2]
-                        ],
-                    ) if day_notes else ft.Container(height=0),
                 ],
             ),
         )
@@ -302,12 +326,12 @@ def render_calendar(ctx: DashboardContext) -> None:
     start_day = first_day - timedelta(days=first_day.weekday())
     weekday_row = ft.Row(
         spacing=6,
-        controls=[ft.Container(expand=True, alignment=CENTER, content=ft.Text(label, size=12, weight=ft.FontWeight.W_800, color=MUTED)) for label in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]],
+        controls=[ft.Container(expand=True, alignment=CENTER, content=ft.Text(label, size=12, weight=ft.FontWeight.W_800, color=("#DC2626" if label in ("Sat", "Sun") else MUTED))) for label in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]],
     )
     week_rows = []
     for week_index in range(6):
         week_start = start_day + timedelta(days=week_index * 7)
-        week_rows.append(ft.Row(spacing=6, controls=[day_cell(week_start + timedelta(days=offset)) for offset in range(7)]))
+        week_rows.append(ft.Row(spacing=6, expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH, controls=[day_cell(week_start + timedelta(days=offset)) for offset in range(7)]))
 
     selected_tasks = sorted(grouped_by_day.get(selected_day, []), key=lambda item: (item.get("status", ""), item.get("name", "")))
     selected_events = sorted(events_by_day.get(selected_day, []), key=lambda item: item.get("title", ""))
@@ -405,7 +429,7 @@ def render_calendar(ctx: DashboardContext) -> None:
         border=border_all(1, BORDER),
         border_radius=22,
         padding=14,
-        content=ft.Column(spacing=6, controls=[weekday_row, *week_rows]),
+        content=ft.Column(spacing=6, expand=True, controls=[weekday_row, *week_rows]),
     )
     detail_panel = ft.Container(
         width=360,
@@ -502,5 +526,7 @@ def render_calendar(ctx: DashboardContext) -> None:
         ),
     )
 
-    ctx.main_body.controls = [toolbar, status_overview, ft.Row(spacing=18, expand=True, controls=[calendar_panel, detail_panel])]
+    ctx.main_body.scroll = None
+    ctx.main_body.expand = True
+    ctx.main_body.controls = [toolbar, status_overview, ft.Row(spacing=18, expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH, controls=[calendar_panel, detail_panel])]
     ctx.page.update()

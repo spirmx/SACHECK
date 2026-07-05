@@ -9,18 +9,24 @@ import flet as ft
 from core.startup_preflight import StartupResult, run_startup_preflight
 
 
-BG = "#EAF4F7"
+# --- Clean light loader palette (white base, teal accent) ---
+BG = "#FFFFFF"
 SURFACE = "#FFFFFF"
-ACCENT = "#2563EB"
-TEXT = "#12213A"
-MUTED = "#5F718B"
-BORDER = "#CFE0E8"
-SUCCESS = "#16A36A"
-WARNING = "#F59E0B"
-ERROR = "#EF4B5A"
+PANEL = "#F8FAFC"
+BORDER = "#E2E8F0"
+ACCENT = "#0F766E"          # teal brand accent (progress, active step)
+ACCENT_SOFT = "#14B8A6"
+ACCENT_TINT = "#F0FDFA"
+TEXT = "#0F172A"
+MUTED = "#64748B"
+FAINT = "#94A3B8"
+TRACK = "#E8EEF3"
+SUCCESS = "#16A34A"
+WARNING = "#D97706"
+ERROR = "#DC2626"
 MINIMUM_LOADER_SECONDS = 1.4
-STEP_COLORS = ("#2563EB", "#13A8A8", "#F59E0B", "#16A36A")
-STEP_BACKGROUNDS = ("#EAF2FF", "#E8FBFB", "#FFF7E6", "#EAF9F1")
+STEP_COLORS = (ACCENT, ACCENT, ACCENT, ACCENT)
+STEP_BACKGROUNDS = (PANEL, PANEL, PANEL, PANEL)
 
 
 def _safe_update(page: ft.Page) -> None:
@@ -67,19 +73,20 @@ def show_startup_loader(
     status_icon = ft.Icon(ft.Icons.ROCKET_LAUNCH_OUTLINED, size=19, color=ACCENT)
     status_panel = ft.Container(
         height=48,
+        width=360,
         padding=ft.Padding.symmetric(horizontal=14),
-        border_radius=10,
-        bgcolor="#EFF6FF",
-        border=ft.Border.all(1, "#BFDBFE"),
+        border_radius=12,
+        bgcolor=PANEL,
+        border=ft.Border.all(1, BORDER),
         content=ft.Row(spacing=10, controls=[status_icon, status_text]),
     )
-    progress = ft.ProgressBar(value=0.04, height=7, color=ACCENT, bgcolor="#DCE7EF", border_radius=99)
+    progress = ft.ProgressBar(value=0.04, height=6, color=ACCENT, bgcolor=TRACK, border_radius=99)
     percent_text = ft.Text("4%", size=11, weight=ft.FontWeight.W_800, color=ACCENT)
     mode_chip = ft.Container(
         visible=False,
         padding=ft.Padding.symmetric(horizontal=10, vertical=5),
         border_radius=99,
-        bgcolor="#F1F5F9",
+        bgcolor=PANEL,
         border=ft.Border.all(1, BORDER),
         content=ft.Text("Online check", size=10, weight=ft.FontWeight.W_700, color=MUTED),
     )
@@ -89,16 +96,16 @@ def show_startup_loader(
         ft.Text("Connectivity", size=10, color=MUTED),
         ft.Text("Finalize", size=10, color=MUTED),
     ]
-    step_dots = [ft.Container(width=9, height=9, border_radius=99, bgcolor="#B9C8D3") for _ in range(4)]
+    step_dots = [ft.Container(width=9, height=9, border_radius=99, bgcolor="#CBD5E1") for _ in range(4)]
     step_cards = [
         ft.Container(
-            width=114,
-            height=48,
-            padding=ft.Padding.symmetric(horizontal=10),
-            border_radius=9,
+            width=118,
+            height=46,
+            padding=ft.Padding.symmetric(horizontal=11),
+            border_radius=11,
             bgcolor=STEP_BACKGROUNDS[index],
             border=ft.Border.all(1, STEP_COLORS[index] if index == 0 else BORDER),
-            content=ft.Row(spacing=7, controls=[step_dots[index], step_labels[index]]),
+            content=ft.Row(spacing=8, controls=[step_dots[index], step_labels[index]]),
         )
         for index in range(4)
     ]
@@ -109,21 +116,21 @@ def show_startup_loader(
         controls=step_cards,
     )
     logo = ft.Container(
-        width=76,
-        height=76,
-        border_radius=20,
+        width=88,
+        height=88,
+        border_radius=24,
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-        bgcolor="#F4F8FB",
-        border=ft.Border.all(1, "#BFD4E2"),
-        shadow=ft.BoxShadow(blur_radius=16, color="#260F4C81", offset=ft.Offset(0, 6)),
+        bgcolor="#F1F5F9",
+        border=ft.Border.all(1, ACCENT_SOFT),
+        shadow=ft.BoxShadow(blur_radius=26, spread_radius=1, color="#2214B8A6", offset=ft.Offset(0, 6)),
         content=ft.Image(
             src=app_logo,
-            width=76,
-            height=76,
+            width=88,
+            height=88,
             fit=ft.BoxFit.COVER,
             error_content=ft.Container(
                 alignment=ft.Alignment(0, 0),
-                content=ft.Text("SA", size=22, weight=ft.FontWeight.W_900, color=ACCENT),
+                content=ft.Text("SA", size=26, weight=ft.FontWeight.W_900, color=ACCENT),
             ),
         ),
     )
@@ -134,36 +141,41 @@ def show_startup_loader(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=0,
             controls=[
-                ft.Row(
-                    spacing=0,
-                    controls=[ft.Container(expand=True, height=8, bgcolor=color) for color in STEP_COLORS],
-                ),
+                ft.Container(height=3, width=180, bgcolor=ACCENT, border_radius=99),
                 ft.Container(
                     expand=True,
                     alignment=ft.Alignment(0, 0),
-                    padding=ft.Padding.only(left=112, right=112, top=28, bottom=24),
+                    padding=ft.Padding.only(left=112, right=112, top=30, bottom=26),
                     content=ft.Column(
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=12,
+                        spacing=14,
                         controls=[
-                            ft.Text(app_name, size=24, weight=ft.FontWeight.W_900, color=TEXT),
+                            logo,
+                            ft.Text(app_name, size=26, weight=ft.FontWeight.W_900, color=TEXT),
                             ft.Container(
-                                padding=ft.Padding.symmetric(horizontal=10, vertical=4),
+                                padding=ft.Padding.symmetric(horizontal=12, vertical=4),
                                 border_radius=99,
-                                bgcolor="#EEF2FF",
-                                content=ft.Text(f"VERSION {app_version}", size=10, weight=ft.FontWeight.W_800, color="#4F46E5"),
+                                bgcolor=ACCENT_TINT,
+                                border=ft.Border.all(1, "#99F6E4"),
+                                content=ft.Row(
+                                    spacing=6,
+                                    controls=[
+                                        ft.Container(width=6, height=6, border_radius=99, bgcolor=ACCENT),
+                                        ft.Text(f"VERSION {app_version}", size=10, weight=ft.FontWeight.W_800, color=ACCENT),
+                                    ],
+                                ),
                             ),
                             status_panel,
-                            ft.Row(spacing=10, controls=[ft.Container(expand=True, content=progress), percent_text]),
+                            ft.Row(spacing=10, width=372, controls=[ft.Container(expand=True, content=progress), percent_text]),
                             step_row,
                             mode_chip,
                             ft.Row(
                                 spacing=6,
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 controls=[
-                                    ft.Icon(ft.Icons.LOCK_OUTLINE, size=13, color="#70859A"),
-                                    ft.Text("Work folders, settings, and cache stay local.", size=10, color="#70859A"),
+                                    ft.Icon(ft.Icons.LOCK_OUTLINE, size=13, color=FAINT),
+                                    ft.Text("Work folders, settings, and cache stay local.", size=10, color=FAINT),
                                 ],
                             ),
                         ],
@@ -203,33 +215,43 @@ def show_startup_loader(
         percent_text.value = f"{int(value * 100)}%"
         active = step_indexes.get(step, 0)
         for index, dot in enumerate(step_dots):
-            dot.bgcolor = SUCCESS if index < active else STEP_COLORS[index] if index == active else "#B9C8D3"
-            step_cards[index].border = ft.Border.all(1, STEP_COLORS[index] if index == active else BORDER)
+            if index < active:
+                dot.bgcolor = SUCCESS
+                step_cards[index].border = ft.Border.all(1, BORDER)
+                step_labels[index].color = MUTED
+            elif index == active:
+                dot.bgcolor = STEP_COLORS[index]
+                step_cards[index].border = ft.Border.all(1, STEP_COLORS[index])
+                step_labels[index].color = TEXT
+            else:
+                dot.bgcolor = "#CBD5E1"
+                step_cards[index].border = ft.Border.all(1, BORDER)
+                step_labels[index].color = MUTED
         if step == "online":
             mode_chip.visible = True
-            mode_chip.bgcolor = "#FFF7E6"
+            mode_chip.bgcolor = "#FFFBEB"
             mode_chip.border = ft.Border.all(1, "#FCD38A")
             mode_chip.content.value = "Checking online services"
             mode_chip.content.color = "#A65D03"
         elif step == "offline":
             mode_chip.visible = True
-            mode_chip.bgcolor = "#F1F5F9"
+            mode_chip.bgcolor = PANEL
             mode_chip.border = ft.Border.all(1, BORDER)
             mode_chip.content.value = "Offline mode"
             mode_chip.content.color = MUTED
         elif step == "repair":
             progress.color = ERROR
-            status_panel.bgcolor = "#FFF1F2"
-            status_panel.border = ft.Border.all(1, "#FECDD3")
+            status_panel.bgcolor = "#FEF2F2"
+            status_panel.border = ft.Border.all(1, "#FECACA")
             status_icon.color = ERROR
             mode_chip.visible = True
-            mode_chip.bgcolor = "#FFF1F2"
-            mode_chip.border = ft.Border.all(1, "#FECDD3")
+            mode_chip.bgcolor = "#FEF2F2"
+            mode_chip.border = ft.Border.all(1, "#FECACA")
             mode_chip.content.value = "Verified repair"
             mode_chip.content.color = "#BE123C"
         elif step == "ready":
             progress.color = SUCCESS
-            status_panel.bgcolor = "#EAF9F1"
+            status_panel.bgcolor = "#ECFDF5"
             status_panel.border = ft.Border.all(1, "#A7E4C5")
             status_icon.color = SUCCESS
         _safe_update(page)
@@ -271,9 +293,9 @@ def show_startup_loader(
                     content=ft.Container(
                         width=560,
                         padding=32,
-                        border_radius=14,
+                        border_radius=16,
                         bgcolor=SURFACE,
-                        border=ft.Border.all(1, ERROR),
+                        border=ft.Border.all(1, "#FECACA"),
                         content=ft.Column(
                             spacing=14,
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -284,9 +306,9 @@ def show_startup_loader(
                                 ft.Container(
                                     width=500,
                                     padding=12,
-                                    border_radius=9,
-                                    bgcolor="#FFF1F2",
-                                    border=ft.Border.all(1, "#FECDD3"),
+                                    border_radius=10,
+                                    bgcolor="#FEF2F2",
+                                    border=ft.Border.all(1, "#FECACA"),
                                     content=ft.Text(str(exc), size=11, color="#BE123C", selectable=True),
                                 ),
                                 ft.Button(
@@ -308,7 +330,7 @@ def show_startup_loader(
                                     style=ft.ButtonStyle(
                                         bgcolor=ACCENT,
                                         color="#FFFFFF",
-                                        shape=ft.RoundedRectangleBorder(radius=9),
+                                        shape=ft.RoundedRectangleBorder(radius=10),
                                     ),
                                 ),
                             ],

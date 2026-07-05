@@ -20,6 +20,30 @@ def border_all(width=1, color=BORDER):
 CENTER = ft.Alignment(0, 0)
 
 
+def hover_lift(container, scale=1.02, accent=None, base_border=None, shadow=True, lift=6, dur=140):
+    """Attach a lag-free hover animation (scale + optional shadow/border) to a
+    Container. Only fires while pointed at, so it stays cheap even in long lists.
+    """
+    container.animate_scale = ft.Animation(dur, ft.AnimationCurve.EASE_OUT)
+    if shadow or (accent is not None):
+        container.animate = ft.Animation(dur, ft.AnimationCurve.EASE_OUT)
+
+    def _on_hover(event):
+        active = event.data == "true"
+        container.scale = scale if active else 1
+        if shadow:
+            container.shadow = ft.BoxShadow(spread_radius=0, blur_radius=18, color="#1E0F172A", offset=ft.Offset(0, lift)) if active else None
+        if accent is not None and base_border is not None:
+            container.border = border_all(1, accent if active else base_border)
+        try:
+            container.update()
+        except Exception:
+            pass
+
+    container.on_hover = _on_hover
+    return container
+
+
 def task_icon(task_type):
     mapping = {
         "Word": (ft.Icons.DESCRIPTION_OUTLINED, "#2F80ED"),
@@ -185,18 +209,97 @@ def stat_card(title, value):
 def dropdown(width, value, options, on_select=None):
     return ft.Dropdown(
         width=width,
-        height=38,
+        height=44,
         value=value,
         options=[ft.dropdown.Option(option) for option in options],
-        border_radius=10,
+        border_radius=12,
         border_color=BORDER,
+        border_width=1,
         focused_border_color=ACCENT,
-        bgcolor="#F8FAFC",
+        focused_border_width=2,
+        bgcolor=WHITE,
+        fill_color=WHITE,
+        filled=True,
         text_size=13,
         color=TEXT,
-        content_padding=pad_sym(horizontal=10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_700, color=TEXT),
+        content_padding=pad_sym(horizontal=13),
+        hover_color="#F1F5F9",
+        elevation=6,
         on_select=on_select,
-        filled=True,
+    )
+
+
+STATUS_MENU_STYLE = {
+    "Waiting": ("#2563EB", "#EFF6FF", ft.Icons.INBOX_OUTLINED),
+    "Doing": ("#D97706", "#FFFBEB", ft.Icons.BOLT_OUTLINED),
+    "Success": ("#16A34A", "#F0FDF4", ft.Icons.CHECK_CIRCLE_OUTLINE),
+}
+
+
+def status_menu(current_label, on_change, width=182):
+    """Colourful status picker (Waiting / Doing / Success) with hover animation.
+
+    on_change receives the chosen label string.
+    """
+    color, bg, icon = STATUS_MENU_STYLE.get(current_label, STATUS_MENU_STYLE["Waiting"])
+
+    def menu_item(label):
+        item_color, item_bg, item_icon = STATUS_MENU_STYLE[label]
+        selected = label == current_label
+        return ft.PopupMenuItem(
+            content=ft.Container(
+                width=width - 24,
+                padding=pad_sym(horizontal=10, vertical=8),
+                border_radius=10,
+                bgcolor=item_bg,
+                border=border_all(1, item_color if selected else item_bg),
+                content=ft.Row(
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(width=26, height=26, border_radius=8, bgcolor=item_color, alignment=CENTER, content=ft.Icon(item_icon, size=15, color=WHITE)),
+                        ft.Text(label, size=13, weight=ft.FontWeight.W_800, color=item_color, expand=True),
+                        ft.Icon(ft.Icons.CHECK_ROUNDED, size=16, color=item_color) if selected else ft.Container(width=0, height=0),
+                    ],
+                ),
+            ),
+            on_click=lambda _e, chosen=label: on_change(chosen),
+        )
+
+    trigger = ft.Container(
+        width=width,
+        height=44,
+        padding=pad_sym(horizontal=12),
+        border_radius=12,
+        bgcolor=bg,
+        border=border_all(1.5, color),
+        alignment=CENTER,
+        animate_scale=ft.Animation(130, ft.AnimationCurve.EASE_OUT),
+        content=ft.Row(
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Container(width=9, height=9, border_radius=99, bgcolor=color),
+                ft.Text(current_label, size=13, weight=ft.FontWeight.W_900, color=color, expand=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                ft.Icon(ft.Icons.KEYBOARD_ARROW_DOWN_ROUNDED, size=18, color=color),
+            ],
+        ),
+    )
+
+    def on_hover(event):
+        trigger.scale = 1.03 if event.data == "true" else 1
+        try:
+            trigger.update()
+        except Exception:
+            pass
+
+    trigger.on_hover = on_hover
+
+    return ft.PopupMenuButton(
+        content=trigger,
+        menu_position=ft.PopupMenuPosition.UNDER,
+        items=[menu_item("Waiting"), menu_item("Doing"), menu_item("Success")],
     )
 
 

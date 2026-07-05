@@ -699,16 +699,23 @@ NAV_ACTIVE = "#1D4ED8"
 def dropdown(width, value, options, on_select=None):
     return ft.Dropdown(
         width=width,
-        height=38,
+        height=44,
         value=value,
         options=[ft.dropdown.Option(option) for option in options],
-        border_radius=10,
+        border_radius=12,
         border_color=BORDER,
+        border_width=1,
         focused_border_color=ACCENT,
-        bgcolor="#F8FAFC",
+        focused_border_width=2,
+        bgcolor=WHITE,
+        fill_color=WHITE,
+        filled=True,
         text_size=13,
         color=TEXT,
-        content_padding=pad_sym(horizontal=10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_700, color=TEXT),
+        content_padding=pad_sym(horizontal=13),
+        hover_color="#F1F5F9",
+        elevation=6,
         on_select=on_select,
     )
 
@@ -2954,81 +2961,94 @@ th{{background:#eff6ff;color:#1d4ed8}}
             page.update()
             show_version_notes()
 
-        def guide_header(icon, title, subtitle, color=PRIMARY):
+        GUIDE_SECTION_COLORS = {
+            1: ("#2563EB", "#EFF6FF", "#0C447C"),
+            2: ("#7C3AED", "#F5F3FF", "#4C1D95"),
+            3: ("#D97706", "#FFF7ED", "#854F0B"),
+            4: ("#16A34A", "#F0FDF4", "#166534"),
+            5: ("#0F766E", "#F0FDFA", "#115E59"),
+        }
+
+        def guide_header(number, icon, title, subtitle):
+            color, tint, dark = GUIDE_SECTION_COLORS.get(number, (PRIMARY, "#EFF6FF", "#0C447C"))
             return ft.Container(
                 data="guide_header",
-                border=border_all(1, "#DBEAFE"),
-                border_radius=16,
-                bgcolor="#F8FBFF",
-                padding=pad_sym(horizontal=14, vertical=12),
+                bgcolor=tint,
+                padding=pad_sym(horizontal=15, vertical=13),
                 content=ft.Row(
-                    spacing=12,
+                    spacing=13,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(width=42, height=42, border_radius=14, bgcolor=color + "16", alignment=CENTER, content=ft.Icon(icon, color=color, size=23)),
+                        ft.Container(width=34, height=34, border_radius=99, bgcolor=color, alignment=CENTER, content=ft.Text(str(number), size=16, weight=ft.FontWeight.W_900, color=WHITE)),
                         ft.Column(
-                            spacing=2,
+                            spacing=1,
                             expand=True,
                             controls=[
-                                ft.Text(title, size=16, weight=ft.FontWeight.W_900, color=TEXT),
-                                ft.Text(subtitle, size=12, color=MUTED),
+                                ft.Text(title, size=15, weight=ft.FontWeight.W_900, color=dark),
+                                ft.Text(subtitle, size=11, weight=ft.FontWeight.W_700, color=color),
                             ],
                         ),
+                        ft.Icon(icon, color=color, size=24),
                     ],
                 ),
             )
 
-        def step(icon, title, body, color=PRIMARY):
-            return ft.Container(
-                data="guide_step",
-                border=border_all(1, BORDER),
-                border_radius=14,
-                bgcolor=WHITE,
-                padding=pad_sym(horizontal=13, vertical=11),
-                content=ft.Row(
-                    spacing=11,
-                    vertical_alignment=ft.CrossAxisAlignment.START,
+        def step(icon, title, body, color=PRIMARY, action=None):
+            row_controls = [
+                ft.Container(width=32, height=32, border_radius=9, bgcolor=color + "18", alignment=CENTER, content=ft.Icon(icon, color=color, size=18)),
+                ft.Column(
+                    spacing=2,
+                    expand=True,
                     controls=[
-                        ft.Container(width=34, height=34, border_radius=12, bgcolor=color + "14", alignment=CENTER, content=ft.Icon(icon, color=color, size=19)),
-                        ft.Column(
-                            spacing=4,
-                            expand=True,
-                            controls=[
-                                ft.Text(title, size=13, weight=ft.FontWeight.W_900, color=TEXT),
-                                ft.Text(body, size=12, color=MUTED, selectable=True),
-                            ],
-                        ),
+                        ft.Text(title, size=13, weight=ft.FontWeight.W_800, color=TEXT),
+                        ft.Text(body, size=11, color=MUTED, selectable=True),
                     ],
                 ),
+            ]
+            if action:
+                row_controls.append(
+                    ft.Container(
+                        padding=pad_sym(horizontal=9, vertical=5),
+                        border_radius=8,
+                        bgcolor="#F1F5F9",
+                        border=border_all(1, BORDER),
+                        content=ft.Text(action, size=11, weight=ft.FontWeight.W_800, color="#334155"),
+                    )
+                )
+            return ft.Container(
+                data="guide_step",
+                bgcolor=WHITE,
+                padding=pad_sym(horizontal=15, vertical=11),
+                content=ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=row_controls),
             )
 
         sections = [
-            guide_header(ft.Icons.FOLDER_SPECIAL_OUTLINED, "1. เริ่มต้นเลือกคลังงาน", "ติดตั้งใหม่จะยังไม่ผูกกับ Work เก่า ให้เลือกหรือสร้างโฟลเดอร์งานเอง"),
-            step(ft.Icons.SETTINGS_OUTLINED, "เลือก Work folder", "ไปที่ Settings > Work Folder Source > Choose Work folder แล้วเลือก Work1, Work2 หรือโฟลเดอร์งานของทีม", "#2563EB"),
-            step(ft.Icons.CREATE_NEW_FOLDER_OUTLINED, "สร้างโฟลเดอร์เก็บงานใหม่", "ถ้ายังไม่มีคลังงาน ให้สร้างโฟลเดอร์ใหม่ เช่น Documents\\SA CHECK Work\\Work แล้วเลือกโฟลเดอร์นั้นเป็น Work folder", "#0F766E"),
-            step(ft.Icons.SYNC, "Sync งานเข้าระบบ", "กด Sync now เพื่อให้แอพอ่านโฟลเดอร์ Waiting, Doing, Success และไฟล์ในคลังงานขึ้นมาบนบอร์ด", "#7C3AED"),
+            guide_header(1, ft.Icons.FOLDER_SPECIAL_OUTLINED, "เลือกคลังงาน", "เลือกหรือสร้างโฟลเดอร์ที่เก็บงานของคุณ"),
+            step(ft.Icons.SETTINGS_OUTLINED, "เลือก Work folder", "เลือกโฟลเดอร์งาน (Work1, Work2 หรือของทีม)", "#2563EB", "Settings › Work folder"),
+            step(ft.Icons.CREATE_NEW_FOLDER_OUTLINED, "สร้างโฟลเดอร์ใหม่", "ยังไม่มีคลังงาน? สร้างใหม่แล้วเลือกเป็น Work folder", "#0F766E", "New folder"),
+            step(ft.Icons.SYNC, "Sync เข้าระบบ", "ดึงไฟล์ Waiting / Doing / Success ขึ้นบอร์ด", "#7C3AED", "Sync now"),
 
-            guide_header(ft.Icons.ADD_TASK_OUTLINED, "2. วิธีเพิ่มงาน", "เพิ่มได้ทั้งไฟล์ โฟลเดอร์โปรเจค ลิงก์ เทมเพลต และงานใหม่จากในแอพ"),
-            step(ft.Icons.UPLOAD_FILE_OUTLINED, "Add files", "กด + Quick Add > Add files เลือกได้ทีละหลายไฟล์ แอพจะคัดแยกประเภทอัตโนมัติ (Word/Excel/PDF/ฯลฯ) แล้วคัดลอกเข้า Waiting ตามหมวดให้ปลอดภัย", "#DC2626"),
-            step(ft.Icons.LINK_ROUNDED, "Add link", "ใช้เก็บ URL เช่น Google Sheet, Miro, Canva, Figma แอพจะจับได้ว่าเป็นลิงก์ของอะไรและสร้าง shortcut .url ให้ใน Work folder", "#0891B2"),
-            step(ft.Icons.NOTE_ADD_OUTLINED, "Create new work", "สร้างงานเปล่าจากชนิดไฟล์ที่ตั้งไว้ เช่น Word/Excel/Text แล้วให้แอพวางไว้ใน Waiting", "#0F766E"),
-            step(ft.Icons.ARTICLE_OUTLINED, "Templates", "เก็บไฟล์ต้นแบบไว้หน้า Templates แล้วกดใช้ซ้ำเพื่อสร้างงานใหม่เข้า Waiting ได้เร็ว", "#D97706"),
+            guide_header(2, ft.Icons.ADD_TASK_OUTLINED, "เพิ่มงาน", "ไฟล์ ลิงก์ เทมเพลต — คัดแยกให้อัตโนมัติ"),
+            step(ft.Icons.UPLOAD_FILE_OUTLINED, "Add files", "เลือกหลายไฟล์ แอพคัดแยก Word/Excel/PDF เข้า Waiting", "#DC2626", "Add file"),
+            step(ft.Icons.LINK_ROUNDED, "Add link", "เก็บ URL (Google Sheet, Figma, Miro) เป็น shortcut", "#0891B2", "Add link"),
+            step(ft.Icons.NOTE_ADD_OUTLINED, "Create new work", "สร้างงานเปล่าตามชนิดไฟล์ เข้า Waiting", "#0F766E", "Add work"),
+            step(ft.Icons.ARTICLE_OUTLINED, "Templates", "เก็บไฟล์ต้นแบบ กดใช้ซ้ำได้เร็ว", "#D97706", "Templates"),
 
-            guide_header(ft.Icons.DASHBOARD_ROUNDED, "3. ใช้งานบอร์ดและสถานะ", "บอร์ดหลักช่วยดูงาน Waiting, Doing, Success และเลื่อนสถานะได้"),
-            step(ft.Icons.PLAY_CIRCLE_OUTLINE, "ย้ายสถานะ", "เปิดเมนูของงาน หรือเข้า Detail แล้วเลือก Move to Waiting / Doing / Success ไฟล์จะถูกย้ายโฟลเดอร์ตามสถานะ", "#D97706"),
-            step(ft.Icons.INFO_OUTLINE, "ดูรายละเอียด", "กด Detail เพื่อแก้ชื่อ, ชนิดงาน, วันที่, note, เปิดไฟล์, เปิดโฟลเดอร์ หรือคัดลอก path", "#2563EB"),
-            step(ft.Icons.SEARCH, "ค้นหาและกรอง", "ช่อง Search ใช้ค้นชื่อไฟล์ note path ประเภทงาน และสถานะ ช่วยหาไฟล์ในคลังงานเร็วขึ้น", "#0F766E"),
+            guide_header(3, ft.Icons.DASHBOARD_ROUNDED, "ใช้บอร์ด & สถานะ", "ดูงานและเลื่อน Waiting → Doing → Success"),
+            step(ft.Icons.PLAY_CIRCLE_OUTLINE, "ย้ายสถานะ", "เมนูงาน หรือ Detail → Move to Waiting/Doing/Success", "#D97706", "Move to…"),
+            step(ft.Icons.INFO_OUTLINE, "ดูรายละเอียด", "แก้ชื่อ ชนิด วันที่ note เปิดไฟล์ เปิดโฟลเดอร์", "#2563EB", "Detail"),
+            step(ft.Icons.SEARCH, "ค้นหา & กรอง", "ค้นชื่อ note path ประเภท และสถานะได้", "#0F766E", "Search"),
 
-            guide_header(ft.Icons.EVENT_OUTLINED, "4. Calendar, Health และความปลอดภัย", "ใช้ช่วยตามงาน ตรวจไฟล์หาย และย้อนการแก้ไข"),
-            step(ft.Icons.CALENDAR_TODAY_OUTLINED, "Calendar", "เพิ่ม Calendar event จาก + Quick Add หรือแก้วันที่ใน Detail เพื่อใช้เตือนงานตามวัน", "#7C3AED"),
-            step(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Health", "หน้า Health ช่วยดูไฟล์ที่ path หาย, duplicate, snapshot และ activity ล่าสุด", "#16A34A"),
-            step(ft.Icons.UNDO, "Undo / Snapshot", "ระบบเก็บ undo และ snapshot บางจังหวะ เช่น ก่อนเปลี่ยน Work folder หรือแก้รายการสำคัญ เพื่อช่วยย้อนกลับ", "#D97706"),
+            guide_header(4, ft.Icons.EVENT_OUTLINED, "Calendar, Health & ปลอดภัย", "ตามงาน ตรวจไฟล์หาย ย้อนการแก้ไข"),
+            step(ft.Icons.CALENDAR_TODAY_OUTLINED, "Calendar", "เพิ่ม event หรือแก้วันที่ใน Detail เพื่อเตือนงาน", "#7C3AED", "Add Event"),
+            step(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Health", "ดูไฟล์ path หาย, duplicate, snapshot, activity", "#16A34A", "Health"),
+            step(ft.Icons.UNDO, "Undo / Snapshot", "ระบบเก็บ snapshot ก่อนแก้สำคัญ ย้อนกลับได้", "#D97706", "Undo"),
 
-            guide_header(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, "5. ติดตั้ง อัปเดต ถอนการติดตั้ง", "ออกแบบให้กด installer ทับเพื่ออัปเดตระบบได้"),
-            step(ft.Icons.INSTALL_DESKTOP_OUTLINED, "ติดตั้ง", "รัน SA_CHECK_Installer.exe แล้วระบบจะติดตั้งตัวแอพไว้ที่ C:\\SACHECK และสร้าง shortcut ให้", "#2563EB"),
-            step(ft.Icons.UPDATE, "อัปเดต", "ถ้ามี installer เวอร์ชันใหม่ ให้กดติดตั้งทับที่ C:\\SACHECK ได้เลย โค้ด/คู่มือจะอัปเดต แต่ Work folder ที่เลือกไว้จะไม่โดนลบ", "#0F766E"),
-            step(ft.Icons.DELETE_OUTLINE, "Uninstall", "ถอนการติดตั้งจะลบเฉพาะไฟล์ระบบแอพใน C:\\SACHECK ไม่ลบ Work1/Work2 หรือโฟลเดอร์งานที่ผู้ใช้เลือกไว้", "#DC2626"),
-            step(ft.Icons.VERIFIED_USER_OUTLINED, "About", "SA CHECK " + APP_VERSION + " | Local-first desktop workspace", "#0F766E"),
+            guide_header(5, ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, "ติดตั้ง & อัปเดต", "ลง installer ทับเพื่ออัปเดต งานไม่หาย"),
+            step(ft.Icons.INSTALL_DESKTOP_OUTLINED, "ติดตั้ง", "รัน SA_CHECK_Installer.exe ลงที่ C:\\SACHECK", "#2563EB", "Installer"),
+            step(ft.Icons.UPDATE, "อัปเดต", "ลง installer ใหม่ทับ — Work folder ไม่โดนลบ", "#0F766E", "Reinstall"),
+            step(ft.Icons.DELETE_OUTLINE, "Uninstall", "ลบเฉพาะไฟล์แอพ ไม่ลบงานที่เลือกไว้", "#DC2626", "Uninstall"),
+            step(ft.Icons.VERIFIED_USER_OUTLINED, "About", "SA CHECK " + APP_VERSION + " · Local-first desktop workspace", "#0F766E"),
         ]
 
         guide_groups = []
@@ -3042,16 +3062,21 @@ th{{background:#eff6ff;color:#1d4ed8}}
         if current_group:
             guide_groups.append(current_group)
 
-        guide_controls = [
-            ft.Container(
-                border=border_all(1, "#E2E8F0"),
-                border_radius=18,
-                bgcolor="#F8FAFC",
-                padding=12,
-                content=ft.Column(spacing=10, controls=group),
+        guide_controls = []
+        for group in guide_groups:
+            children = []
+            for idx, item in enumerate(group):
+                if idx >= 2 and getattr(item, "data", None) == "guide_step":
+                    children.append(ft.Container(height=1, bgcolor=BORDER))
+                children.append(item)
+            guide_controls.append(
+                ft.Container(
+                    border=border_all(1, BORDER),
+                    border_radius=16,
+                    clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                    content=ft.Column(spacing=0, controls=children),
+                )
             )
-            for group in guide_groups
-        ]
 
         page.show_dialog(
             ft.AlertDialog(
@@ -3562,38 +3587,65 @@ th{{background:#eff6ff;color:#1d4ed8}}
             ],
         )
 
+        status_bg = "#F0FDF4" if online_state == "online" else "#FFFBEB" if online_state == "checking" else "#FEF2F2"
+
         status_card = ft.Container(
-            border_radius=12,
-            bgcolor=BG,
+            border_radius=14,
+            bgcolor=WHITE,
             border=border_all(1, BORDER),
-            padding=pad_sym(horizontal=12, vertical=10),
+            padding=pad_sym(horizontal=12, vertical=11),
             content=ft.Column(
-                spacing=10,
+                spacing=11,
                 controls=[
                     ft.Row(
-                        spacing=10,
+                        spacing=11,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            ft.Container(width=34, height=34, border_radius=10, bgcolor="#0F172A", alignment=CENTER, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=profile_media_control(30)),
+                            ft.Stack(
+                                width=40,
+                                height=40,
+                                controls=[
+                                    ft.Container(width=40, height=40, border_radius=12, bgcolor="#0F172A", alignment=CENTER, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=profile_media_control(34)),
+                                    ft.Container(width=13, height=13, border_radius=99, bgcolor=status_color, border=border_all(2, WHITE), right=0, bottom=0),
+                                ],
+                            ),
                             ft.Column(
-                                spacing=1,
+                                spacing=4,
                                 expand=True,
                                 controls=[
-                                    ft.Row(spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[
-                                        ft.Container(width=8, height=8, border_radius=99, bgcolor=status_color),
-                                        ft.Text(status_text, size=12, weight=ft.FontWeight.W_800, color=TEXT),
-                                    ]),
+                                    ft.Container(
+                                        padding=pad_sym(horizontal=8, vertical=3),
+                                        border_radius=999,
+                                        bgcolor=status_bg,
+                                        content=ft.Row(
+                                            tight=True,
+                                            spacing=6,
+                                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                            controls=[
+                                                ft.Container(width=7, height=7, border_radius=99, bgcolor=status_color),
+                                                ft.Text(status_text, size=11, weight=ft.FontWeight.W_900, color=status_color),
+                                            ],
+                                        ),
+                                    ),
                                     ft.Text("Local-first workspace", size=10, color=MUTED_2),
                                 ],
                             ),
                         ],
                     ),
+                    ft.Container(height=1, bgcolor=BORDER),
                     ft.Row(
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            ft.Text("Online mode", size=12, weight=ft.FontWeight.W_700, color=MUTED),
-                            ft.Switch(value=online_enabled, scale=0.7, on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
+                            ft.Row(
+                                spacing=8,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                controls=[
+                                    ft.Icon(ft.Icons.CLOUD_OUTLINED if online_enabled else ft.Icons.CLOUD_OFF_OUTLINED, size=16, color="#0F766E" if online_enabled else MUTED_2),
+                                    ft.Text("Online mode", size=12, weight=ft.FontWeight.W_800, color=TEXT),
+                                ],
+                            ),
+                            ft.Switch(value=online_enabled, scale=0.7, active_color="#0F766E", on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
                         ],
                     ),
                 ],

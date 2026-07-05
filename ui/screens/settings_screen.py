@@ -682,19 +682,47 @@ def render_settings(ctx: DashboardContext) -> None:
         ),
     )
 
-    active_settings_tab = ctx.state.get("settings_tab", "system")
+    # ============================================================
+    # Redesigned Settings: left category nav + clean white panes
+    # (reuses every field/handler above; only the layout changed)
+    # ============================================================
+    ACCENT_TEAL = "#0F766E"
+    ICON_TINT = "#F1F5F9"
 
-    def settings_tab_button(label, icon, tab_key):
-        selected = active_settings_tab == tab_key
+    for _sw in (theme_switch, realtime_switch, move_files_switch, confirm_switch,
+                smart_search_switch, smart_health_switch, workload_switch,
+                template_rank_switch, update_checks_switch, offline_mode_switch):
+        _sw.label = None
+
+    searching = bool(settings_query)
+    settings_categories = [
+        ("general", "General", ft.Icons.TUNE_OUTLINED),
+        ("appearance", "Appearance", ft.Icons.PALETTE_OUTLINED),
+        ("sync", "Sync & safety", ft.Icons.SHIELD_OUTLINED),
+        ("smart", "Smart features", ft.Icons.TIPS_AND_UPDATES_OUTLINED),
+        ("updates", "Updates", ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED),
+        ("types", "File types", ft.Icons.CATEGORY_OUTLINED),
+        ("about", "About & reset", ft.Icons.INFO_OUTLINED),
+    ]
+    active_category = ctx.state.get("settings_category", "general")
+    if active_category not in {key for key, _l, _i in settings_categories}:
+        active_category = "general"
+
+    def go_category(key):
+        ctx.state["settings_category"] = key
+        ctx.state["settings_search"] = ""
+        ctx.render_current()
+
+    def nav_item(key, label, icon):
+        selected = (active_category == key) and not searching
         return ft.Container(
             height=42,
-            padding=pad_sym(horizontal=14),
-            border_radius=12,
-            bgcolor=TEXT if selected else WHITE,
-            border=border_all(1, TEXT if selected else BORDER),
-            on_click=lambda _e, key=tab_key: (ctx.state.update({"settings_tab": key}), ctx.render_current()),
+            padding=pad_sym(horizontal=12),
+            border_radius=10,
+            bgcolor=ACCENT_TEAL if selected else WHITE,
+            on_click=lambda _e, k=key: go_category(k),
             content=ft.Row(
-                spacing=8,
+                spacing=10,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
                     ft.Icon(icon, size=18, color=WHITE if selected else MUTED),
@@ -703,20 +731,212 @@ def render_settings(ctx: DashboardContext) -> None:
             ),
         )
 
-    ctx.main_body.controls = [
-        ft.Column(
-            spacing=12,
-            expand=True,
+    nav_pane = ft.Container(
+        width=200,
+        bgcolor=WHITE,
+        border=border_all(1, BORDER),
+        border_radius=16,
+        padding=8,
+        content=ft.Column(
+            spacing=4,
             controls=[
-                ft.Row(
-                    spacing=10,
-                    controls=[
-                        settings_tab_button("System & Theme", ft.Icons.TUNE_OUTLINED, "system"),
-                        settings_tab_button("File Types", ft.Icons.CATEGORY_OUTLINED, "types"),
-                    ],
-                ),
-                ft.Container(expand=True, content=system_card if active_settings_tab == "system" else type_card),
+                ft.Container(padding=pad_only(left=10, top=4, bottom=4), content=ft.Text("SETTINGS", size=11, weight=ft.FontWeight.W_900, color=MUTED_2)),
+                *[nav_item(key, label, icon) for key, label, icon in settings_categories],
             ],
+        ),
+    )
+
+    def s_row(icon, title, desc, control):
+        return (
+            (title, desc),
+            ft.Row(
+                spacing=13,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Container(width=36, height=36, border_radius=10, bgcolor=ICON_TINT, alignment=CENTER, content=ft.Icon(icon, size=18, color=MUTED)),
+                    ft.Column(spacing=2, expand=True, controls=[
+                        ft.Text(title, size=13, weight=ft.FontWeight.W_800, color=TEXT),
+                        ft.Text(desc, size=11, color=MUTED, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                    ]),
+                    control,
+                ],
+            ),
+        )
+
+    def card(header, rows=None, blocks=None):
+        rows = rows or []
+        shown = [(terms, widget) for terms, widget in rows if settings_visible(*terms)]
+        use_blocks = list(blocks or []) if not searching else []
+        if searching and not shown:
+            return None
+        body = [ft.Container(padding=pad_only(top=4, bottom=2), content=ft.Text(header, size=15, weight=ft.FontWeight.W_900, color=TEXT))]
+        for terms, widget in shown:
+            first = len(body) == 1
+            body.append(ft.Container(padding=pad_sym(vertical=12), border=None if first else ft.Border(top=ft.BorderSide(1, BORDER)), content=widget))
+        for block in use_blocks:
+            body.append(ft.Container(padding=pad_only(top=12), content=block))
+        return ft.Container(bgcolor=WHITE, border=border_all(1, BORDER), border_radius=16, padding=pad_sym(horizontal=16, vertical=6), content=ft.Column(spacing=0, controls=body))
+
+    work_folder_block = ft.Container(
+        border=border_all(1, BORDER), border_radius=12, padding=14, bgcolor="#FAFBFC",
+        content=ft.Column(spacing=10, controls=[
+            ft.Row(spacing=8, controls=[ft.Icon(ft.Icons.FOLDER_SPECIAL_OUTLINED, size=18, color=ACCENT_TEAL), ft.Text("Work folder", size=13, weight=ft.FontWeight.W_900, color=TEXT)]),
+            ft.Text(str(root_work), size=12, color=MUTED, selectable=True, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+            ft.Row(spacing=10, controls=[
+                ft.Button("Choose folder", icon=ft.Icons.FOLDER_OPEN_OUTLINED, on_click=choose_work_folder),
+                ft.Button("Open folder", icon=ft.Icons.OPEN_IN_NEW, on_click=lambda _e: os.startfile(str(root_work)) if root_work.exists() else show_message(ctx.page, "Folder not found", "Choose or create a Work folder first.")),
+            ]),
+            ft.Text(f"Data file: {DATA_FILE}", size=11, color=MUTED_2, selectable=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+        ]),
+    )
+    stats_block = ft.Row(spacing=10, controls=[settings_stat(*row) for row in status_rows])
+
+    def status_chip(status, label):
+        tint, accent = status_theme(status)
+        return ft.Container(width=78, height=28, border_radius=999, bgcolor=tint, border=border_all(1, accent), alignment=CENTER, content=ft.Text(label, size=11, weight=ft.FontWeight.W_800, color=accent))
+
+    apply_theme_block = ft.Row(
+        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        controls=[
+            ft.Row(spacing=8, controls=[status_chip(STATUS_PENDING, "Waiting"), status_chip(STATUS_PROGRESS, "Doing"), status_chip(STATUS_DONE, "Success")]),
+            ft.Button("Apply theme", icon=ft.Icons.CHECK_CIRCLE_OUTLINE, on_click=save_theme, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+        ],
+    )
+
+    thresholds_block = ft.Container(
+        border=border_all(1, BORDER), border_radius=12, padding=12, bgcolor="#FAFBFC",
+        content=ft.Column(spacing=10, controls=[
+            ft.Text("Smart thresholds", size=12, weight=ft.FontWeight.W_900, color=TEXT),
+            ft.Row(spacing=10, wrap=True, run_spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text("Stale Doing", size=12, color=MUTED), stale_select, ft.Text("days", size=12, color=MUTED), ft.Text("Zombie Waiting", size=12, color=MUTED), zombie_select, ft.Text("days", size=12, color=MUTED)]),
+            ft.Row(spacing=10, wrap=True, run_spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text("Overload Doing", size=12, color=MUTED), overload_doing_select, ft.Text("tasks/day", size=12, color=MUTED), ft.Text("Overload Total", size=12, color=MUTED), overload_total_select, ft.Text("tasks/day", size=12, color=MUTED)]),
+        ]),
+    )
+
+    about_block = ft.Container(
+        border=border_all(1, BORDER), border_radius=12, padding=14, bgcolor="#FAFBFC",
+        content=ft.Column(spacing=10, controls=[
+            ft.Row(spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[app_logo_control(48, 14), ft.Column(spacing=3, controls=[ft.Text(APP_NAME, size=17, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("Desktop Work Board", size=12, color=MUTED)])]),
+            ft.Text(f"Version {APP_VERSION}  -  Local-first workspace", size=12, color=MUTED, selectable=True),
+            ft.Row(spacing=10, controls=[ft.Button("About SA CHECK", icon=ft.Icons.INFO_OUTLINED, on_click=show_about), ft.Button("User guide", icon=ft.Icons.HELP_OUTLINE, on_click=show_help)]),
+        ]),
+    )
+    reset_block = ft.Row(spacing=10, run_spacing=10, wrap=True, controls=[
+        ft.Button("Reset smart", icon=ft.Icons.TIPS_AND_UPDATES_OUTLINED, on_click=reset_smart_defaults),
+        ft.Button("Reset sync", icon=ft.Icons.SYNC, on_click=reset_sync_defaults),
+        ft.Button("Reset UI", icon=ft.Icons.PALETTE_OUTLINED, on_click=reset_ui_defaults),
+    ])
+    quick_block = ft.Row(spacing=10, run_spacing=10, wrap=True, controls=[
+        ft.Button("Save settings", icon=ft.Icons.SAVE_OUTLINED, on_click=save_all_settings, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+        ft.Button("Work browser", icon=ft.Icons.FOLDER_OUTLINED, on_click=lambda _e: (ctx.state.update({"screen": "browser"}), ctx.render_current())),
+        ft.Button("Sync now", icon=ft.Icons.SYNC, on_click=ctx.sync_now),
+        ft.Button("Reload data", icon=ft.Icons.REFRESH, on_click=lambda _e: (ctx.all_tasks.clear(), ctx.all_tasks.extend(load_tasks()), ctx.render_current())),
+        ft.Button("Create folders", icon=ft.Icons.CREATE_NEW_FOLDER_OUTLINED, on_click=lambda _e: (ensure_status_folders(), show_message(ctx.page, "Folders ready", "Work folders are ready."))),
+        ft.Button("Open data folder", icon=ft.Icons.FOLDER_OPEN_OUTLINED, on_click=lambda _e: os.startfile(str(DATA_FILE.parent))),
+    ])
+
+    def general_cards():
+        return [
+            card("Workspace", blocks=[work_folder_block, stats_block]),
+            card("Preferences", rows=[
+                s_row(ft.Icons.TRANSLATE, "Language", "Interface language for the app", language_select),
+                s_row(ft.Icons.ACCOUNT_CIRCLE_OUTLINED, "Sidebar profile media", "PNG, JPG, WEBP, BMP, or animated GIF", ft.Button("Upload", icon=ft.Icons.ADD_PHOTO_ALTERNATE_OUTLINED, on_click=choose_profile_media)),
+            ]),
+        ]
+
+    def appearance_cards():
+        return [
+            card("Theme", rows=[
+                s_row(ft.Icons.DARK_MODE_OUTLINED, "Dark theme", "Use the dark colour scheme across the app", theme_switch),
+                s_row(ft.Icons.BRUSH_OUTLINED, "App theme", "Accent palette for the whole workspace", ft.Row(spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[app_theme_preview(), app_theme_select])),
+                s_row(ft.Icons.FLAG_OUTLINED, "Status theme", "Colours for Waiting / Doing / Success", status_theme_select),
+            ], blocks=[apply_theme_block]),
+        ]
+
+    def sync_cards():
+        return [
+            card("Sync & safety", rows=[
+                s_row(ft.Icons.SYNC, "Real-time sync", "Watch the Work folder and sync automatically", realtime_switch),
+                s_row(ft.Icons.TIMER_OUTLINED, "Sync interval", "How often the Work folder is scanned (seconds)", interval_select),
+                s_row(ft.Icons.HISTORY, "Snapshots kept", "How many undo snapshots to retain", snapshot_select),
+                s_row(ft.Icons.DRIVE_FILE_MOVE_OUTLINED, "Move files on status change", "Move actual files between Waiting / Doing / Success", move_files_switch),
+                s_row(ft.Icons.VERIFIED_USER_OUTLINED, "Confirm risky actions", "Ask before Delete or Clean system", confirm_switch),
+            ]),
+        ]
+
+    def smart_cards():
+        return [
+            card("Smart features", rows=[
+                s_row(ft.Icons.SEARCH, "Smart search", "Tags, fuzzy match, and NLP hints", smart_search_switch),
+                s_row(ft.Icons.HEALTH_AND_SAFETY_OUTLINED, "Smart health", "Auto-detect broken links and wrong folders", smart_health_switch),
+                s_row(ft.Icons.INSIGHTS_OUTLINED, "Workload hints", "Warn on stale doing, zombie waiting, overbooked days", workload_switch),
+                s_row(ft.Icons.ARTICLE_OUTLINED, "Smart templates", "Rank templates by usage and recency", template_rank_switch),
+            ], blocks=[thresholds_block]),
+        ]
+
+    def updates_cards():
+        return [
+            card("Updates", rows=[
+                s_row(ft.Icons.SYSTEM_UPDATE_ALT_OUTLINED, "Check for updates on startup", f"Current version {APP_VERSION}", update_checks_switch),
+                s_row(ft.Icons.CLOUD_OFF_OUTLINED, "Offline mode", "Disable update checks and telemetry", offline_mode_switch),
+                s_row(ft.Icons.TIMER_OUTLINED, "Auto-check interval", "How often to check GitHub while online (minutes)", update_interval_select),
+            ], blocks=[ft.Row(spacing=10, controls=[
+                ft.Button("Check now", icon=ft.Icons.REFRESH, on_click=lambda _e: ctx.check_for_updates(manual=True)),
+                ft.Button("Version notes", icon=ft.Icons.FACT_CHECK_OUTLINED, on_click=show_version_notes),
+            ])]),
+        ]
+
+    def types_cards():
+        rows_list = [*custom_rows, *builtin_rows]
+        if searching and not rows_list:
+            return []
+        list_body = rows_list if rows_list else [ft.Container(height=120, alignment=CENTER, content=ft.Text("No file types match this search.", size=13, color=MUTED_2))]
+        return [ft.Container(
+            bgcolor=WHITE, border=border_all(1, BORDER), border_radius=16, padding=pad_sym(horizontal=16, vertical=12),
+            content=ft.Column(spacing=12, controls=[
+                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[
+                    ft.Text("File types", size=15, weight=ft.FontWeight.W_900, color=TEXT),
+                    ft.Button("+ Add custom type", icon=ft.Icons.ADD, on_click=show_add_file_type_dialog, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ]),
+                ft.Text("System types are ready-made categories. My types are your own rules using extensions, colour, and default action.", size=12, color=MUTED),
+                *list_body,
+            ]),
+        )]
+
+    def about_cards():
+        return [
+            card("About", blocks=[about_block]),
+            card("Reset defaults", blocks=[reset_block]),
+            card("Quick actions", blocks=[quick_block]),
+        ]
+
+    pane_builders = {
+        "general": general_cards,
+        "appearance": appearance_cards,
+        "sync": sync_cards,
+        "smart": smart_cards,
+        "updates": updates_cards,
+        "types": types_cards,
+        "about": about_cards,
+    }
+
+    if searching:
+        content_cards = []
+        for key, _label, _icon in settings_categories:
+            content_cards.extend(pane for pane in pane_builders[key]() if pane is not None)
+        if not content_cards:
+            content_cards = [ft.Container(height=140, alignment=CENTER, bgcolor=WHITE, border=border_all(1, BORDER), border_radius=16, content=ft.Text("No settings match your search.", size=13, color=MUTED_2))]
+    else:
+        content_cards = [pane for pane in pane_builders[active_category]() if pane is not None]
+
+    content_pane = ft.Column(spacing=12, expand=True, scroll=ft.ScrollMode.AUTO, controls=[settings_search, *content_cards])
+
+    ctx.main_body.controls = [
+        ft.Row(
+            spacing=14,
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            controls=[nav_pane, ft.Container(expand=True, content=content_pane)],
         )
     ]
     ctx.page.update()

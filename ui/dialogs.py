@@ -36,7 +36,7 @@ from core.flet_data import (
     update_template_record,
     log_activity,
 )
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, task_icon
+from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, status_menu, task_icon
 from ui.virtual_list import DEFAULT_BATCH_SIZE, next_visible_limit, visible_slice
 
 
@@ -513,7 +513,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
         else:
             show_message(page, "Template", "Open the Template page to create work from this item.")
 
-    def action_button(label, icon_name, on_click, primary=False, danger=False, disabled=False):
+    def action_button(label, icon_name, on_click, primary=False, danger=False, disabled=False, expand=True):
         bg = "#2563EB" if primary else "#FEF2F2" if danger else "#F8FAFC"
         fg = WHITE if primary else "#DC2626" if danger else TEXT
         side_color = "#2563EB" if primary else "#FECACA" if danger else BORDER
@@ -522,7 +522,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             label,
             icon=icon_name,
             on_click=on_click,
-            expand=True,
+            expand=expand,
             disabled=disabled,
             height=48,
             style=ft.ButtonStyle(
@@ -551,9 +551,46 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             [
                 ft.Text("|", size=14, color=MUTED_2),
                 status_pill(task.get("status", STATUS_PENDING)),
-                dropdown(170, current_status_label, status_options, lambda e: set_status(status_lookup.get(e.control.value, STATUS_PENDING))),
+                status_menu(current_status_label, lambda label: set_status(status_lookup.get(label, STATUS_PENDING))),
             ]
         )
+
+    # Context-aware action bar: links have no folder, untracked items can't be
+    # edited/deleted, templates use their own verbs. Delete sits apart on the right.
+    is_url_target = str(task.get("target_kind", "file")).lower() in ("url", "link")
+    if is_url_target:
+        locate_button = action_button("Copy link", ft.Icons.LINK, copy_target, expand=False)
+    else:
+        locate_button = action_button("Show in folder", ft.Icons.FOLDER_OPEN_OUTLINED, lambda _e: open_folder(task), expand=False)
+    divider = ft.Container(width=1, height=28, bgcolor=BORDER)
+
+    if is_template:
+        action_bar_controls = [
+            action_button("To work", ft.Icons.ADD_TASK_OUTLINED, template_to_work_action, primary=True, expand=False),
+            action_button("Edit", ft.Icons.EDIT_OUTLINED, edit_template, expand=False),
+            action_button("Open", ft.Icons.OPEN_IN_NEW, lambda _e: open_target(task), expand=False),
+            divider,
+            action_button("Copy path", ft.Icons.CONTENT_COPY, copy_target, expand=False),
+            locate_button,
+        ]
+    elif is_untracked_browser_item:
+        action_bar_controls = [
+            action_button("Open", ft.Icons.OPEN_IN_NEW, lambda _e: open_target(task), expand=False),
+            action_button("Add to board", ft.Icons.ADD_TASK_OUTLINED, add_detail_item_to_board, primary=True, expand=False),
+            ft.Container(expand=True),
+            locate_button,
+        ]
+    else:
+        action_bar_controls = [
+            action_button("Open", ft.Icons.OPEN_IN_NEW, lambda _e: open_target(task), primary=True, expand=False),
+            action_button("Edit", ft.Icons.EDIT_OUTLINED, edit_task, expand=False),
+            action_button("Date", ft.Icons.EVENT_OUTLINED, lambda _e: show_task_date_dialog(page, task, save_and_render, all_tasks), expand=False),
+            action_button("Duplicate", ft.Icons.CONTENT_COPY, copy_to_waiting, expand=False),
+            divider,
+            locate_button,
+            ft.Container(expand=True),
+            action_button("Delete", ft.Icons.DELETE_OUTLINE, delete_task, danger=True, expand=False),
+        ]
 
     page.show_dialog(
         ft.AlertDialog(
@@ -566,7 +603,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
                         spacing=8,
                         expand=True,
                         controls=[
-                            ft.Text(task.get("name", "Untitled task"), size=32, weight=ft.FontWeight.W_800, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Text(task.get("name", "Untitled task"), size=23, weight=ft.FontWeight.W_800, color=TEXT, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.Row(
                                 spacing=8,
                                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -634,27 +671,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
                             ),
                         ],
                     ),
-                    ft.Row(
-                        spacing=14,
-                        controls=(
-                            [
-                                action_button("To Work", ft.Icons.ADD_TASK_OUTLINED, template_to_work_action, primary=True),
-                                action_button("Edit Template", ft.Icons.EDIT_OUTLINED, edit_template),
-                                action_button("Open Template", ft.Icons.OPEN_IN_NEW, lambda _e: open_target(task)),
-                                action_button("Copy Path", ft.Icons.CONTENT_COPY, copy_target),
-                                action_button("Show in Folder", ft.Icons.FOLDER_OPEN_OUTLINED, lambda _e: open_folder(task)),
-                            ]
-                            if is_template
-                            else [
-                                action_button("Open", ft.Icons.OPEN_IN_NEW, lambda _e: open_target(task), primary=not is_untracked_browser_item),
-                                action_button("Add to Board", ft.Icons.ADD_TASK_OUTLINED, add_detail_item_to_board, primary=True) if is_untracked_browser_item else action_button("Edit", ft.Icons.EDIT_OUTLINED, edit_task),
-                                action_button("Date", ft.Icons.EVENT_OUTLINED, lambda _e: show_task_date_dialog(page, task, save_and_render, all_tasks), disabled=is_untracked_browser_item),
-                                action_button("Copy", ft.Icons.CONTENT_COPY, copy_to_waiting, disabled=is_untracked_browser_item),
-                                action_button("Show in Folder", ft.Icons.FOLDER_OPEN_OUTLINED, lambda _e: open_folder(task)),
-                                action_button("Delete", ft.Icons.DELETE_OUTLINE, delete_task, danger=True, disabled=is_untracked_browser_item),
-                            ]
-                        ),
-                    ),
+                    ft.Row(spacing=10, controls=action_bar_controls),
                     ft.Container(alignment=ft.Alignment(1, 0), content=ft.Text(modified_text(), size=13, color=MUTED_2)),
                 ],
             ),
@@ -797,33 +814,125 @@ def grouped_task_card(page, task, save_and_render, all_tasks):
     return task_card(page, task, save_and_render, all_tasks)
 
 
+CATEGORY_PREVIEW_LIMIT = 10
+
+
+def show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_tasks):
+    """Full, searchable list of every task in one category.
+
+    Opened from a group's "More +N" button so heavy categories (100+ files)
+    never materialize inline on the Board.
+    """
+    icon, icon_color = task_icon(file_type)
+    ordered = list(tasks)
+    list_view = ft.ListView(spacing=8, expand=True, padding=pad_only(right=6))
+    count_label = ft.Text(f"{len(ordered)} of {len(ordered)}", size=12, weight=ft.FontWeight.W_800, color=MUTED)
+
+    def matches(task, query):
+        return query in str(task.get("name", "")).lower()
+
+    def apply_filter(query=""):
+        q = (query or "").strip().lower()
+        found = [task for task in ordered if matches(task, q)] if q else ordered
+        if found:
+            list_view.controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in found]
+        else:
+            list_view.controls = [
+                ft.Container(
+                    height=140,
+                    alignment=CENTER,
+                    content=ft.Column(
+                        spacing=6,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Icon(ft.Icons.SEARCH_OFF_OUTLINED, size=26, color=MUTED_2),
+                            ft.Text("No tasks match that name", size=13, weight=ft.FontWeight.W_800, color=TEXT),
+                        ],
+                    ),
+                )
+            ]
+        count_label.value = f"{len(found)} of {len(ordered)}"
+
+    def on_search(event):
+        apply_filter(event.control.value)
+        try:
+            list_view.update()
+            count_label.update()
+        except Exception:
+            pass
+
+    search = ft.TextField(
+        hint_text=f"Search {file_type} by name",
+        prefix_icon=ft.Icons.SEARCH,
+        border_radius=12,
+        border_color=BORDER,
+        height=46,
+        on_change=on_search,
+    )
+    apply_filter()
+
+    page.show_dialog(
+        ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Container(width=34, height=34, border_radius=10, bgcolor=icon_color + "18", alignment=CENTER, content=ft.Icon(icon, size=18, color=icon_color)),
+                    ft.Text(file_type, size=18, weight=ft.FontWeight.W_900, color=TEXT, expand=True),
+                    ft.Container(padding=pad_sym(horizontal=9, vertical=3), border_radius=999, bgcolor="#F1F5F9", content=count_label),
+                ],
+            ),
+            content=ft.Container(
+                width=560,
+                height=470,
+                content=ft.Column(spacing=12, expand=True, controls=[search, list_view]),
+            ),
+            actions=[
+                ft.Button("Close", icon=ft.Icons.CLOSE, on_click=lambda _e: (page.pop_dialog(), page.update()), style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+            ],
+            bgcolor=WHITE,
+            shape=ft.RoundedRectangleBorder(radius=16),
+        )
+    )
+    page.update()
+
+
 def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_key=None, group_limits=None, on_more=None, expanded_keys=None):
     icon, icon_color = task_icon(file_type)
-    limit = (group_limits or {}).get(group_key, DEFAULT_BATCH_SIZE)
-    visible_tasks, resolved_limit = visible_slice(tasks, limit, DEFAULT_BATCH_SIZE)
-    hidden_count = max(0, len(tasks) - len(visible_tasks))
-    controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in visible_tasks]
-    if hidden_count:
-        def load_more(_event):
-            if group_limits is not None and group_key:
-                group_limits[group_key] = next_visible_limit(resolved_limit, len(tasks), DEFAULT_BATCH_SIZE)
-            if on_more:
-                on_more()
+    total = len(tasks)
+    preview_tasks = tasks[:CATEGORY_PREVIEW_LIMIT]
+    hidden_count = max(0, total - len(preview_tasks))
+    controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in preview_tasks]
 
-        controls.append(
-            ft.Container(
-                height=44,
-                border_radius=10,
-                bgcolor="#F8FAFC",
-                alignment=CENTER,
-                content=ft.Button(
-                    f"Show more ({hidden_count} left)",
-                    icon=ft.Icons.EXPAND_MORE,
-                    on_click=load_more,
-                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
-                ),
-            )
+    def open_full_list(_event):
+        show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_tasks)
+
+    more_label = f"More +{hidden_count}" if hidden_count else "View all"
+    controls.append(
+        ft.Container(
+            height=44,
+            border_radius=10,
+            bgcolor=icon_color + "14",
+            border=border_all(1, icon_color + "33"),
+            ink=True,
+            on_click=open_full_list,
+            tooltip=f"See all {total} {file_type} tasks",
+            alignment=CENTER,
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=7,
+                controls=[
+                    ft.Icon(ft.Icons.UNFOLD_MORE, size=16, color=icon_color),
+                    ft.Text(more_label, size=12, weight=ft.FontWeight.W_900, color=icon_color),
+                    ft.Container(width=3, height=3, border_radius=99, bgcolor=MUTED_2),
+                    ft.Text("search all", size=11, weight=ft.FontWeight.W_700, color=MUTED),
+                ],
+            ),
         )
+    )
+
     def on_expansion_toggle(event):
         if expanded_keys is None or not group_key:
             return
@@ -913,13 +1022,7 @@ def kanban_column(
                         ),
                     ],
                 ),
-                ft.Row(
-                    spacing=3,
-                    controls=[
-                        ft.Container(width=30, height=24, border_radius=99, bgcolor=tint, alignment=CENTER, content=ft.Text(str(len(tasks)), size=10, weight=ft.FontWeight.W_900, color=accent)),
-                        ft.IconButton(icon=ft.Icons.ADD, icon_size=17, icon_color=accent, tooltip=f"Add to {title}", on_click=lambda _e: on_add(), visible=bool(on_add)),
-                    ],
-                ),
+                ft.Container(width=30, height=24, border_radius=99, bgcolor=tint, alignment=CENTER, content=ft.Text(str(len(tasks)), size=10, weight=ft.FontWeight.W_900, color=accent)),
             ],
         ),
     )

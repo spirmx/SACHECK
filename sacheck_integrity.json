@@ -103,11 +103,6 @@
       "mode": "source"
     },
     {
-      "path": "ui/screens/board.py",
-      "sha256": "7edcb2a81ea939ab53e2bc7192eab34c5bfcc21abb105011224fa4bfd4b1e6b2",
-      "mode": "source"
-    },
-    {
       "path": "ui/screens/browser.py",
       "sha256": "6a5e336316ee8249c696c9254dc571bbca95a290dda3aa673d04ec85163313ad",
       "mode": "source"
@@ -115,11 +110,6 @@
     {
       "path": "ui/screens/calendar_screen.py",
       "sha256": "15df3c533fab656e1d2d250ed28159ba4852730d7f55d7c8d876a49cb9830c87",
-      "mode": "source"
-    },
-    {
-      "path": "ui/screens/health.py",
-      "sha256": "9af0904e2495258d172d49f9e8f3fde4b475347d30916fe20f1f9c41baf47a09",
       "mode": "source"
     },
     {
