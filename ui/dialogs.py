@@ -36,7 +36,7 @@ from core.flet_data import (
     update_template_record,
     log_activity,
 )
-from ui.flet_widgets import CENTER, border_all, dropdown, hover_lift, pad_only, pad_sym, status_menu, task_icon
+from ui.flet_widgets import CENTER, animated_status_pill, border_all, breathing_badge, dropdown, hover_lift, pad_only, pad_sym, status_menu, task_icon
 from ui.virtual_list import DEFAULT_BATCH_SIZE, next_visible_limit, visible_slice
 
 
@@ -153,19 +153,12 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
 
     def status_pill(status, label=None):
         resolved_label, color, bg = status_style(status)
-        return ft.Container(
-            padding=pad_sym(horizontal=12, vertical=7),
-            border_radius=999,
-            bgcolor=bg,
-            border=border_all(1, color),
-            content=ft.Row(
-                spacing=7,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(width=8, height=8, border_radius=999, bgcolor=color),
-                    ft.Text(label or resolved_label, size=12, weight=ft.FontWeight.W_900, color=color),
-                ],
-            ),
+        return animated_status_pill(
+            page,
+            label or resolved_label,
+            color,
+            bg,
+            pulse=(status == STATUS_PROGRESS or status == "Doing"),
         )
 
     def set_status(status):
@@ -1035,7 +1028,7 @@ def kanban_column(
                     spacing=10,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Container(width=38, height=38, border_radius=11, bgcolor=tint, alignment=CENTER, content=ft.Icon(icon or ft.Icons.VIEW_KANBAN_OUTLINED, size=19, color=accent)),
+                        breathing_badge(page, icon or ft.Icons.VIEW_KANBAN_OUTLINED, accent, tint, ping=(str(title).lower() == "doing" and bool(tasks))),
                         ft.Column(
                             spacing=0,
                             alignment=ft.MainAxisAlignment.CENTER,

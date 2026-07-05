@@ -15,7 +15,7 @@ from core.flet_constants import (
     WHITE,
 )
 from ui.dialogs import kanban_column
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_sym
+from ui.flet_widgets import CENTER, border_all, count_up, dropdown, fade_in_up, pad_sym
 from ui.shared import DashboardContext
 
 
@@ -174,7 +174,7 @@ def render_board(ctx: DashboardContext) -> None:
                                     spacing=0,
                                     alignment=ft.MainAxisAlignment.CENTER,
                                     controls=[
-                                        ft.Text(str(all_counts[status]), size=20, weight=ft.FontWeight.W_900, color=WHITE),
+                                        count_up(ctx.page, ft.Text(str(all_counts[status]), size=20, weight=ft.FontWeight.W_900, color=WHITE), all_counts[status]),
                                         ft.Text(STATUS_META[status]["title"], size=9, weight=ft.FontWeight.W_800, color="#C7D2FE"),
                                     ],
                                 ),
@@ -262,24 +262,29 @@ def render_board(ctx: DashboardContext) -> None:
         expand=True,
         vertical_alignment=ft.CrossAxisAlignment.STRETCH,
         controls=[
-            kanban_column(
+            fade_in_up(
                 ctx.page,
-                STATUS_META[status]["title"],
-                by_status[status],
-                STATUS_META[status]["bg"],
-                STATUS_META[status]["color"],
-                ctx.save_and_render,
-                ctx.all_tasks,
-                grouped=True,
-                group_limits=ctx.state["group_limits"],
-                on_more=ctx.render_current,
-                file_types_fn=ctx.file_types,
-                expanded_keys=ctx.state["expanded_groups"],
-                subtitle=STATUS_META[status]["subtitle"],
-                icon=STATUS_META[status]["icon"],
-                on_add=ctx.show_create_new if status == STATUS_PENDING else None,
+                kanban_column(
+                    ctx.page,
+                    STATUS_META[status]["title"],
+                    by_status[status],
+                    STATUS_META[status]["bg"],
+                    STATUS_META[status]["color"],
+                    ctx.save_and_render,
+                    ctx.all_tasks,
+                    grouped=True,
+                    group_limits=ctx.state["group_limits"],
+                    on_more=ctx.render_current,
+                    file_types_fn=ctx.file_types,
+                    expanded_keys=ctx.state["expanded_groups"],
+                    subtitle=STATUS_META[status]["subtitle"],
+                    icon=STATUS_META[status]["icon"],
+                    on_add=ctx.show_create_new if status == STATUS_PENDING else None,
+                ),
+                delay=0.06 * column_index,
+                dy=0.05,
             )
-            for status in (STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE)
+            for column_index, status in enumerate((STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE))
         ],
     )
 

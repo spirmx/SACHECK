@@ -94,16 +94,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.8-1"
+APP_VERSION = "2.0.9"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
+        "version": "2.0.9",
+        "date": "2026-07-06",
+        "latest": True,
+        "items": [
+            "Added the new Home hero alert panel for today and tomorrow.",
+            "Added smooth count-up, glow, pulse, stagger, status, type, Board, Files, Templates, and Calendar animations.",
+            "Redesigned the sidebar connection card as an animated live network console.",
+            "Preserved drag-and-drop, unified Add flows, custom types, bulk import, and 2,000-task Board performance.",
+        ],
+    },
+    {
         "version": "2.0.8-1",
         "date": "2026-07-05",
-        "latest": True,
+        "latest": False,
         "items": [
             "Added native Windows Explorer drag-and-drop into the Board bulk-import flow.",
             "Dropped files open Add files automatically or join the currently open import dialog.",
@@ -1080,11 +1091,15 @@ import ui.flet_widgets as widget_theme  # noqa: E402
 from ui.flet_widgets import (  # noqa: E402
     CENTER,
     add_destination_header,
+    animated_status_pill,
     border_all,
+    breathe_glow,
+    breathing_badge,
     dropdown,
     nav_button,
     pad_only,
     pad_sym,
+    pulse_dot,
     stat_card,
     task_icon,
 )
@@ -3835,70 +3850,79 @@ th{{background:#eff6ff;color:#1d4ed8}}
             ],
         )
 
-        status_bg = "#F0FDF4" if online_state == "online" else "#FFFBEB" if online_state == "checking" else "#FEF2F2"
-
+        signal_color = "#5EEAD4" if online_state == "online" else "#FBBF24" if online_state == "checking" else "#FB7185"
+        signal_label = "LIVE SYNC" if online_state == "online" else "CONNECTING" if online_state == "checking" else "OFFLINE"
+        signal_icon = ft.Icons.CLOUD_DONE_OUTLINED if online_state == "online" else ft.Icons.SYNC_ROUNDED if online_state == "checking" else ft.Icons.CLOUD_OFF_OUTLINED
+        signal_badge = breathing_badge(
+            page,
+            signal_icon,
+            signal_color,
+            "#20FFFFFF",
+            size=38,
+            radius=12,
+            icon_size=19,
+            ping=online_state == "online",
+        ) if online_state != "offline" else ft.Container(width=44, height=44, border_radius=13, bgcolor="#16FFFFFF", alignment=CENTER, content=ft.Icon(signal_icon, size=19, color=signal_color))
+        activity_bars = ft.Row(
+            spacing=3,
+            vertical_alignment=ft.CrossAxisAlignment.END,
+            controls=[
+                ft.Container(width=4, height=height, border_radius=99, bgcolor=signal_color if online_state != "offline" else "#475569")
+                for height in (7, 12, 18, 10, 15)
+            ],
+        )
+        live_dot = pulse_dot(page, signal_color, size=6) if online_state != "offline" else ft.Container(width=8, height=8, border_radius=99, bgcolor=signal_color)
         status_card = ft.Container(
-            border_radius=14,
-            bgcolor=WHITE,
-            border=border_all(1, BORDER),
-            padding=pad_sym(horizontal=12, vertical=11),
+            border_radius=18,
+            gradient=ft.LinearGradient(begin=ft.Alignment(-1, -1), end=ft.Alignment(1, 1), colors=["#071426", "#0F2A3D", "#0F766E"] if online_state != "offline" else ["#111827", "#1F2937", "#3F1D2E"]),
+            border=border_all(1, "#335EEAD4" if online_state != "offline" else "#33FB7185"),
+            padding=pad_sym(horizontal=13, vertical=12),
+            shadow=ft.BoxShadow(spread_radius=0, blur_radius=18, color="#280F766E" if online_state != "offline" else "#18000000", offset=ft.Offset(0, 7)),
+            animate=ft.Animation(700, ft.AnimationCurve.EASE_IN_OUT),
             content=ft.Column(
                 spacing=11,
                 controls=[
                     ft.Row(
-                        spacing=11,
+                        spacing=10,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
                             ft.Stack(
-                                width=40,
-                                height=40,
+                                width=43,
+                                height=43,
                                 controls=[
-                                    ft.Container(width=40, height=40, border_radius=12, bgcolor="#0F172A", alignment=CENTER, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=profile_media_control(34)),
-                                    ft.Container(width=13, height=13, border_radius=99, bgcolor=status_color, border=border_all(2, WHITE), right=0, bottom=0),
+                                    ft.Container(width=43, height=43, border_radius=13, bgcolor="#0F172A", alignment=CENTER, clip_behavior=ft.ClipBehavior.ANTI_ALIAS, content=profile_media_control(37)),
+                                    ft.Container(width=13, height=13, border_radius=99, bgcolor=signal_color, border=border_all(2, "#0F172A"), right=0, bottom=0),
                                 ],
                             ),
                             ft.Column(
-                                spacing=4,
+                                spacing=3,
                                 expand=True,
                                 controls=[
-                                    ft.Container(
-                                        padding=pad_sym(horizontal=8, vertical=3),
-                                        border_radius=999,
-                                        bgcolor=status_bg,
-                                        content=ft.Row(
-                                            tight=True,
-                                            spacing=6,
-                                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                            controls=[
-                                                ft.Container(width=7, height=7, border_radius=99, bgcolor=status_color),
-                                                ft.Text(status_text, size=11, weight=ft.FontWeight.W_900, color=status_color),
-                                            ],
-                                        ),
-                                    ),
-                                    ft.Text("Local-first workspace", size=10, color=MUTED_2),
+                                    ft.Row(spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[live_dot, ft.Text(signal_label, size=10, weight=ft.FontWeight.W_900, color=signal_color)]),
+                                    ft.Text("SA CHECK NETWORK", size=11, weight=ft.FontWeight.W_900, color=WHITE),
+                                    ft.Text("Local-first · protected", size=9, color="#94A3B8"),
                                 ],
                             ),
+                            signal_badge,
                         ],
                     ),
-                    ft.Container(height=1, bgcolor=BORDER),
+                    ft.Container(height=1, bgcolor="#20FFFFFF"),
                     ft.Row(
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            ft.Row(
-                                spacing=8,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                controls=[
-                                    ft.Icon(ft.Icons.CLOUD_OUTLINED if online_enabled else ft.Icons.CLOUD_OFF_OUTLINED, size=16, color="#0F766E" if online_enabled else MUTED_2),
-                                    ft.Text("Online mode", size=12, weight=ft.FontWeight.W_800, color=TEXT),
-                                ],
-                            ),
-                            ft.Switch(value=online_enabled, scale=0.7, active_color="#0F766E", on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
+                            ft.Column(spacing=2, controls=[
+                                ft.Text("ONLINE MODE", size=9, weight=ft.FontWeight.W_900, color="#94A3B8"),
+                                ft.Row(spacing=7, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[activity_bars, ft.Text(status_text, size=11, weight=ft.FontWeight.W_800, color=WHITE)]),
+                            ]),
+                            ft.Switch(value=online_enabled, scale=0.7, active_color="#2DD4BF", active_track_color="#134E4A", inactive_thumb_color="#94A3B8", inactive_track_color="#334155", on_change=lambda e: confirm_connectivity_change(bool(e.control.value))),
                         ],
                     ),
                 ],
             ),
         )
+        if online_state != "offline":
+            breathe_glow(page, status_card, signal_color, base_blur=14, peak_blur=26, base_alpha="18", peak_alpha="40", period=1.2)
 
         extras = []
         if state.get("update_available"):
@@ -4533,19 +4557,12 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
 
     def status_pill(status, label=None):
         resolved_label, color, bg = status_style(status)
-        return ft.Container(
-            padding=pad_sym(horizontal=12, vertical=7),
-            border_radius=999,
-            bgcolor=bg,
-            border=border_all(1, color),
-            content=ft.Row(
-                spacing=7,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(width=8, height=8, border_radius=999, bgcolor=color),
-                    ft.Text(label or resolved_label, size=12, weight=ft.FontWeight.W_900, color=color),
-                ],
-            ),
+        return animated_status_pill(
+            page,
+            label or resolved_label,
+            color,
+            bg,
+            pulse=(status == STATUS_PROGRESS or status == "Doing"),
         )
 
     def set_status(status):

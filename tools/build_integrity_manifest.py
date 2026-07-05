@@ -11,8 +11,8 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
-RELEASE_VERSION = "2.0.8-1"
-RELEASE_DATE = "2026-07-05"
+RELEASE_VERSION = "2.0.9"
+RELEASE_DATE = "2026-07-06"
 RELEASE_REQUIRED = True
 
 
@@ -66,9 +66,9 @@ def main() -> None:
         "installer_size": installer.stat().st_size if installer_hash else 0,
         "repair_version": RELEASE_VERSION,
         "notes": [
-            "Added native Windows Explorer drag-and-drop into the Board bulk-import flow.",
-            "Dropped files reuse classification, custom types, progress, and cancellation.",
-            "This is a required update for installed versions older than 2.0.8-1.",
+            "Added the Home hero alert panel and smooth workflow animations across the app.",
+            "Redesigned the sidebar connection card as an animated live network console.",
+            "This is a required update for installed versions older than 2.0.9.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

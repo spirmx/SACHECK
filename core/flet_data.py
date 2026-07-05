@@ -27,7 +27,7 @@ from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_
 from core.flet_theme import normalize_calendar_event_color
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.8-1"
+APP_VERSION = "2.0.9"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 

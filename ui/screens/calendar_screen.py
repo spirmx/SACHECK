@@ -10,7 +10,7 @@ from core.flet_constants import (
 from core.flet_data import APP_NAME
 from core.flet_theme import calendar_event_style
 from ui.dialogs import show_message
-from ui.flet_widgets import CENTER, border_all, pad_only, pad_sym, task_icon
+from ui.flet_widgets import CENTER, border_all, breathe_glow, pad_only, pad_sym, shake_bell, task_icon
 from ui.shared import DashboardContext
 
 def render_calendar(ctx: DashboardContext) -> None:
@@ -254,7 +254,7 @@ def render_calendar(ctx: DashboardContext) -> None:
             else "#DC2626" if is_weekend
             else TEXT
         )
-        return ft.Container(
+        cell = ft.Container(
             expand=True,
             bgcolor=cell_bg,
             clip_behavior=ft.ClipBehavior.HARD_EDGE,
@@ -321,6 +321,9 @@ def render_calendar(ctx: DashboardContext) -> None:
                 ],
             ),
         )
+        if is_today:
+            breathe_glow(ctx.page, cell, PRIMARY, base_blur=12, peak_blur=30)
+        return cell
 
     first_day = date(year, month, 1)
     start_day = first_day - timedelta(days=first_day.weekday())
@@ -336,6 +339,15 @@ def render_calendar(ctx: DashboardContext) -> None:
     selected_tasks = sorted(grouped_by_day.get(selected_day, []), key=lambda item: (item.get("status", ""), item.get("name", "")))
     selected_events = sorted(events_by_day.get(selected_day, []), key=lambda item: item.get("title", ""))
     selected_day_notes = calendar_day_info(selected_day)
+
+    selected_is_today = selected_day == today
+
+    def alert_bell(color):
+        # A live alert bell that rings only when the shown day is today; otherwise
+        # a quiet static bell so the "has an alert" slot still reads.
+        if selected_is_today:
+            return shake_bell(ctx.page, ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED, size=17, color=color))
+        return ft.Icon(ft.Icons.NOTIFICATIONS_NONE_ROUNDED, size=17, color=MUTED_2)
 
     def selected_task_row(task):
         icon, icon_color = task_icon(task.get("type", "Other"))
@@ -378,6 +390,7 @@ def render_calendar(ctx: DashboardContext) -> None:
                             ),
                         ],
                     ),
+                    alert_bell(icon_color),
                     ft.PopupMenuButton(
                         icon=ft.Icons.MORE_VERT,
                         icon_size=18,
@@ -419,6 +432,7 @@ def render_calendar(ctx: DashboardContext) -> None:
                             ft.Text(note_preview, size=12, color=MUTED, max_lines=3, overflow=ft.TextOverflow.ELLIPSIS),
                         ],
                     ),
+                    ft.Container(padding=pad_only(right=8, top=2), content=alert_bell(color)),
                 ],
             ),
         )

@@ -8,7 +8,7 @@ import flet as ft
 from core.flet_constants import BORDER, MUTED, MUTED_2, PRIMARY, STATUS_DONE, STATUS_PENDING, STATUS_PROGRESS, TEXT, WHITE
 from core.flet_data import broken_items, event_occurs_on, list_snapshots, load_activity_log, load_calendar_events
 from core.flet_theme import calendar_event_style
-from ui.flet_widgets import CENTER, border_all, pad_only, pad_sym, task_icon
+from ui.flet_widgets import CENTER, border_all, count_up, fade_in_up, pad_only, pad_sym, pulse_dot, shake_bell, task_icon
 from ui.shared import DashboardContext
 
 
@@ -96,45 +96,129 @@ def render_overview(ctx: DashboardContext) -> None:
                 )
     alerts.sort(key=lambda item: (item["day"], item["time"], item["title"].casefold()))
 
-    next_alert = alerts[0] if alerts else None
-    next_alert_text = (
-        f"Next: {next_alert['title']} · {next_alert['day'].strftime('%d %b')} {next_alert['time']}"
-        if next_alert
-        else "Calendar is clear for the next 14 days"
+    tomorrow = today + timedelta(days=1)
+    soon_alerts = [item for item in alerts if item["day"] in (today, tomorrow)]
+
+    def _alert_row(item):
+        is_today = item["day"] == today
+        tag = "TODAY" if is_today else "TMR"
+        accent = "#FB7185" if is_today else "#FBBF24"  # rose for today, amber for tomorrow
+        title = str(item["title"])
+        if len(title) > 34:
+            title = title[:33] + "…"
+        dot = pulse_dot(ctx.page, accent, size=6) if is_today else ft.Container(width=8, height=8, border_radius=99, bgcolor=accent)
+        return ft.Container(
+            padding=pad_sym(horizontal=10, vertical=6),
+            border_radius=11,
+            bgcolor="#18FFFFFF",
+            border=border_all(1, "#22FFFFFF"),
+            content=ft.Row(
+                spacing=9,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    dot,
+                    ft.Container(padding=pad_sym(horizontal=6, vertical=1), border_radius=99, bgcolor="#26FFFFFF", content=ft.Text(tag, size=8, weight=ft.FontWeight.W_900, color=accent)),
+                    ft.Text(title, size=12, weight=ft.FontWeight.W_700, color=WHITE, expand=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Text(item["time"], size=10, weight=ft.FontWeight.W_800, color="#BAE6FD"),
+                ],
+            ),
+        )
+
+    visible_alerts = soon_alerts[:3]
+    extra_alerts = len(soon_alerts) - len(visible_alerts)
+
+    if soon_alerts:
+        alert_body = ft.Column(
+            spacing=6,
+            controls=[
+                ft.Row(
+                    spacing=7,
+                    controls=[
+                        shake_bell(ctx.page, ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED, size=14, color="#5EEAD4")),
+                        ft.Text("TODAY & TOMORROW", size=10, weight=ft.FontWeight.W_900, color="#BAE6FD", expand=True),
+                        ft.Container(padding=pad_sym(horizontal=7, vertical=1), border_radius=99, bgcolor="#26FFFFFF", content=ft.Text(str(len(soon_alerts)), size=9, weight=ft.FontWeight.W_900, color=WHITE)),
+                    ],
+                ),
+                *[_alert_row(item) for item in visible_alerts],
+                ft.Text(f"+{extra_alerts} more · tap Calendar", size=9, weight=ft.FontWeight.W_700, color="#93C5FD") if extra_alerts > 0 else ft.Container(height=0),
+            ],
+        )
+    else:
+        alert_body = ft.Column(
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            expand=True,
+            spacing=6,
+            controls=[
+                ft.Icon(ft.Icons.EVENT_AVAILABLE_OUTLINED, size=26, color="#5EEAD4"),
+                ft.Text("You're clear", size=13, weight=ft.FontWeight.W_900, color=WHITE),
+                ft.Text("No alerts today or tomorrow", size=10, color="#BAE6FD"),
+            ],
+        )
+
+    alert_panel = fade_in_up(
+        ctx.page,
+        ft.Container(
+            expand=2,
+            padding=pad_sym(horizontal=13, vertical=11),
+            border_radius=16,
+            bgcolor="#14FFFFFF",
+            border=border_all(1, "#26FFFFFF"),
+            on_click=lambda _e: ctx.show_calendar(),
+            content=alert_body,
+        ),
+        delay=0.08,
     )
 
     hero = ft.Container(
         expand=3,
-        height=190,
+        height=200,
         border_radius=22,
-        padding=24,
+        padding=22,
         gradient=ft.LinearGradient(begin=ft.Alignment(-1, -1), end=ft.Alignment(1, 1), colors=["#0F172A", "#1E3A8A", "#0F766E"]),
-        content=ft.Column(
-            spacing=11,
+        content=ft.Row(
+            spacing=20,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
             controls=[
-                ft.Row(
-                    spacing=8,
-                    controls=[
-                        ft.Container(width=8, height=8, border_radius=99, bgcolor="#5EEAD4"),
-                        ft.Text(today.strftime("%A, %d %B %Y").upper(), size=10, weight=ft.FontWeight.W_900, color="#BAE6FD"),
-                    ],
-                ),
-                ft.Text(f"{greeting}. Ready to run the day?", size=26, weight=ft.FontWeight.W_900, color=WHITE),
-                ft.Text(next_alert_text, size=12, color="#DCEBFA", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                ft.Row(
+                ft.Column(
+                    expand=3,
                     spacing=10,
+                    alignment=ft.MainAxisAlignment.CENTER,
                     controls=[
-                        ft.Button("Create work", icon=ft.Icons.ADD_CIRCLE_OUTLINE, on_click=lambda _e: ctx.show_create_new(), style=ft.ButtonStyle(bgcolor=WHITE, color="#0F172A", shape=ft.RoundedRectangleBorder(radius=12))),
-                        ft.Button("Open Calendar", icon=ft.Icons.CALENDAR_TODAY_OUTLINED, on_click=lambda _e: ctx.show_calendar(), style=ft.ButtonStyle(bgcolor="#1D4ED8", color=WHITE, side=ft.BorderSide(1, "#7DD3FC"), shape=ft.RoundedRectangleBorder(radius=12))),
+                        ft.Row(
+                            spacing=8,
+                            controls=[
+                                ft.Container(width=8, height=8, border_radius=99, bgcolor="#5EEAD4"),
+                                ft.Text(today.strftime("%A, %d %B %Y").upper(), size=10, weight=ft.FontWeight.W_900, color="#BAE6FD"),
+                            ],
+                        ),
+                        ft.Text(f"{greeting}. Ready to run the day?", size=24, weight=ft.FontWeight.W_900, color=WHITE, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                        ft.Row(
+                            spacing=10,
+                            controls=[
+                                ft.Button("Create work", icon=ft.Icons.ADD_CIRCLE_OUTLINE, on_click=lambda _e: ctx.show_create_new(), style=ft.ButtonStyle(bgcolor=WHITE, color="#0F172A", shape=ft.RoundedRectangleBorder(radius=12))),
+                                ft.Button("Open Calendar", icon=ft.Icons.CALENDAR_TODAY_OUTLINED, on_click=lambda _e: ctx.show_calendar(), style=ft.ButtonStyle(bgcolor="#1D4ED8", color=WHITE, side=ft.BorderSide(1, "#7DD3FC"), shape=ft.RoundedRectangleBorder(radius=12))),
+                            ],
+                        ),
                     ],
                 ),
+                alert_panel,
             ],
         ),
     )
 
+    pct_ring = ft.ProgressRing(value=completion / 100, width=112, height=112, stroke_width=11, color="#16A34A", bgcolor="#DCFCE7")
+    pct_text = ft.Text(f"{completion}%", size=23, weight=ft.FontWeight.W_900, color=TEXT)
+    count_up(ctx.page, pct_text, completion, suffix="%", ring=pct_ring, ring_divisor=100)
+
+    def pulse_row(key):
+        color = STATUS_META[key][1]
+        dot = pulse_dot(ctx.page, color, size=7) if key == STATUS_PROGRESS else ft.Container(width=8, height=8, border_radius=99, bgcolor=color)
+        return ft.Row(spacing=7, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[dot, ft.Text(f"{STATUS_META[key][0]}  {counts[key]}", size=11, weight=ft.FontWeight.W_700, color=MUTED)])
+
     ring = ft.Container(
         expand=1,
-        height=190,
+        height=200,
         border=border_all(1, BORDER),
         border_radius=22,
         bgcolor=WHITE,
@@ -148,8 +232,8 @@ def render_overview(ctx: DashboardContext) -> None:
                     height=112,
                     alignment=CENTER,
                     controls=[
-                        ft.ProgressRing(value=completion / 100, width=112, height=112, stroke_width=11, color="#16A34A", bgcolor="#DCFCE7"),
-                        ft.Column(spacing=0, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text(f"{completion}%", size=23, weight=ft.FontWeight.W_900, color=TEXT), ft.Text("COMPLETE", size=9, weight=ft.FontWeight.W_900, color=MUTED_2)]),
+                        pct_ring,
+                        ft.Column(spacing=0, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[pct_text, ft.Text("COMPLETE", size=9, weight=ft.FontWeight.W_900, color=MUTED_2)]),
                     ],
                 ),
                 ft.Column(
@@ -157,10 +241,7 @@ def render_overview(ctx: DashboardContext) -> None:
                     alignment=ft.MainAxisAlignment.CENTER,
                     controls=[
                         ft.Text("Work pulse", size=16, weight=ft.FontWeight.W_900, color=TEXT),
-                        *[
-                            ft.Row(spacing=7, controls=[ft.Container(width=8, height=8, border_radius=99, bgcolor=STATUS_META[key][1]), ft.Text(f"{STATUS_META[key][0]}  {counts[key]}", size=11, weight=ft.FontWeight.W_700, color=MUTED)])
-                            for key in (STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE)
-                        ],
+                        *[pulse_row(key) for key in (STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE)],
                     ],
                 ),
             ],
@@ -197,7 +278,7 @@ def render_overview(ctx: DashboardContext) -> None:
         )
         return _hover(card, color + "88")
 
-    navigation = ft.Row(spacing=10, controls=[nav_tile(*item) for item in nav_items])
+    navigation = ft.Row(spacing=10, controls=[fade_in_up(ctx.page, nav_tile(*item), delay=0.05 * index) for index, item in enumerate(nav_items)])
 
     type_counts = Counter(str(task.get("type") or "Other") for task in tasks)
     top_types = type_counts.most_common(5)
@@ -275,7 +356,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 controls=[
                     ft.Container(width=36, height=36, border_radius=10, bgcolor=WHITE, alignment=CENTER, content=ft.Column(spacing=0, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Text(str(item["day"].day), size=13, weight=ft.FontWeight.W_900, color=color), ft.Text(item["day"].strftime("%b").upper(), size=7, weight=ft.FontWeight.W_900, color=MUTED_2)])),
                     ft.Column(spacing=1, expand=True, alignment=ft.MainAxisAlignment.CENTER, controls=[ft.Text(item["title"], size=11, weight=ft.FontWeight.W_800, color=TEXT, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS), ft.Text(f"{item['time']} · {item['kind']}", size=9, color=MUTED)]),
-                    ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_OUTLINED, size=16, color=color),
+                    shake_bell(ctx.page, ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_OUTLINED, size=16, color=color), period=3.4) if is_today else ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_OUTLINED, size=16, color=color),
                 ],
             ),
         )

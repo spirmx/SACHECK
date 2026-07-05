@@ -34,7 +34,7 @@ from core.flet_data import (
     status_folder,
 )
 from ui.dialogs import row_action_button, show_message, show_task_detail
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, task_icon
+from ui.flet_widgets import CENTER, border_all, breathing_badge, count_up, dropdown, fade_in_up, pad_only, pad_sym, task_icon
 from ui.shared import DashboardContext
 
 # Functions related to browser extracted from flet_dashboard.py
@@ -628,30 +628,35 @@ def render_browser(ctx: DashboardContext) -> None:
     file_count = len(all_items) - folder_count
     tracked_count = sum(1 for path in all_items if normalized_file_key(str(path)) in task_by_key)
 
-    def metric(label, value, icon, color, bg):
-        return ft.Container(
-            expand=True,
-            height=70,
-            padding=pad_sym(horizontal=14, vertical=10),
-            border=border_all(1, BORDER),
-            border_radius=16,
-            bgcolor=WHITE,
-            content=ft.Row(
-                spacing=11,
-                controls=[
-                    ft.Container(width=38, height=38, border_radius=12, bgcolor=bg, alignment=CENTER, content=ft.Icon(icon, size=19, color=color)),
-                    ft.Column(spacing=1, alignment=ft.MainAxisAlignment.CENTER, controls=[ft.Text(str(value), size=19, weight=ft.FontWeight.W_900, color=TEXT), ft.Text(label, size=10, weight=ft.FontWeight.W_800, color=MUTED_2)]),
-                ],
+    def metric(label, value, icon, color, bg, index=0, ping=False):
+        badge = breathing_badge(ctx.page, icon, color, bg, size=38, radius=12, icon_size=19, ping=ping)
+        return fade_in_up(
+            ctx.page,
+            ft.Container(
+                expand=True,
+                height=70,
+                padding=pad_sym(horizontal=14, vertical=10),
+                border=border_all(1, BORDER),
+                border_radius=16,
+                bgcolor=WHITE,
+                content=ft.Row(
+                    spacing=11,
+                    controls=[
+                        badge,
+                        ft.Column(spacing=1, alignment=ft.MainAxisAlignment.CENTER, controls=[count_up(ctx.page, ft.Text(str(value), size=19, weight=ft.FontWeight.W_900, color=TEXT), value), ft.Text(label, size=10, weight=ft.FontWeight.W_800, color=MUTED_2)]),
+                    ],
+                ),
             ),
+            delay=0.06 * index,
         )
 
     index_summary = ft.Row(
         spacing=12,
         controls=[
-            metric("VISIBLE", len(all_items), ft.Icons.BOLT_OUTLINED, "#2563EB", "#EFF6FF"),
-            metric("FOLDERS", folder_count, ft.Icons.FOLDER_OUTLINED, "#7C3AED", "#F5F3FF"),
-            metric("FILES", file_count, ft.Icons.INSERT_DRIVE_FILE_OUTLINED, "#0891B2", "#ECFEFF"),
-            metric("TRACKED", tracked_count, ft.Icons.VERIFIED_OUTLINED, "#059669", "#ECFDF5"),
+            metric("VISIBLE", len(all_items), ft.Icons.BOLT_OUTLINED, "#2563EB", "#EFF6FF", index=0, ping=True),
+            metric("FOLDERS", folder_count, ft.Icons.FOLDER_OUTLINED, "#7C3AED", "#F5F3FF", index=1),
+            metric("FILES", file_count, ft.Icons.INSERT_DRIVE_FILE_OUTLINED, "#0891B2", "#ECFEFF", index=2),
+            metric("TRACKED", tracked_count, ft.Icons.VERIFIED_OUTLINED, "#059669", "#ECFDF5", index=3),
         ],
     )
     ctx.main_body.controls = [toolbar, index_summary, ft.Row(spacing=18, expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH, controls=[listing, preview_host])]

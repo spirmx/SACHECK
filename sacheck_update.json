@@ -1,16 +1,16 @@
 {
-  "version": "2.0.8-1",
-  "release_date": "2026-07-05",
+  "version": "2.0.9",
+  "release_date": "2026-07-06",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "91e8ac364a9fe0204714b64f7270646f9ebca93e7892491dba7637728ed52c6a",
-  "installer_size": 33686540,
-  "repair_version": "2.0.8-1",
+  "installer_sha256": "47159683766e65360d7b7f49337512d9d5052550f799f79ac4e4cee91523e9c7",
+  "installer_size": 33713248,
+  "repair_version": "2.0.9",
   "notes": [
-    "Added native Windows Explorer drag-and-drop into the Board bulk-import flow.",
-    "Dropped files reuse classification, custom types, progress, and cancellation.",
-    "This is a required update for installed versions older than 2.0.8-1.",
+    "Added the Home hero alert panel and smooth workflow animations across the app.",
+    "Redesigned the sidebar connection card as an animated live network console.",
+    "This is a required update for installed versions older than 2.0.9.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -82,13 +82,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "89b62c2b27f080c105776ed3248888094d43a5cd09a315344cfd0e424f87df01",
+      "sha256": "7f4e8f8196ef7c9e9ef4ac205b366108fb37ba324d4c429021bc9900adaac1ba",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "525f84e9096a8138a74390b152e06fc8a8a5ec420595a4129af5dd433ae14ef6",
+      "sha256": "bfc640600b0ac6db4356424c05bde8da2bc9a14228f2064e40de1955768615ae",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -112,7 +112,7 @@
     },
     {
       "path": "core/startup_preflight.py",
-      "sha256": "490dcdeadf2d2ff328be4499f1232a30a3616da6c2747e6dc34e8a7a7a25468b",
+      "sha256": "cb308c4926d39e06470108f48a7cc1845d63aba5661fdfb2edf70d8a825b0e95",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -124,19 +124,19 @@
     },
     {
       "path": "ui/dialogs.py",
-      "sha256": "42a1b65de8607820e20489bee60e7d19f5624cf14d67f49ce387f7c301bcf1e5",
+      "sha256": "3533bfe72330445ac80a36831be7bcec13b65300492885fd4c300c8467a6a65c",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/dialogs.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "99704228811ad2e43e850dae9c5cb8937d5cd53d5689b72f88a978d7f3196385",
+      "sha256": "9bd2ab36ff4e3728a1d3fe6c7a24e2e190e5c1a62d35501963383b755df0c6ce",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_widgets.py",
-      "sha256": "bb22c87430f3beb262f0a2821047eeac4b355a7115b5f47f7bae6588eb1b061c",
+      "sha256": "37c37f90dcd4279f27f95efdfb632de84043dfce9fd69571e208f97754146e56",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_widgets.py",
       "mode": "source"
     },
@@ -148,19 +148,19 @@
     },
     {
       "path": "ui/screens/board.py",
-      "sha256": "db53210d57cdced34a32bb303ab1a5bdde334402c19e5cb135499710bdbd99e9",
+      "sha256": "94083a501830fac12c7c278bc8eb8021969a94cb45d7eace37deda8c0cb07688",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/board.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/browser.py",
-      "sha256": "6a5e336316ee8249c696c9254dc571bbca95a290dda3aa673d04ec85163313ad",
+      "sha256": "ff3d8dc94b09c3936a9db7fb5006486e228e87b86d7e24ba58930e211482be5e",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/browser.py",
       "mode": "source"
     },
     {
       "path": "ui/screens/calendar_screen.py",
-      "sha256": "7be4bf80b5c1f2d37d36c52ba24e00fadbbfd77455e187bae6c51ca8924d3a30",
+      "sha256": "613b94eb43c48cd1a86fa28adf0945294cd2647fcb5f8fb64b76abf01a2cd53a",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/calendar_screen.py",
       "mode": "source"
     },
@@ -172,7 +172,7 @@
     },
     {
       "path": "ui/screens/overview.py",
-      "sha256": "dcb2d2172cd5c3bd11ff715ab71256170a4c59d79768a53998dca5bf5685b55b",
+      "sha256": "fe1720d590fb45b0b0a8ace431ea25e7427684be6a0260f44c752c2822a64b83",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/overview.py",
       "mode": "source"
     },
@@ -184,7 +184,7 @@
     },
     {
       "path": "ui/screens/templates.py",
-      "sha256": "30e104fdbedc0bfb83f1b205b17240c626213bf1d4de1376a2859707f66a836d",
+      "sha256": "2ddc9192fce108c5c1db9a1ed22fecfc6c00646a48e167d8f85aebb26c2818c0",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/templates.py",
       "mode": "source"
     },

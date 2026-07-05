@@ -22,7 +22,7 @@ from core.flet_data import (
     save_templates,
 )
 from ui.dialogs import show_message, show_task_detail
-from ui.flet_widgets import CENTER, add_destination_header, border_all, dropdown, pad_only, pad_sym, row_action_button, task_icon
+from ui.flet_widgets import CENTER, add_destination_header, border_all, breathe_glow, dropdown, fade_in_up, pad_only, pad_sym, row_action_button, task_icon
 from ui.shared import DashboardContext
 
 
@@ -300,10 +300,25 @@ def render_templates(ctx: DashboardContext) -> None:
         )
         ctx.page.update()
 
+    reveal_order = {"n": 0}
+
     def template_card(t_item):
         icon, icon_color = task_icon(t_item.get("type", "Other"))
         is_url = t_item.get("target_kind") == "url"
         subtitle = "Link" if is_url else (item_target(t_item) or "")
+        use_button = breathe_glow(
+            ctx.page,
+            ft.Container(
+                border_radius=999,
+                content=row_action_button("Use", ft.Icons.PLAY_ARROW_ROUNDED, lambda _e, item=t_item: use_template(item), primary=True),
+            ),
+            "#2563EB",
+            base_blur=5,
+            peak_blur=20,
+            base_alpha="14",
+            peak_alpha="4D",
+            period=1.15,
+        )
         card = ft.Container(
             bgcolor=WHITE,
             border=border_all(1, BORDER),
@@ -332,7 +347,7 @@ def render_templates(ctx: DashboardContext) -> None:
                             ),
                         ],
                     ),
-                    row_action_button("Use", ft.Icons.PLAY_ARROW_ROUNDED, lambda _e, item=t_item: use_template(item), primary=True),
+                    use_button,
                     ft.IconButton(icon=ft.Icons.OPEN_IN_NEW, tooltip="Open", icon_color=MUTED, on_click=lambda _e, item=t_item: open_template(item)),
                     ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Open Folder", icon_color=MUTED, on_click=lambda _e, item=t_item: open_template_folder(item)),
                     ft.IconButton(icon=ft.Icons.CONTENT_COPY, tooltip="Copy Path", icon_color=MUTED, on_click=lambda _e, item=t_item: copy_target(item)),
@@ -355,7 +370,8 @@ def render_templates(ctx: DashboardContext) -> None:
             card.update()
 
         card.on_hover = on_hover
-        return card
+        reveal_order["n"] += 1
+        return fade_in_up(ctx.page, card, delay=0.04 * min(reveal_order["n"], 10), dy=0.12)
 
     def type_folder_card(type_name, items):
         icon, icon_color = task_icon(type_name)

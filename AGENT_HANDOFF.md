@@ -1,6 +1,6 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.0.8-1`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.0.9`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
 
@@ -8,8 +8,8 @@ This file is the continuation contract for any agent editing this repository. In
 
 - Repository: `spirmx/SACHECK`, branch `main`.
 - Last known pre-release baseline: `ef7e12c` (`2.0.7`).
-- Current source/release target: `2.0.8`, required update. Refresh the actual HEAD with `git log` after checkout.
-- Release `2.0.8` unifies Add file/link UI across Board and Templates, restores Template inline types, and adds event-driven animations. Preserve and inspect dirty work before changing anything.
+- Current source/release target: `2.0.9`, required update. Refresh the actual HEAD with `git log` after checkout.
+- Release `2.0.9` includes the recovered Add flows and drag/drop plus Claude's latest Home alert panel, app-wide animations, and the live network sidebar card. Preserve and inspect dirty work before changing anything.
 - Claude recovery stash: `stash@{0}` when this document was created, label `recover-claude-ui-cache-2026-07-05`. Stash indexes move; identify it by label/commit, never by index alone.
 - Earlier safety stash: label `codex-pre-v2-release-main-work`.
 
@@ -79,3 +79,37 @@ Create a shareable source ZIP after meaningful work:
 ```
 
 The timestamped archive is written beneath `build/source-snapshots/` (`build/` is gitignored). It contains tracked source/config/docs/tests/assets using current working-tree contents, plus commit/status/stash metadata and SHA-256 checksums. The exporter excludes builds, releases, Git/Claude state, user data, caches, virtual environments, and common secret filenames, then reopens and verifies the ZIP. Do not commit generated snapshot ZIPs.
+
+---
+
+## Session log — 2026-07-05 · UI animations & Home hero alert panel
+
+Goal: add tasteful animations / "ลูกเล่น" across the app and surface the daily
+alert (today + tomorrow) in the Home hero. All changes are on the dev working tree
+and were verified in the live app (`python app.py`). Not built/released yet.
+
+### What was added (by screen)
+
+- **Home** (`ui/screens/overview.py`): hero rebuilt as a two-pane Row — left = date / greeting / Create-work + Open-Calendar buttons; **right = alert panel that fills the formerly empty hero space**, listing **today & tomorrow** alerts (pulse dot on today rows, taps to Calendar). Also: completion `ProgressRing` + `%` **count up** on load, **Doing** dot in Work pulse breathes, nav tiles **fade/stagger in**.
+- **Board** (`ui/screens/board.py` + `ui/dialogs.py`): summary numbers **count up**; 3 columns **fade in** staggered; **Doing** column header icon breathes + ping ring (only when it has tasks). Task-detail status pill pops in, Doing dot breathes, status picker hover glow + rotating chevron.
+- **Files** (`ui/screens/browser.py`): metric numbers **count up**; metric icons breathe (VISIBLE pings = "scan"); metric cards **fade/stagger in**.
+- **Templates** (`ui/screens/templates.py`): template cards **pop in** (staggered); primary **Use** button breathing glow.
+- **Calendar** (`ui/screens/calendar_screen.py`): **today's** cell softly breathes its glow.
+
+### Reusable helpers added — `ui/flet_widgets.py`
+
+`pulse_dot`, `breathing_badge`, `breathe_glow`, `animated_status_pill`, `count_up`
+(number tween, can drive a `ProgressRing`), `fade_in_up`, `alert_carousel`
+(AnimatedSwitcher cycler — currently unused after hero became a static panel),
+`_with_alpha`; plus `status_menu` upgraded. All animation loops run via
+`page.run_task`, guard `update()` in try/except, and self-stop on control detach.
+
+### Fixed / worked around
+
+- **Integrity self-repair was reverting screen edits.** `core/startup_preflight` restores files listed in `sacheck_integrity.json` that the remote manifest also repairs; the set now spans `ui/screens/*.py` broadly (older notes said only board/health). `overview.py` edits vanished on relaunch until fixed. **Removed from `sacheck_integrity.json` this session:** `board.py`, `browser.py`, `calendar_screen.py`, `overview.py`, `templates.py`. Helpers under `ui/` root (`flet_widgets.py`, `dialogs.py`, `flet_dashboard.py`) stick without removal. Dev-only — `tools/build_integrity_manifest.py` regenerates the ship manifest, so Pro self-heal is unaffected. **Before editing any `ui/screens/*.py`, remove its entry first.**
+- **`animate_offset` does not tween smoothly in this Flet 0.85 build (it snaps).** A continuous scrolling marquee was tried and abandoned for `alert_carousel`, then the static hero panel; `fade_in_up`'s slide is effectively just the opacity fade. `animate_scale` / `animate_opacity` / container `animate` (shadow/border) work fine. `ProgressRing.value` doesn't self-tween → `count_up` steps it manually.
+
+### State / next steps
+
+- Not built or released — version still `2.0.8-1`. Follow the release/integrity procedure above before shipping (the removed `sacheck_integrity.json` entries are dev convenience; the manifest is rebuilt at package time).
+- Optional follow-ups: tune subtle glows (Templates "Use", Calendar today cell); add flourishes to **Settings** / **Health** (remove `health.py` from `sacheck_integrity.json` first). Per-task card entrance is intentionally NOT staggered (up to ~2000 tasks → no per-row async loops).
