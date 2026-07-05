@@ -4,8 +4,8 @@
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "14368d519d642c8d9b124e6e6137a23e0a175fc376e6916fbcf6dcbf15a6b198",
-  "installer_size": 33722367,
+  "installer_sha256": "c26773885637a0d71ce38c9152827847473b1c4fdf012cefa5be610596fe53ea",
+  "installer_size": 33725916,
   "repair_version": "2.1.0",
   "notes": [
     "Added a four-state scheduled-sync indicator with animation, success reset, and failure diagnostics.",
@@ -90,7 +90,7 @@
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "89b7874516c665908d64aeaf98cb4a721397fcb4a4ca5f7c45dcaaa26dd2c204",
+      "sha256": "f724a724578af059d6bbde84a47ac18dbc48536457cff9dfb5fd4ed3309c4446",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -132,7 +132,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "3902dccc3b9daa76359262bf583489bea79b639a4f2c19dd55ce62752dcbffab",
+      "sha256": "474fdcdcb8d6bc95d311e21ebbf56b98fed840186c9d2362be8d0348c9cbafcc",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },

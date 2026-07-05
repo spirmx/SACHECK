@@ -42,6 +42,23 @@ CREATE_TOOLS = [
     for name in FILE_TYPES
 ]
 
+_ACTIVE_OPEN_WORK = None
+
+
+def active_open_work():
+    """Return work opened successfully during this app session."""
+    return dict(_ACTIVE_OPEN_WORK) if _ACTIVE_OPEN_WORK else None
+
+
+def _mark_active_open_work(task):
+    global _ACTIVE_OPEN_WORK
+    _ACTIVE_OPEN_WORK = {
+        "id": task.get("id"),
+        "name": str(task.get("name") or "Untitled work").strip() or "Untitled work",
+        "type": str(task.get("type") or "Other"),
+        "opened_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
 
 def _snapshot_recovery_value(path: Path, fallback):
     try:
@@ -1190,9 +1207,11 @@ def open_target(task):
         return False
     if target.startswith(("http://", "https://")):
         webbrowser.open(target)
+        _mark_active_open_work(task)
         return True
     if Path(target).exists():
         os.startfile(target)
+        _mark_active_open_work(task)
         return True
     return False
 

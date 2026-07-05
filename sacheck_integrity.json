@@ -64,7 +64,7 @@
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "89b7874516c665908d64aeaf98cb4a721397fcb4a4ca5f7c45dcaaa26dd2c204",
+      "sha256": "f724a724578af059d6bbde84a47ac18dbc48536457cff9dfb5fd4ed3309c4446",
       "mode": "source"
     },
     {
@@ -99,7 +99,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "3902dccc3b9daa76359262bf583489bea79b639a4f2c19dd55ce62752dcbffab",
+      "sha256": "474fdcdcb8d6bc95d311e21ebbf56b98fed840186c9d2362be8d0348c9cbafcc",
       "mode": "source"
     },
     {

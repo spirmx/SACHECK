@@ -1049,6 +1049,7 @@ from core.flet_constants import (  # noqa: E402
     WHITE,
 )
 from core.flet_data import (  # noqa: E402
+    active_open_work,
     apply_status_date,
     broken_items,
     create_snapshot,
@@ -4132,34 +4133,40 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
     palette_button = ft.IconButton(icon=ft.Icons.SEARCH, tooltip="Search or jump (Ctrl+K)", icon_color=MUTED, on_click=lambda _e: open_command_palette())
 
-    live_work_dot = ft.Container(width=8, height=8, border_radius=99, bgcolor="#94A3B8")
-    live_work_text = ft.Text("No active Doing work", size=12, weight=ft.FontWeight.W_800, color=MUTED, max_lines=1)
-    live_work_time = ft.Text("--:--", size=12, weight=ft.FontWeight.W_900, color="#D97706")
+    live_work_dot = ft.Container(width=9, height=9, border_radius=99, bgcolor="#5EEAD4", shadow=ft.BoxShadow(blur_radius=10, color="#805EEAD4"))
+    live_work_text = ft.Text("", size=13, weight=ft.FontWeight.W_900, color=WHITE, max_lines=1)
+    live_work_time = ft.Text("--:--", size=12, weight=ft.FontWeight.W_900, color="#CCFBF1")
     live_work_strip = ft.Container(
         expand=True,
-        height=46,
+        height=52,
         margin=pad_sym(horizontal=20),
-        padding=pad_sym(horizontal=14),
-        border_radius=14,
-        bgcolor="#FFFBEB",
-        border=border_all(1, "#FDE68A"),
+        padding=pad_sym(horizontal=16),
+        border_radius=17,
+        visible=False,
+        gradient=ft.LinearGradient(
+            begin=ft.Alignment(-1, 0),
+            end=ft.Alignment(1, 0),
+            colors=["#0F2147", "#17468C", "#147D78"],
+        ),
+        border=border_all(1, "#2DD4BF"),
+        shadow=ft.BoxShadow(blur_radius=18, color="#2417478C", offset=ft.Offset(0, 5)),
         content=ft.Row(
-            spacing=10,
+            spacing=11,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 live_work_dot,
-                ft.Text("Doing ·", size=11, weight=ft.FontWeight.W_900, color="#B45309"),
-                ft.Container(width=1, height=22, bgcolor="#FDE68A"),
+                ft.Column(spacing=0, tight=True, controls=[ft.Text("DOING NOW", size=9, weight=ft.FontWeight.W_900, color="#99F6E4"), ft.Text("Active work", size=10, weight=ft.FontWeight.W_700, color="#BAE6FD")]),
+                ft.Container(width=1, height=28, bgcolor="#557DD3FC"),
                 ft.Container(expand=True, clip_behavior=ft.ClipBehavior.HARD_EDGE, content=live_work_text),
-                ft.Container(width=1, height=22, bgcolor="#FDE68A"),
-                ft.Icon(ft.Icons.SCHEDULE_OUTLINED, size=15, color="#D97706"),
+                ft.Container(width=1, height=28, bgcolor="#557DD3FC"),
+                ft.Icon(ft.Icons.SCHEDULE_ROUNDED, size=16, color="#99F6E4"),
                 live_work_time,
             ],
         ),
     )
 
     def doing_time(task):
-        raw = str(task.get("status_changed_at") or task.get("date_added") or "")
+        raw = str(task.get("opened_at") or "")
         try:
             parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
             return parsed.strftime("%H:%M") if "T" in raw or " " in raw else "--:--"
@@ -4171,16 +4178,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
         offset = 0
         last_task_id = None
         while not shutdown_event.is_set():
-            doing = [task for task in list(all_tasks) if isinstance(task, dict) and task.get("status") == STATUS_PROGRESS]
-            if doing:
-                def safe_priority(item):
-                    try:
-                        return int(item.get("priority") or 0)
-                    except (TypeError, ValueError):
-                        return 0
-
-                doing.sort(key=lambda item: (safe_priority(item), str(item.get("status_changed_at") or item.get("date_added") or "")), reverse=True)
-                task = doing[int(time.time() // 8) % len(doing)]
+            task = active_open_work()
+            if task:
                 task_id = task.get("id") or task.get("name")
                 name = str(task.get("name") or "Untitled task").strip()
                 if task_id != last_task_id:
@@ -4194,17 +4193,16 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     shown = name
                     offset = 0
                 live_work_text.value = shown
-                live_work_text.color = TEXT
                 live_work_time.value = doing_time(task)
-                live_work_dot.bgcolor = "#F59E0B"
+                live_work_strip.visible = True
             else:
                 last_task_id = None
                 offset = 0
-                live_work_text.value = "No active Doing work"
-                live_work_text.color = MUTED
+                live_work_text.value = ""
                 live_work_time.value = "--:--"
-                live_work_dot.bgcolor = "#94A3B8"
+                live_work_strip.visible = False
             try:
+                live_work_strip.update()
                 live_work_text.update()
                 live_work_time.update()
                 live_work_dot.update()
