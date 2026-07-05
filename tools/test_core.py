@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.flet_data as data  # noqa: E402
 from core.app_lifecycle import SingleInstanceGuard  # noqa: E402
+from core.startup_preflight import parse_version  # noqa: E402
 from core.flet_theme import (  # noqa: E402
     CALENDAR_EVENT_COLOR_CHOICES,
     DEFAULT_CALENDAR_EVENT_COLOR,
@@ -139,6 +140,11 @@ def test_custom_file_type_creation():
         data.ensure_status_folders = original_folders
 
 
+def test_update_build_version():
+    assert parse_version("2.0.8-1") == (2, 0, 8, 1)
+    assert parse_version("2.0.8-1") > parse_version("2.0.8")
+
+
 def test_unique_target_and_resolve_type():
     # resolve_add_type keeps a specific requested type, upgrades Other/Link
     assert data.resolve_add_type("C:/x/a.docx", "Word") == "Word"
@@ -185,6 +191,7 @@ TESTS = [
     ("normalize legacy statuses", test_normalize_legacy_statuses),
     ("calendar event palette", test_calendar_event_palette),
     ("custom file type creation", test_custom_file_type_creation),
+    ("update build version", test_update_build_version),
     ("resolve_add_type", test_unique_target_and_resolve_type),
     ("single instance guard", test_single_instance_guard),
     ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),

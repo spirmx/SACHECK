@@ -1,16 +1,16 @@
 {
-  "version": "2.0.8",
+  "version": "2.0.8-1",
   "release_date": "2026-07-05",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "fdebfe4b415db8646ba36337747470a463b0eb61530779af151c0a45ee4dce1d",
-  "installer_size": 33677713,
-  "repair_version": "2.0.8",
+  "installer_sha256": "91e8ac364a9fe0204714b64f7270646f9ebca93e7892491dba7637728ed52c6a",
+  "installer_size": 33686540,
+  "repair_version": "2.0.8-1",
   "notes": [
-    "Unified Add file and Add link dialogs across Board and Templates with clear destination badges.",
-    "Restored inline custom-type creation for Templates and added smooth workflow animations.",
-    "This is a required update for installed versions older than 2.0.8.",
+    "Added native Windows Explorer drag-and-drop into the Board bulk-import flow.",
+    "Dropped files reuse classification, custom types, progress, and cancellation.",
+    "This is a required update for installed versions older than 2.0.8-1.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -82,13 +82,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "48ec4890a9cb96214b3901bee49882778f95a5beefd7b3fe2c02f018f0e6e9a9",
+      "sha256": "89b62c2b27f080c105776ed3248888094d43a5cd09a315344cfd0e424f87df01",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "d1c77574cb8e2c66795ce75fec15128228dc08e78508fb47d64012aa9f6c1d13",
+      "sha256": "525f84e9096a8138a74390b152e06fc8a8a5ec420595a4129af5dd433ae14ef6",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -105,8 +105,14 @@
       "mode": "source"
     },
     {
+      "path": "core/native_file_drop.py",
+      "sha256": "77e5b1ed15a7c012165b6492d44c86749fe411633b62f81f53010c5daf813a86",
+      "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/native_file_drop.py",
+      "mode": "source"
+    },
+    {
       "path": "core/startup_preflight.py",
-      "sha256": "0717f2fedd1ac2ad67440808af35b306a7620d4e19195280a29d41d97cf9646f",
+      "sha256": "490dcdeadf2d2ff328be4499f1232a30a3616da6c2747e6dc34e8a7a7a25468b",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -124,7 +130,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "efd37f94375b30143589c6b184314fe4b27ef937aac98c3869c0b376c04247d9",
+      "sha256": "99704228811ad2e43e850dae9c5cb8937d5cd53d5689b72f88a978d7f3196385",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },

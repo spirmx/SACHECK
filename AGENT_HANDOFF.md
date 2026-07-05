@@ -1,6 +1,6 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.0.8`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.0.8-1`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
 

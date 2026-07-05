@@ -25,6 +25,7 @@ from ui.screens import render_overview, render_board, render_browser, render_cal
 from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, app_folder, work_folder
 from core.bulk_import import import_rows
 from core.flet_theme import CALENDAR_EVENT_COLOR_CHOICES, calendar_event_style
+from core.native_file_drop import install_native_file_drop
 
 
 BG = "#F8FAFC"
@@ -93,16 +94,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.8"
+APP_VERSION = "2.0.8-1"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.8",
+        "version": "2.0.8-1",
         "date": "2026-07-05",
         "latest": True,
+        "items": [
+            "Added native Windows Explorer drag-and-drop into the Board bulk-import flow.",
+            "Dropped files open Add files automatically or join the currently open import dialog.",
+            "Kept Browse files as a fallback and reused classification, custom types, progress, and cancellation.",
+        ],
+    },
+    {
+        "version": "2.0.8",
+        "date": "2026-07-05",
+        "latest": False,
         "items": [
             "Unified Add file and Add link dialogs across Board and Templates with clear destination badges.",
             "Removed the confusing Add path action and restored inline custom-type creation for Templates.",
@@ -1981,6 +1992,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
         state["screen"] = SCREEN_BROWSER
         render_current()
 
+    file_drop_receiver = {"callback": None}
+
     def show_inline_type_dialog(on_created, *, suggested_extension=""):
         name_field = ft.TextField(label="New type name", hint_text="e.g. CAD Drawing", autofocus=True, border_radius=12, border_color=BORDER)
         extension_field = ft.TextField(label="Extensions (optional)", value=suggested_extension, hint_text="e.g. .dwg, .dxf", border_radius=12, border_color=BORDER)
@@ -2214,7 +2227,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
         )
         page.update()
 
-    def add_files_dialog(_e=None):
+    def add_files_dialog(_e=None, initial_paths=None):
         picked_rows = []
         import_state = {"running": False, "cancelled": False}
         list_view = ft.ListView(expand=True, spacing=8)
@@ -2310,7 +2323,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
             if picked_rows:
                 list_view.controls = [row_control(row) for row in picked_rows]
             else:
-                list_view.controls = [ft.Container(alignment=CENTER, padding=30, content=ft.Column(spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Icon(ft.Icons.UPLOAD_FILE_OUTLINED, size=28, color=MUTED_2), ft.Text("Choose one or many files. Each file is auto-sorted by type.", size=13, color=MUTED_2)]))]
+                list_view.controls = [ft.Container(alignment=CENTER, padding=30, content=ft.Column(spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Icon(ft.Icons.UPLOAD_FILE_OUTLINED, size=28, color=MUTED_2), ft.Text("Drag files anywhere onto SA CHECK, or use Browse files.", size=13, color=MUTED_2), ft.Text("Each file is auto-sorted by type before import.", size=11, color=MUTED_2)]))]
             try:
                 list_view.update()
             except Exception:
@@ -2319,10 +2332,24 @@ def dashboard_main(page: ft.Page, startup_result=None):
         def add_path(path):
             cleaned = (path or "").strip().strip('"')
             if not cleaned or any(row["path"] == cleaned for row in picked_rows):
-                return
+                return False
+            if not Path(cleaned).is_file():
+                return False
             detected = infer_type(cleaned)
             choices = type_choices()
             picked_rows.append({"path": cleaned, "type": detected if detected in choices else "Other"})
+            return True
+
+        def add_dropped_paths(paths):
+            added = sum(1 for path in paths if add_path(path))
+            rebuild_list()
+            update_summary()
+            if added:
+                summary_text.value = f"Dropped {added} file(s) · " + summary_text.value
+            try:
+                page.update()
+            except Exception:
+                pass
 
         async def browse(_e):
             picked = await file_picker.pick_files(dialog_title="Choose files", allow_multiple=True)
@@ -2339,6 +2366,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 progress_text.color = "#D97706"
                 page.update()
                 return
+            file_drop_receiver["callback"] = None
             page.pop_dialog()
             page.update()
 
@@ -2382,6 +2410,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                     is_cancelled=lambda: import_state["cancelled"],
                 )
                 import_state["running"] = False
+                file_drop_receiver["callback"] = None
                 if result.created:
                     all_tasks.extend(result.created)
                     save_tasks(all_tasks)
@@ -2401,7 +2430,11 @@ def dashboard_main(page: ft.Page, startup_result=None):
 
             page.run_thread(worker)
 
+        for initial_path in initial_paths or []:
+            add_path(initial_path)
         rebuild_list()
+        update_summary()
+        file_drop_receiver["callback"] = add_dropped_paths
         save_button = ft.Button("Add to Waiting", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10)))
         cancel_button = ft.TextButton("Cancel", on_click=cancel_import)
         page.show_dialog(
@@ -2420,7 +2453,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                             border=border_all(1, "#DBEAFE"),
                             content=ft.Row(spacing=12, controls=[
                                 ft.Icon(ft.Icons.AUTO_AWESOME_OUTLINED, color=PRIMARY),
-                                ft.Text("SA CHECK detects each type and copies files into its matching Waiting folder.", size=12, color=MUTED, expand=True),
+                                ft.Text("Drop files from Windows Explorer or browse. SA CHECK classifies and copies them into Waiting.", size=12, color=MUTED, expand=True),
                                 ft.Button("Browse files", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=browse, height=42, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
                             ]),
                         ),
@@ -4403,6 +4436,14 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
     page.run_thread(realtime_sync_loop)
     page.run_thread(lambda: (time.sleep(2), check_calendar_event_reminders()))
+    state["native_drop_bridge"] = install_native_file_drop(
+        APP_NAME,
+        lambda paths: page.run_thread(
+            lambda: file_drop_receiver["callback"](paths)
+            if file_drop_receiver.get("callback")
+            else add_files_dialog(initial_paths=paths)
+        ),
+    )
 
 
 def task_calendar_date(task):

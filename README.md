@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.0.8`
+Version: `2.0.8-1`
 
 This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.0.8` unifies Add dialogs, restores Template inline types, and adds smooth workflow animations.
+`2.0.8-1` adds Windows Explorer drag-and-drop to the Board bulk-import flow.
 
 Latest changes:
 
@@ -212,4 +212,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`2.0.8` is the current required release and preserves safe refresh, offline-first Work data, settings, and cache.
+`2.0.8-1` is the current required release and preserves safe refresh, offline-first Work data, settings, and cache.
