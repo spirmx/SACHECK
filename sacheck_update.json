@@ -4,8 +4,8 @@
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "6011f2266ebb913e254017442c8980a77f52c2d870207e015bb8f546a5d670b7",
-  "installer_size": 33411510,
+  "installer_sha256": "14368d519d642c8d9b124e6e6137a23e0a175fc376e6916fbcf6dcbf15a6b198",
+  "installer_size": 33722367,
   "repair_version": "2.1.0",
   "notes": [
     "Added a four-state scheduled-sync indicator with animation, success reset, and failure diagnostics.",
@@ -126,7 +126,7 @@
     },
     {
       "path": "ui/dialogs.py",
-      "sha256": "3533bfe72330445ac80a36831be7bcec13b65300492885fd4c300c8467a6a65c",
+      "sha256": "466b8f17f9475612051fc229fafb088b18eec626339d7d24991feee3d4850a50",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/dialogs.py",
       "mode": "source"
     },

@@ -31,6 +31,7 @@ from core.flet_data import (
     open_target,
     push_undo,
     rename_task_target,
+    runtime_file_types,
     safe_item_name,
     save_templates,
     update_template_record,
@@ -142,6 +143,18 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
     status_lookup = {"Waiting": STATUS_PENDING, "Doing": STATUS_PROGRESS, "Success": STATUS_DONE}
     is_untracked_browser_item = bool(all_tasks is not None and not is_template and task not in all_tasks)
 
+    def detail_file_types():
+        """Return every configured type and keep legacy task types editable."""
+        provider = runtime_file_types_fn or runtime_file_types
+        try:
+            values = list(provider() or [])
+        except Exception:
+            values = list(runtime_file_types())
+        current = str(task.get("type") or "Other").strip() or "Other"
+        values.append(current)
+        values.append("Other")
+        return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
+
     def status_style(status):
         if status == STATUS_PROGRESS or status == "Doing":
             return "Doing", DOING_TEXT, DOING_BG
@@ -223,7 +236,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
 
     def edit_task(_event):
         name_field = ft.TextField(label="Task name", value=task.get("name", ""), border_radius=12, border_color=BORDER)
-        file_types = runtime_file_types_fn() if runtime_file_types_fn else ["Word", "Excel", "Other"]
+        file_types = detail_file_types()
         type_field = dropdown(520, task.get("type", "Other"), file_types)
         status_field = dropdown(520, current_status_label, status_options)
         target_field = ft.TextField(label="Target path / URL", value=target, border_radius=12, border_color=BORDER)
@@ -345,7 +358,7 @@ def show_task_detail(page, task, save_and_render, all_tasks, is_template=False, 
             edit_task(_event)
             return
         name_field = ft.TextField(label="Template name", value=task.get("name", ""), border_radius=12, border_color=BORDER)
-        file_types = runtime_file_types_fn() if runtime_file_types_fn else ["Word", "Excel", "Other"]
+        file_types = detail_file_types()
         type_field = dropdown(520, task.get("type", "Other"), file_types)
         target_field = ft.TextField(label="Template file / URL", value=target, border_radius=12, border_color=BORDER)
         date_field = ft.TextField(label="Template date", value=str(task.get("date_added") or datetime.now().strftime("%Y-%m-%d"))[:10], hint_text="YYYY-MM-DD", border_radius=12, border_color=BORDER, prefix_icon=ft.Icons.EVENT_OUTLINED)
