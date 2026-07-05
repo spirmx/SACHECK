@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.0.6`
+Version: `2.0.7`
 
 This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.0.6` adds cancellable bulk import and batches large Board categories for smoother scaling.
+`2.0.7` adds inline custom-type creation without closing the active Add form.
 
 Latest changes:
 
@@ -212,4 +212,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`2.0.6` is the current required release and preserves safe refresh, offline-first Work data, settings, and cache.
+`2.0.7` is the current required release and preserves safe refresh, offline-first Work data, settings, and cache.

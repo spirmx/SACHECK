@@ -93,16 +93,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.6"
+APP_VERSION = "2.0.7"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.6",
+        "version": "2.0.7",
         "date": "2026-07-05",
         "latest": True,
+        "items": [
+            "Added an inline custom-type popup when Other is selected while adding work or importing files.",
+            "Kept the current Add form open and selected the newly created type automatically.",
+            "Unified inline and Settings type creation through the same validation and storage service.",
+        ],
+    },
+    {
+        "version": "2.0.6",
+        "date": "2026-07-05",
+        "latest": False,
         "items": [
             "Added background bulk import with live progress, cancellation, and a clear result summary.",
             "Batched large category dialogs so thousands of tasks no longer create thousands of controls at once.",
@@ -996,6 +1006,7 @@ from core.flet_data import (  # noqa: E402
     apply_status_date,
     broken_items,
     create_snapshot,
+    create_custom_file_type,
     create_task_from_source,
     create_task_from_tool,
     create_task_from_template,
@@ -1034,6 +1045,7 @@ from core.flet_data import (  # noqa: E402
     sync_from_work,
     template_folder,
     status_folder,
+    type_color_choices,
     unique_target_path,
     update_template_record,
     item_target,
@@ -1956,16 +1968,79 @@ def dashboard_main(page: ft.Page, startup_result=None):
         state["screen"] = SCREEN_BROWSER
         render_current()
 
+    def show_inline_type_dialog(on_created, *, suggested_extension=""):
+        name_field = ft.TextField(label="New type name", hint_text="e.g. CAD Drawing", autofocus=True, border_radius=12, border_color=BORDER)
+        extension_field = ft.TextField(label="Extensions (optional)", value=suggested_extension, hint_text="e.g. .dwg, .dxf", border_radius=12, border_color=BORDER)
+        icon_field = ft.TextField(label="Icon text", hint_text="CAD", width=120, border_radius=12, border_color=BORDER)
+        color_field = ft.TextField(label="Color", value="#2563EB", width=130, border_radius=12, border_color=BORDER)
+        preview = ft.Container(width=38, height=38, border_radius=11, bgcolor="#2563EB")
+
+        def select_color(color):
+            color_field.value = color
+            preview.bgcolor = color
+            page.update()
+
+        def refresh_color(_event=None):
+            value = str(color_field.value or "").strip()
+            if len(value) == 7 and value.startswith("#"):
+                preview.bgcolor = value
+                page.update()
+
+        color_field.on_change = refresh_color
+
+        def save_type(_event=None):
+            try:
+                item = create_custom_file_type(
+                    settings,
+                    name_field.value,
+                    extensions=extension_field.value,
+                    icon=icon_field.value,
+                    color=color_field.value,
+                )
+            except ValueError as exc:
+                show_message(page, "Could not add type", str(exc))
+                return
+            page.pop_dialog()
+            on_created(item["name"])
+            page.update()
+
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Row(spacing=10, controls=[ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE, color=PRIMARY), ft.Text("Create a work type", size=20, weight=ft.FontWeight.W_900, color=TEXT)]),
+                content=ft.Column(
+                    width=500,
+                    height=260,
+                    spacing=12,
+                    controls=[
+                        ft.Text("This adds the type without closing your current Add form.", size=12, color=MUTED),
+                        name_field,
+                        extension_field,
+                        ft.Row(spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[preview, color_field, icon_field]),
+                        ft.Row(spacing=8, wrap=True, controls=[
+                            ft.Container(width=28, height=28, border_radius=99, bgcolor=color, on_click=lambda _e, value=color: select_color(value))
+                            for color in type_color_choices[:10]
+                        ]),
+                    ],
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
+                    ft.Button("Create type", icon=ft.Icons.SAVE_OUTLINED, on_click=save_type, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                ],
+                bgcolor=WHITE,
+                shape=ft.RoundedRectangleBorder(radius=18),
+            )
+        )
+        page.update()
+
     def add_task_dialog(kind):
         title = {"file": "Add file", "link": "Add link", "project": "Add project"}[kind]
         is_project = kind == "project"
         is_link = kind == "link"
         name_field = ft.TextField(label="Task name", border_radius=12, border_color=BORDER)
         type_options = list(file_types())
-        if is_project:
-            type_field = dropdown(300, "Project", type_options)
-        else:
-            type_field = dropdown(300, "Auto-detect", ["Auto-detect", *type_options])
+        type_values = type_options if is_project else ["Auto-detect", *type_options]
+        type_field = dropdown(300, "Project" if is_project else "Auto-detect", type_values)
         target_field = ft.TextField(
             label="URL link" if is_link else ("Project folder path" if is_project else "Local file path"),
             value="https://" if is_link else "",
@@ -1993,6 +2068,25 @@ def dashboard_main(page: ft.Page, startup_result=None):
 
         if not is_project:
             target_field.on_change = refresh_detection
+
+        def select_created_type(name):
+            values = list(file_types())
+            if not is_project:
+                values.insert(0, "Auto-detect")
+            type_field.options = [ft.dropdown.Option(value) for value in values]
+            type_field.value = name
+            detected_label.value = f"New type selected: {name}"
+            detected_label.color = PRIMARY
+            page.update()
+
+        def on_type_select(event):
+            if event.control.value != "Other":
+                return
+            target = str(target_field.value or "").strip()
+            suffix = Path(target).suffix.lower() if target and not target.startswith(("http://", "https://")) else ""
+            show_inline_type_dialog(select_created_type, suggested_extension=suffix)
+
+        type_field.on_select = on_type_select
 
         async def browse(_e):
             if is_project:
@@ -2140,6 +2234,16 @@ def dashboard_main(page: ft.Page, startup_result=None):
             def on_type_change(e):
                 row["type"] = e.control.value
                 update_summary()
+                if e.control.value == "Other":
+                    def select_created_type(name):
+                        row["type"] = name
+                        e.control.options = [ft.dropdown.Option(value) for value in type_choices()]
+                        e.control.value = name
+                        rebuild_list()
+                        update_summary()
+                        page.update()
+
+                    show_inline_type_dialog(select_created_type, suggested_extension=Path(row["path"]).suffix.lower())
             return dropdown(150, row["type"], type_choices(), on_select=on_type_change)
 
         def row_control(row):

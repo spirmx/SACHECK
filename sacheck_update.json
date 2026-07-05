@@ -1,16 +1,16 @@
 {
-  "version": "2.0.6",
+  "version": "2.0.7",
   "release_date": "2026-07-05",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "d13dc4c546a338e4b71509d21e2d2693a098926f136583044bf9ac861144e353",
-  "installer_size": 33665123,
-  "repair_version": "2.0.6",
+  "installer_sha256": "3295decf795ff9ff7808fbfef3ba89446265b48f998ec9a7f5b5dc773d3f4b57",
+  "installer_size": 33673976,
+  "repair_version": "2.0.7",
   "notes": [
-    "Added background bulk import with live progress, cancellation, and a clear result summary.",
-    "Batched large category dialogs for smooth performance with thousands of tasks.",
-    "This is a required update for installed versions older than 2.0.6.",
+    "Added an inline custom-type popup when Other is selected while adding work or importing files.",
+    "Kept the current Add form open and selected the newly created type automatically.",
+    "This is a required update for installed versions older than 2.0.7.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -82,13 +82,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "1a6f01ba47faef17d43cfc2df99b7312f936cf09c71d4901e0012e32f9cd55f9",
+      "sha256": "d1255f91c964f7a9737e21d210918655e86d48cdc5747a0d5c6ae04c51c64b80",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "14996081740d4d4b3da33f717444f899b9a59c9c2722136c842c58b2e751d907",
+      "sha256": "53474c4ac5e797216011088393df1c08fbdc43e874855464d14d465af24a41f8",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -106,7 +106,7 @@
     },
     {
       "path": "core/startup_preflight.py",
-      "sha256": "6371ef900932b097d8e590a0c062b6d916a9e96ff4ad1abdd944afe92a222d19",
+      "sha256": "0b870bdb40bf0c76917c241d1597bb368dd92a97733d3ea620db721376fd7d54",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -124,7 +124,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "d1e0775847fc92cb4011615f9a075177c2f4dd9992fafe7ee325636eaaa6b73e",
+      "sha256": "469e7d167c1b21a35925522da4df868c3124f6976f0c7f44e4064878c7e55c9d",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
@@ -172,7 +172,7 @@
     },
     {
       "path": "ui/screens/settings_screen.py",
-      "sha256": "87f378990b2847ced9ea03f6a5ceeea1c17fa9794da4a90a34fa6c17bde3f528",
+      "sha256": "ec7bd0f3d59529f740d52eb61ef7baf47c52ae87d3fb96fe08895b7f1e6afe3d",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/settings_screen.py",
       "mode": "source"
     },

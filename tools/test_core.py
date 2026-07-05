@@ -110,6 +110,35 @@ def test_calendar_event_palette():
     assert events[0]["color"] == "#EF4444"
 
 
+def test_custom_file_type_creation():
+    settings = {"custom_file_types": []}
+    original_save = data.save_settings
+    original_folders = data.ensure_status_folders
+    calls = []
+    try:
+        data.save_settings = lambda value: calls.append(("save", value))
+        data.ensure_status_folders = lambda: calls.append(("folders", None))
+        item = data.create_custom_file_type(
+            settings,
+            "CAD Drawing",
+            extensions="dwg, .dxf",
+            icon="cad",
+            color="#2563eb",
+        )
+        assert item["name"] == "CAD Drawing"
+        assert item["extensions"] == [".dwg", ".dxf"]
+        assert item["icon"] == "CAD" and item["color"] == "#2563EB"
+        assert [name for name, _value in calls] == ["save", "folders"]
+        try:
+            data.create_custom_file_type(settings, "cad drawing")
+            raise AssertionError("duplicate type name should fail")
+        except ValueError:
+            pass
+    finally:
+        data.save_settings = original_save
+        data.ensure_status_folders = original_folders
+
+
 def test_unique_target_and_resolve_type():
     # resolve_add_type keeps a specific requested type, upgrades Other/Link
     assert data.resolve_add_type("C:/x/a.docx", "Word") == "Word"
@@ -155,6 +184,7 @@ TESTS = [
     ("normalize progress/priority", test_normalize_progress_priority),
     ("normalize legacy statuses", test_normalize_legacy_statuses),
     ("calendar event palette", test_calendar_event_palette),
+    ("custom file type creation", test_custom_file_type_creation),
     ("resolve_add_type", test_unique_target_and_resolve_type),
     ("single instance guard", test_single_instance_guard),
     ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),

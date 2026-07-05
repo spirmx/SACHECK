@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import time
 import uuid
@@ -26,7 +27,7 @@ from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_
 from core.flet_theme import normalize_calendar_event_color
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.6"
+APP_VERSION = "2.0.7"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -443,6 +444,68 @@ def custom_file_types():
     if not isinstance(items, list):
         return []
     return [item for item in items if isinstance(item, dict) and item.get("name")]
+
+
+def normalize_extensions(value) -> list[str]:
+    if isinstance(value, (list, tuple, set)):
+        parts = value
+    else:
+        parts = str(value or "").replace(";", ",").split(",")
+    normalized = []
+    for part in parts:
+        extension = str(part).strip().lower()
+        if not extension:
+            continue
+        extension = extension if extension.startswith(".") else f".{extension}"
+        if extension not in normalized:
+            normalized.append(extension)
+    return normalized
+
+
+def create_custom_file_type(
+    settings: dict,
+    name: str,
+    *,
+    extensions=None,
+    icon: str = "",
+    color: str = "#2563EB",
+    icon_file: str = "",
+    default_action: str = "Open",
+) -> dict:
+    clean_name = str(name or "").strip()
+    if not clean_name:
+        raise ValueError("Please enter a file type name.")
+    custom_types = settings.setdefault("custom_file_types", [])
+    if not isinstance(custom_types, list):
+        custom_types = []
+        settings["custom_file_types"] = custom_types
+    known_names = {item.casefold() for item in FILE_TYPES}
+    known_names.update(str(item.get("name") or "").casefold() for item in custom_types if isinstance(item, dict))
+    if clean_name.casefold() in known_names:
+        raise ValueError("This file type already exists.")
+    clean_extensions = normalize_extensions(extensions)
+    existing_extensions = {str(extension).lower() for extension in EXTENSION_TYPES}
+    for item in custom_types:
+        if isinstance(item, dict):
+            existing_extensions.update(normalize_extensions(item.get("extensions")))
+    duplicates = [extension for extension in clean_extensions if extension in existing_extensions]
+    if duplicates:
+        raise ValueError(f"{', '.join(duplicates[:3])} already belongs to another type.")
+    clean_color = str(color or "#2563EB").strip().upper()
+    if not re.fullmatch(r"#[0-9A-F]{6}", clean_color):
+        raise ValueError("Color must use a 6-digit hex value such as #2563EB.")
+    item = {
+        "name": clean_name,
+        "icon": (str(icon or clean_name[:3]).strip().upper() or clean_name[:3].upper())[:3],
+        "color": clean_color,
+        "icon_file": str(icon_file or ""),
+        "extensions": clean_extensions,
+        "default_action": str(default_action or "Open"),
+    }
+    custom_types.append(item)
+    save_settings(settings)
+    ensure_status_folders()
+    return item
 
 
 def file_type_config(name: str) -> dict:

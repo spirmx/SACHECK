@@ -11,7 +11,7 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
-RELEASE_VERSION = "2.0.6"
+RELEASE_VERSION = "2.0.7"
 RELEASE_DATE = "2026-07-05"
 RELEASE_REQUIRED = True
 
@@ -66,9 +66,9 @@ def main() -> None:
         "installer_size": installer.stat().st_size if installer_hash else 0,
         "repair_version": RELEASE_VERSION,
         "notes": [
-            "Added background bulk import with live progress, cancellation, and a clear result summary.",
-            "Batched large category dialogs for smooth performance with thousands of tasks.",
-            "This is a required update for installed versions older than 2.0.6.",
+            "Added an inline custom-type popup when Other is selected while adding work or importing files.",
+            "Kept the current Add form open and selected the newly created type automatically.",
+            "This is a required update for installed versions older than 2.0.7.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

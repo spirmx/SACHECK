@@ -3,7 +3,6 @@ import shutil
 import flet as ft
 from pathlib import Path
 
-from config.category import EXTENSION_TYPES
 from core.flet_constants import (
     BORDER, DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES, MUTED, MUTED_2,
     PRIMARY, TEXT, WHITE, BG, STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE,
@@ -11,7 +10,7 @@ from core.flet_constants import (
 )
 from core.flet_data import (
     DATA_FILE, APP_NAME, FILE_TYPES, type_color_choices, load_tasks,
-    ensure_status_folders, save_settings
+    create_custom_file_type, save_settings
 )
 from ui.dialogs import show_message
 from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, type_style, app_logo_control, profile_media_control, app_theme_preview, app_theme_mockup, color_swatch, nav_button
@@ -246,46 +245,24 @@ def render_settings(ctx: DashboardContext) -> None:
         show_message(ctx.page, "Settings", "UI defaults restored.")
         ctx.render_current()
 
-    def parse_extensions(value):
-        parts = [part.strip().lower() for part in value.replace(";", ",").split(",")]
-        normalized = []
-        for part in parts:
-            if not part: continue
-            normalized.append(part if part.startswith(".") else f".{part}")
-        return normalized
-
     def add_file_type(_event):
-        name = (type_name.value or "").strip()
-        if not name:
-            show_message(ctx.page, "Missing type name", "Please enter a file type name.")
+        try:
+            item = create_custom_file_type(
+                ctx.settings,
+                type_name.value,
+                extensions=type_ext.value,
+                icon=type_icon.value,
+                color=type_color.value,
+                icon_file=icon_file["value"],
+                default_action=type_action.value,
+            )
+        except ValueError as exc:
+            show_message(ctx.page, "Could not add type", str(exc))
             return
-        if name.casefold() in [item.casefold() for item in FILE_TYPES] or any(str(item.get("name", "")).casefold() == name.casefold() for item in custom_types):
-            show_message(ctx.page, "Already exists", "This file type already exists.")
-            return
-        extensions = parse_extensions(type_ext.value or "")
-        existing_extensions = {
-            extension
-            for item in custom_types
-            for extension in parse_extensions(",".join(item.get("extensions", [])) if isinstance(item.get("extensions", []), list) else str(item.get("extensions", "")))
-        } | {str(extension).lower() for extension in EXTENSION_TYPES}
-        duplicate_extensions = [extension for extension in extensions if extension in existing_extensions]
-        if duplicate_extensions:
-            show_message(ctx.page, "Extension already mapped", f"{', '.join(duplicate_extensions[:3])} already belongs to another type.")
-            return
-        custom_types.append({
-            "name": name,
-            "icon": (type_icon.value or name[:3]).strip().upper(),
-            "color": (type_color.value or "#2563EB").strip(),
-            "icon_file": icon_file["value"],
-            "extensions": extensions,
-            "default_action": type_action.value or "Open",
-        })
-        save_settings(ctx.settings)
-        ensure_status_folders()
         try: ctx.page.pop_dialog()
         except Exception: pass
         ctx.render_current()
-        show_message(ctx.page, "File type added", f"{name} is ready.")
+        show_message(ctx.page, "File type added", f"{item['name']} is ready.")
 
     def show_add_file_type_dialog(_event=None):
         type_name.value = ""
