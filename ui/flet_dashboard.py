@@ -92,16 +92,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.4"
+APP_VERSION = "2.0.5"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.4",
+        "version": "2.0.5",
         "date": "2026-07-05",
         "latest": True,
+        "items": [
+            "Restored the complete cached Board, Calendar, Settings, startup, and dialog improvements.",
+            "Moved Board quick actions into the filter row and restored grouped category controls.",
+            "Regenerated integrity data so startup repair keeps the restored code instead of reverting it.",
+        ],
+    },
+    {
+        "version": "2.0.4",
+        "date": "2026-07-05",
+        "latest": False,
         "items": [
             "Kept calendar event colors consistent across Calendar, Overview, and event details.",
             "Normalized saved event colors and added regression coverage for the shared palette.",
