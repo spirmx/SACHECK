@@ -4137,7 +4137,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
     live_work_kicker = ft.Text("READY", size=9, weight=ft.FontWeight.W_900, color="#CBD5E1")
     live_work_state = ft.Text("Work island", size=10, weight=ft.FontWeight.W_700, color="#94A3B8")
     live_work_meta = ft.Column(spacing=0, tight=True, visible=False, controls=[live_work_kicker, live_work_state])
-    live_work_text = ft.Text("ยังไม่ได้เริ่มทำงาน", size=12, weight=ft.FontWeight.W_800, color="#E2E8F0", max_lines=1)
+    live_work_text = ft.Text("ยังไม่ได้เริ่มทำงาน", size=12, weight=ft.FontWeight.W_800, color="#E2E8F0", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
     live_work_time = ft.Text("00:00:00", size=12, weight=ft.FontWeight.W_900, color="#CBD5E1")
     live_work_strip = ft.Container(
         width=290,
@@ -4169,81 +4169,86 @@ th{{background:#eff6ff;color:#1d4ed8}}
         ),
     )
 
+    def _apply_live_work_look(task):
+        """Set the strip's whole appearance for the current DOING/READY state.
+        Called only when the state actually changes, so idle ticks stay cheap.
+        """
+        if task:
+            live_work_text.value = str(task.get("name") or "Untitled task").strip()
+            live_work_text.size = 13
+            live_work_text.weight = ft.FontWeight.W_900
+            live_work_text.color = WHITE
+            live_work_strip.width = 500
+            live_work_strip.height = 54
+            live_work_strip.border_radius = 18
+            live_work_strip.gradient = ft.LinearGradient(begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0), colors=["#0F2147", "#17468C", "#147D78"])
+            live_work_strip.border = border_all(1, "#2DD4BF")
+            live_work_strip.shadow = ft.BoxShadow(blur_radius=18, color="#2417478C", offset=ft.Offset(0, 5))
+            live_work_dot.bgcolor = "#5EEAD4"
+            live_work_dot.shadow = ft.BoxShadow(blur_radius=10, color="#805EEAD4")
+            live_work_kicker.value = "DOING NOW"
+            live_work_kicker.color = "#99F6E4"
+            live_work_state.value = "งานที่เปิดล่าสุด"
+            live_work_state.color = "#BAE6FD"
+            live_work_meta.visible = True
+            live_work_time.color = "#CCFBF1"
+        else:
+            live_work_text.value = "ยังไม่ได้เริ่มทำงาน"
+            live_work_text.size = 12
+            live_work_text.weight = ft.FontWeight.W_800
+            live_work_text.color = "#E2E8F0"
+            live_work_strip.width = 290
+            live_work_strip.height = 38
+            live_work_strip.border_radius = 19
+            live_work_strip.gradient = ft.LinearGradient(begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0), colors=["#111827", "#1E293B", "#334155"])
+            live_work_strip.border = border_all(1, "#475569")
+            live_work_strip.shadow = ft.BoxShadow(blur_radius=12, color="#180F172A", offset=ft.Offset(0, 3))
+            live_work_dot.bgcolor = "#64748B"
+            live_work_dot.shadow = None
+            live_work_kicker.value = "READY"
+            live_work_kicker.color = "#CBD5E1"
+            live_work_state.value = "Work island"
+            live_work_state.color = "#94A3B8"
+            live_work_meta.visible = False
+            live_work_time.color = "#CBD5E1"
+
     async def live_work_loop():
-        offset = 0
-        last_task_id = None
+        # Smooth + light: rebuild the strip look ONLY when the task changes, tick
+        # the clock only when the visible second flips. No per-frame repaint, no
+        # character-by-character marquee (long names ellipsize cleanly instead).
+        last_task_id = "__pending__"
+        last_clock = ""
         while not shutdown_event.is_set():
             task = active_open_work()
-            if task:
-                task_id = f"{task.get('id') or task.get('name')}:{task.get('opened_at') or ''}"
-                name = str(task.get("name") or "Untitled task").strip()
-                if task_id != last_task_id:
-                    offset = 0
-                    last_task_id = task_id
-                    live_work_strip.scale = 1.025
-                if len(name) > 48:
-                    lane = name + "     •     "
-                    shown = (lane + lane)[offset : offset + 48]
-                    offset = (offset + 1) % len(lane)
-                else:
-                    shown = name
-                    offset = 0
-                live_work_text.value = shown
-                live_work_time.value = datetime.now().strftime("%H:%M:%S")
-                live_work_strip.width = 500
-                live_work_strip.height = 54
-                live_work_strip.border_radius = 18
-                live_work_strip.gradient = ft.LinearGradient(begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0), colors=["#0F2147", "#17468C", "#147D78"])
-                live_work_strip.border = border_all(1, "#2DD4BF")
-                live_work_strip.shadow = ft.BoxShadow(blur_radius=18, color="#2417478C", offset=ft.Offset(0, 5))
-                live_work_dot.bgcolor = "#5EEAD4"
-                live_work_dot.shadow = ft.BoxShadow(blur_radius=10, color="#805EEAD4")
-                live_work_kicker.value = "DOING NOW"
-                live_work_kicker.color = "#99F6E4"
-                live_work_state.value = "งานที่เปิดล่าสุด"
-                live_work_state.color = "#BAE6FD"
-                live_work_meta.visible = True
-                live_work_text.size = 13
-                live_work_text.weight = ft.FontWeight.W_900
-                live_work_text.color = WHITE
-                live_work_time.color = "#CCFBF1"
-            else:
-                last_task_id = None
-                offset = 0
-                live_work_text.value = "ยังไม่ได้เริ่มทำงาน"
-                live_work_time.value = datetime.now().strftime("%H:%M:%S")
-                live_work_strip.width = 290
-                live_work_strip.height = 38
-                live_work_strip.border_radius = 19
-                live_work_strip.gradient = ft.LinearGradient(begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0), colors=["#111827", "#1E293B", "#334155"])
-                live_work_strip.border = border_all(1, "#475569")
-                live_work_strip.shadow = ft.BoxShadow(blur_radius=12, color="#180F172A", offset=ft.Offset(0, 3))
-                live_work_dot.bgcolor = "#64748B"
-                live_work_dot.shadow = None
-                live_work_kicker.value = "READY"
-                live_work_kicker.color = "#CBD5E1"
-                live_work_state.value = "Work island"
-                live_work_state.color = "#94A3B8"
-                live_work_meta.visible = False
-                live_work_text.size = 12
-                live_work_text.weight = ft.FontWeight.W_800
-                live_work_text.color = "#E2E8F0"
-                live_work_time.color = "#CBD5E1"
-            try:
-                live_work_strip.update()
-                live_work_text.update()
-                live_work_time.update()
-                live_work_dot.update()
-                live_work_kicker.update()
-                live_work_state.update()
-                live_work_meta.update()
-                if live_work_strip.scale != 1:
-                    await asyncio.sleep(0.12)
-                    live_work_strip.scale = 1
+            task_id = f"{task.get('id') or task.get('name')}:{task.get('opened_at') or ''}" if task else None
+
+            if task_id != last_task_id:
+                last_task_id = task_id
+                _apply_live_work_look(task)
+                live_work_strip.scale = 1.03 if task else 1
+                try:
                     live_work_strip.update()
-            except Exception:
-                await asyncio.sleep(0.5)
-            await asyncio.sleep(0.28)
+                except Exception:
+                    await asyncio.sleep(0.5)
+                    continue
+                if task:
+                    await asyncio.sleep(0.16)
+                    live_work_strip.scale = 1
+                    try:
+                        live_work_strip.update()
+                    except Exception:
+                        pass
+
+            now_clock = datetime.now().strftime("%H:%M:%S")
+            if now_clock != last_clock:
+                last_clock = now_clock
+                live_work_time.value = now_clock
+                try:
+                    live_work_time.update()
+                except Exception:
+                    pass
+
+            await asyncio.sleep(0.25)
 
     header = ft.Container(
         height=96,
