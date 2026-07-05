@@ -1,15 +1,26 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.0.9`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.1.0`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
+
+## Release 2.1.0 — sync visibility and stability consolidation
+
+- Added the Sidebar scheduled-sync indicator requested in the marked red area: gray is idle, amber animates while syncing, green confirms success for 60 seconds, and red remains visible after failure.
+- Sync failures are written to Activity Log with component, error type, message, context, and traceback where available.
+- Added the Header live-work strip requested in the marked green area. It shows `Doing · <task name>`; only long task names scroll and the status-change time remains fixed at the right.
+- Added `status_changed_at` to new work and status transitions while remaining compatible with old records.
+- Added non-blocking sync locking, guarded priority parsing, safe task-list snapshots, refresh timeout/error propagation, and command/render failure reporting.
+- Release positioning: 2.1.0 consolidates reliability, offline-first data safety, recovery, update, Board scaling, import, drag/drop, and workflow UI work accumulated since the 1.x platform.
+- Cleanup completed: obsolete generated Python caches and superseded Windows build outputs were removed; user data, `.venv`, source snapshots, and active build tooling were preserved.
+- Per user instruction, do not install the 2.1.0 package over the currently installed local application during this release pass.
 
 ## Baseline and current target
 
 - Repository: `spirmx/SACHECK`, branch `main`.
 - Last known pre-release baseline: `ef7e12c` (`2.0.7`).
-- Current source/release target: `2.0.9`, required update. Refresh the actual HEAD with `git log` after checkout.
-- Release `2.0.9` includes the recovered Add flows and drag/drop plus Claude's latest Home alert panel, app-wide animations, and the live network sidebar card. Preserve and inspect dirty work before changing anything.
+- Current source/release target: `2.1.0`, required update. Refresh the actual HEAD with `git log` after checkout.
+- Release `2.1.0` includes the 2.0.9 workflow baseline plus scheduled-sync state visibility, live Doing work in the Header, stronger sync concurrency/timeout handling, and structured runtime-failure diagnostics.
 - Claude recovery stash: `stash@{0}` when this document was created, label `recover-claude-ui-cache-2026-07-05`. Stash indexes move; identify it by label/commit, never by index alone.
 - Earlier safety stash: label `codex-pre-v2-release-main-work`.
 

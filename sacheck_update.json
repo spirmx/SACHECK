@@ -1,16 +1,18 @@
 {
-  "version": "2.0.9",
+  "version": "2.1.0",
   "release_date": "2026-07-06",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "47159683766e65360d7b7f49337512d9d5052550f799f79ac4e4cee91523e9c7",
-  "installer_size": 33713248,
-  "repair_version": "2.0.9",
+  "installer_sha256": "6011f2266ebb913e254017442c8980a77f52c2d870207e015bb8f546a5d670b7",
+  "installer_size": 33411510,
+  "repair_version": "2.1.0",
   "notes": [
-    "Added the Home hero alert panel and smooth workflow animations across the app.",
-    "Redesigned the sidebar connection card as an animated live network console.",
-    "This is a required update for installed versions older than 2.0.9.",
+    "Added a four-state scheduled-sync indicator with animation, success reset, and failure diagnostics.",
+    "Added a live Doing header strip with a scrolling task name and fixed status-change time.",
+    "Strengthened sync locking, timeout recovery, runtime guards, and failure logging across the desktop workflow.",
+    "This 2.1 platform release consolidates stability and workflow improvements built since SA CHECK 1.x.",
+    "This is a required update for installed versions older than 2.1.0.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -82,13 +84,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "7f4e8f8196ef7c9e9ef4ac205b366108fb37ba324d4c429021bc9900adaac1ba",
+      "sha256": "a99dc49c6d8545fdff812f7b487cd0da7c76068290177785c0dc273b59e0808c",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "bfc640600b0ac6db4356424c05bde8da2bc9a14228f2064e40de1955768615ae",
+      "sha256": "89b7874516c665908d64aeaf98cb4a721397fcb4a4ca5f7c45dcaaa26dd2c204",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -112,7 +114,7 @@
     },
     {
       "path": "core/startup_preflight.py",
-      "sha256": "cb308c4926d39e06470108f48a7cc1845d63aba5661fdfb2edf70d8a825b0e95",
+      "sha256": "b0ab60b1ba13597a5f955e1eb24b05091447e5c69f1bf7ef3e02b8af8c0e1356",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -130,7 +132,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "9bd2ab36ff4e3728a1d3fe6c7a24e2e190e5c1a62d35501963383b755df0c6ce",
+      "sha256": "3902dccc3b9daa76359262bf583489bea79b639a4f2c19dd55ce62752dcbffab",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },

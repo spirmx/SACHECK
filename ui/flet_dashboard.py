@@ -14,6 +14,8 @@ import threading
 import re
 import tempfile
 import base64
+import asyncio
+import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -94,16 +96,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.9"
+APP_VERSION = "2.1.0"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.9",
+        "version": "2.1.0",
         "date": "2026-07-06",
         "latest": True,
+        "items": [
+            "Added a four-state scheduled-sync indicator: gray idle, animated amber syncing, green success, and red failure with diagnostic logging.",
+            "Added a live Doing strip in the header with marquee task names and a fixed status-change time.",
+            "Hardened scheduled/manual sync with a single-run lock, safe timeout handling, structured failure records, and guarded UI actions.",
+            "Consolidated the stability and workflow work accumulated since the 1.x platform into the 2.1 release line.",
+        ],
+    },
+    {
+        "version": "2.0.9",
+        "date": "2026-07-06",
+        "latest": False,
         "items": [
             "Added the new Home hero alert panel for today and tomorrow.",
             "Added smooth count-up, glow, pulse, stagger, status, type, Board, Files, Templates, and Calendar animations.",
@@ -1368,6 +1381,10 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "settings_search": "",
         "last_sync_check": datetime.now().timestamp(),
         "syncing": False,
+        "sync_phase": "idle",
+        "sync_message": "Waiting for scheduled sync",
+        "sync_error": "",
+        "sync_state_token": "",
         "refreshing": False,
         "refresh_token": "",
         "closed": False,
@@ -1388,6 +1405,55 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "health_filter": "All",
     }
     shutdown_event = threading.Event()
+    sync_lock = threading.Lock()
+
+    def record_runtime_failure(component, exc, **details):
+        message = str(exc or "Unknown error").strip() or "Unknown error"
+        payload = {
+            "component": component,
+            "error_type": type(exc).__name__ if exc is not None else "UnknownError",
+            "error": message,
+            **details,
+        }
+        trace = traceback.format_exc()
+        if trace and "NoneType: None" not in trace:
+            payload["traceback"] = trace[-6000:]
+        try:
+            log_activity(f"{component} failed", message, payload)
+        except Exception:
+            pass
+        return message
+
+    def set_sync_phase(phase, message="", error=None):
+        phase = phase if phase in {"idle", "syncing", "success", "error"} else "error"
+        token = uuid.uuid4().hex
+        state["sync_phase"] = phase
+        state["sync_message"] = message or {
+            "idle": "Waiting for scheduled sync",
+            "syncing": "Synchronizing Work folders",
+            "success": "Synchronization complete",
+            "error": "Synchronization failed",
+        }[phase]
+        state["sync_error"] = str(error or "") if phase == "error" else ""
+        state["sync_state_token"] = token
+        try:
+            update_sidebar()
+            page.update()
+        except (NameError, RuntimeError):
+            pass
+        if phase == "success":
+            def reset_success():
+                if shutdown_event.wait(60):
+                    return
+                if state.get("sync_state_token") == token and state.get("sync_phase") == "success":
+                    set_sync_phase("idle", "Waiting for scheduled sync")
+
+            page.run_thread(reset_success)
+
+    def fail_sync(component, exc, **details):
+        message = record_runtime_failure(component, exc, **details)
+        set_sync_phase("error", f"{component} failed", message)
+        return message
 
     page.title = APP_NAME
     try:
@@ -1868,21 +1934,28 @@ def dashboard_main(page: ft.Page, startup_result=None):
         )
 
     def auto_sync_from_work(force=False):
-        if state.get("syncing"):
+        if state.get("syncing") or not sync_lock.acquire(blocking=False):
             return False
         now = datetime.now().timestamp()
         if not force and now - state.get("last_sync_check", 0) < 2:
+            sync_lock.release()
             return False
         state["last_sync_check"] = now
         state["syncing"] = True
+        set_sync_phase("syncing", "Scheduled Work-folder sync is running")
         try:
             synced_tasks, _synced_templates, changed = sync_from_work(force=force)
             if changed:
                 all_tasks.clear()
                 all_tasks.extend(synced_tasks)
+            set_sync_phase("success", "Work folders synchronized successfully")
             return changed
+        except Exception as exc:
+            fail_sync("Scheduled sync", exc, force=bool(force))
+            return False
         finally:
             state["syncing"] = False
+            sync_lock.release()
 
     def render_error_view(exc):
         header_title.value = "System Guard"
@@ -1988,10 +2061,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
             else:
                 render_board(ctx)
         except Exception as exc:
-            try:
-                log_activity("System guard", str(exc), {"screen": state.get("screen")})
-            except Exception:
-                pass
+            record_runtime_failure("Screen render", exc, screen=state.get("screen"))
             render_error_view(exc)
 
     def show_board(_e=None):
@@ -2502,6 +2572,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
         state["refreshing"] = True
         state["syncing"] = True
         state["refresh_token"] = refresh_token
+        set_sync_phase("syncing", "Manual refresh and Work-folder sync is running")
         started = time.perf_counter()
 
         refresh_icon = ft.Icon(ft.Icons.SYNC_ROUNDED, size=25, color="#2563EB")
@@ -2609,11 +2680,14 @@ def dashboard_main(page: ft.Page, startup_result=None):
             state["refresh_token"] = ""
             close_refresh_dialog()
             if error:
+                fail_sync("Manual sync", RuntimeError(str(error)), timed_out=False)
                 show_message(page, "Refresh failed", f"The current screen is still safe. {error}", kind="warning")
                 return
             if timed_out:
+                fail_sync("Manual sync", TimeoutError("Refresh exceeded the 15-second safety timeout."), timed_out=True)
                 show_message(page, "Refresh timeout", "The folder scan is taking longer than expected, so the loader was closed. Your current data remains available and the background scan will release itself when finished.", kind="warning")
                 return
+            set_sync_phase("success", "Manual refresh completed successfully")
             show_message(page, "Refresh complete", "Work data changed and the screen was refreshed." if changed else "Local data is current. The app also checked for updates.", kind="success")
             if update_manifest and is_newer_version(update_manifest.get("version")):
                 dismissed = int(settings.get("update_dismiss_count", 0)) if settings.get("last_update_prompt_version") == update_manifest.get("version") else 0
@@ -3835,6 +3909,30 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 item.on_hover = on_hover
             return item
 
+        sync_phase = state.get("sync_phase", "idle")
+        sync_visuals = {
+            "idle": ("#94A3B8", "#F1F5F9", ft.Icons.SYNC_OUTLINED, "Sync idle"),
+            "syncing": ("#F59E0B", "#FFFBEB", ft.Icons.SYNC_ROUNDED, "Syncing now"),
+            "success": ("#22C55E", "#F0FDF4", ft.Icons.CHECK_CIRCLE_OUTLINE, "Sync successful"),
+            "error": ("#EF4444", "#FEF2F2", ft.Icons.ERROR_OUTLINE, "Sync failed"),
+        }
+        sync_color, sync_bg, sync_icon, sync_label = sync_visuals.get(sync_phase, sync_visuals["error"])
+        sync_glyph = (
+            breathing_badge(page, sync_icon, sync_color, sync_bg, size=34, radius=11, icon_size=18, ping=True)
+            if sync_phase == "syncing"
+            else ft.Container(width=40, height=40, border_radius=12, bgcolor=sync_bg, alignment=CENTER, content=ft.Icon(sync_icon, size=19, color=sync_color))
+        )
+        sync_indicator = ft.Container(
+            width=42,
+            height=42,
+            border_radius=12,
+            border=border_all(1, sync_color),
+            alignment=CENTER,
+            tooltip=f"{sync_label}: {state.get('sync_error') or state.get('sync_message') or ''}",
+            on_click=sync_now,
+            content=sync_glyph,
+        )
+
         brand = ft.Row(
             spacing=11,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -3842,11 +3940,13 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 app_logo_control(38, 11),
                 ft.Column(
                     spacing=0,
+                    expand=True,
                     controls=[
                         ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_900, color=TEXT),
                         ft.Text(APP_VERSION, size=10, weight=ft.FontWeight.W_700, color=MUTED_2),
                     ],
                 ),
+                sync_indicator,
             ],
         )
 
@@ -4032,6 +4132,86 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
     palette_button = ft.IconButton(icon=ft.Icons.SEARCH, tooltip="Search or jump (Ctrl+K)", icon_color=MUTED, on_click=lambda _e: open_command_palette())
 
+    live_work_dot = ft.Container(width=8, height=8, border_radius=99, bgcolor="#94A3B8")
+    live_work_text = ft.Text("No active Doing work", size=12, weight=ft.FontWeight.W_800, color=MUTED, max_lines=1)
+    live_work_time = ft.Text("--:--", size=12, weight=ft.FontWeight.W_900, color="#D97706")
+    live_work_strip = ft.Container(
+        expand=True,
+        height=46,
+        margin=pad_sym(horizontal=20),
+        padding=pad_sym(horizontal=14),
+        border_radius=14,
+        bgcolor="#FFFBEB",
+        border=border_all(1, "#FDE68A"),
+        content=ft.Row(
+            spacing=10,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                live_work_dot,
+                ft.Text("Doing ·", size=11, weight=ft.FontWeight.W_900, color="#B45309"),
+                ft.Container(width=1, height=22, bgcolor="#FDE68A"),
+                ft.Container(expand=True, clip_behavior=ft.ClipBehavior.HARD_EDGE, content=live_work_text),
+                ft.Container(width=1, height=22, bgcolor="#FDE68A"),
+                ft.Icon(ft.Icons.SCHEDULE_OUTLINED, size=15, color="#D97706"),
+                live_work_time,
+            ],
+        ),
+    )
+
+    def doing_time(task):
+        raw = str(task.get("status_changed_at") or task.get("date_added") or "")
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            return parsed.strftime("%H:%M") if "T" in raw or " " in raw else "--:--"
+        except (TypeError, ValueError):
+            match = re.search(r"\b(\d{1,2}):(\d{2})\b", raw)
+            return f"{int(match.group(1)):02d}:{match.group(2)}" if match else "--:--"
+
+    async def live_work_loop():
+        offset = 0
+        last_task_id = None
+        while not shutdown_event.is_set():
+            doing = [task for task in list(all_tasks) if isinstance(task, dict) and task.get("status") == STATUS_PROGRESS]
+            if doing:
+                def safe_priority(item):
+                    try:
+                        return int(item.get("priority") or 0)
+                    except (TypeError, ValueError):
+                        return 0
+
+                doing.sort(key=lambda item: (safe_priority(item), str(item.get("status_changed_at") or item.get("date_added") or "")), reverse=True)
+                task = doing[int(time.time() // 8) % len(doing)]
+                task_id = task.get("id") or task.get("name")
+                name = str(task.get("name") or "Untitled task").strip()
+                if task_id != last_task_id:
+                    offset = 0
+                    last_task_id = task_id
+                if len(name) > 48:
+                    lane = name + "     •     "
+                    shown = (lane + lane)[offset : offset + 48]
+                    offset = (offset + 1) % len(lane)
+                else:
+                    shown = name
+                    offset = 0
+                live_work_text.value = shown
+                live_work_text.color = TEXT
+                live_work_time.value = doing_time(task)
+                live_work_dot.bgcolor = "#F59E0B"
+            else:
+                last_task_id = None
+                offset = 0
+                live_work_text.value = "No active Doing work"
+                live_work_text.color = MUTED
+                live_work_time.value = "--:--"
+                live_work_dot.bgcolor = "#94A3B8"
+            try:
+                live_work_text.update()
+                live_work_time.update()
+                live_work_dot.update()
+            except Exception:
+                await asyncio.sleep(0.5)
+            await asyncio.sleep(0.28)
+
     header = ft.Container(
         height=96,
         bgcolor=WHITE,
@@ -4055,6 +4235,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                         ),
                     ],
                 ),
+                live_work_strip,
                 ft.Row(spacing=10, controls=[palette_button, about_button, export_button, sync_button, quick_add]),
             ],
         ),
@@ -4163,8 +4344,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
             close()
             try:
                 handler()
-            except Exception:
-                pass
+            except Exception as exc:
+                record_runtime_failure("Command palette", exc)
+                show_message(page, "Command failed", str(exc), kind="danger")
 
         def open_task(task):
             close()
@@ -4276,6 +4458,10 @@ th{{background:#eff6ff;color:#1d4ed8}}
             ],
         )
     )
+    try:
+        page.run_task(live_work_loop)
+    except Exception as exc:
+        record_runtime_failure("Live work strip", exc)
     render_current()
     if state.get("update_available") and state.get("update_manifest"):
         manifest = state["update_manifest"]
@@ -4455,8 +4641,9 @@ th{{background:#eff6ff;color:#1d4ed8}}
                     check_for_updates(manual=False)
                 if time.time() - float(state.get("last_update_check") or 0) > update_check_interval_seconds():
                     check_for_updates(manual=False)
-            except Exception:
+            except Exception as exc:
                 state["syncing"] = False
+                fail_sync("Realtime sync loop", exc)
 
     page.run_thread(realtime_sync_loop)
     page.run_thread(lambda: (time.sleep(2), check_calendar_event_reminders()))

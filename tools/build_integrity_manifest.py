@@ -11,7 +11,7 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
-RELEASE_VERSION = "2.0.9"
+RELEASE_VERSION = "2.1.0"
 RELEASE_DATE = "2026-07-06"
 RELEASE_REQUIRED = True
 
@@ -66,9 +66,11 @@ def main() -> None:
         "installer_size": installer.stat().st_size if installer_hash else 0,
         "repair_version": RELEASE_VERSION,
         "notes": [
-            "Added the Home hero alert panel and smooth workflow animations across the app.",
-            "Redesigned the sidebar connection card as an animated live network console.",
-            "This is a required update for installed versions older than 2.0.9.",
+            "Added a four-state scheduled-sync indicator with animation, success reset, and failure diagnostics.",
+            "Added a live Doing header strip with a scrolling task name and fixed status-change time.",
+            "Strengthened sync locking, timeout recovery, runtime guards, and failure logging across the desktop workflow.",
+            "This 2.1 platform release consolidates stability and workflow improvements built since SA CHECK 1.x.",
+            "This is a required update for installed versions older than 2.1.0.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

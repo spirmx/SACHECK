@@ -27,7 +27,7 @@ from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_
 from core.flet_theme import normalize_calendar_event_color
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.9"
+APP_VERSION = "2.1.0"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -581,7 +581,8 @@ def make_task(name, target, target_kind=None, task_type=None, note="", status="p
     target_text = str(target).strip()
     kind = target_kind or ("url" if target_text.startswith(("http://", "https://")) else ("folder" if Path(target_text).is_dir() else "file"))
     resolved_type = task_type or infer_type(target_text)
-    today = datetime.now().date().isoformat()
+    now = datetime.now()
+    today = now.date().isoformat()
     return {
         "id": str(uuid.uuid4()),
         "name": name.strip() or Path(target_text).stem or "Untitled task",
@@ -595,6 +596,7 @@ def make_task(name, target, target_kind=None, task_type=None, note="", status="p
         "note": note.strip(),
         "date_added": today,
         "status_date": today,
+        "status_changed_at": now.isoformat(timespec="seconds"),
         "done_date": today if status == STATUS_DONE else None,
         "progress": 100 if status == STATUS_DONE else 0,
         "priority": 0,
@@ -604,12 +606,15 @@ def make_task(name, target, target_kind=None, task_type=None, note="", status="p
 
 
 def apply_status_date(task, status, force=False):
-    today = datetime.now().date().isoformat()
+    now = datetime.now()
+    today = now.date().isoformat()
     previous_status = task.get("status")
     status_changed = force or previous_status != status
     task["status"] = status
     if status_changed or not task.get("status_date"):
         task["status_date"] = today
+    if status_changed or not task.get("status_changed_at"):
+        task["status_changed_at"] = now.isoformat(timespec="seconds")
     if status == STATUS_DONE:
         if status_changed or not task.get("done_date"):
             task["done_date"] = today

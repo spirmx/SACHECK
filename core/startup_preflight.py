@@ -47,7 +47,7 @@ def _read_json_url(url: str, timeout: float) -> dict:
     separator = "&" if "?" in url else "?"
     request = urllib.request.Request(
         f"{url}{separator}startup={int(time.time())}",
-        headers={"User-Agent": "SA-CHECK-Startup/2.0.9", "Accept": "application/json", "Cache-Control": "no-cache"},
+        headers={"User-Agent": "SA-CHECK-Startup/2.1.0", "Accept": "application/json", "Cache-Control": "no-cache"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = response.read(2 * 1024 * 1024)
@@ -127,7 +127,7 @@ def inspect_integrity(app_root: Path, frozen: bool = False) -> tuple[list[dict],
 
 
 def _download_verified(url: str, expected_sha256: str, target: Path, timeout: float) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": "SA-CHECK-Repair/2.0.9"})
+    request = urllib.request.Request(url, headers={"User-Agent": "SA-CHECK-Repair/2.1.0"})
     target.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
     try:
