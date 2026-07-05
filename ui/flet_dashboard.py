@@ -23,6 +23,7 @@ from ui.shared import DashboardContext
 from ui.screens import render_overview, render_board, render_browser, render_calendar, render_templates, render_health, render_settings
 
 from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, app_folder, work_folder
+from core.flet_theme import CALENDAR_EVENT_COLOR_CHOICES, calendar_event_style
 
 
 BG = "#F8FAFC"
@@ -3086,38 +3087,6 @@ th{{background:#eff6ff;color:#1d4ed8}}
     def events_for_day(day):
         return [event for event in calendar_events if event_date_value(event) == day]
 
-    def event_style(event):
-        color = event.get("color") or "#7C3AED"
-        bg_map = {
-            "#2563EB": "#EFF6FF",
-            "#D97706": "#FFFBEB",
-            "#16A34A": "#F0FDF4",
-            "#7C3AED": "#F5F3FF",
-            "#DC2626": "#FEF2F2",
-            "#0891B2": "#ECFEFF",
-            "#DB2777": "#FDF2F8",
-            "#0F766E": "#F0FDFA",
-            "#EA580C": "#FFF7ED",
-            "#A855F7": "#FAF5FF",
-            "#14B8A6": "#F0FDFA",
-            "#6366F1": "#EEF2FF",
-            "#0284C7": "#F0F9FF",
-            "#65A30D": "#F7FEE7",
-            "#CA8A04": "#FEFCE8",
-            "#E11D48": "#FFF1F2",
-            "#C026D3": "#FDF4FF",
-            "#9333EA": "#FAF5FF",
-            "#475569": "#F8FAFC",
-            "#111827": "#F8FAFC",
-            "#22C55E": "#F0FDF4",
-            "#06B6D4": "#ECFEFF",
-            "#F59E0B": "#FFFBEB",
-            "#EF4444": "#FEF2F2",
-            "#EC4899": "#FDF2F8",
-        }
-        bg = bg_map.get(color, "#F8FAFC")
-        return color, bg
-
     def show_calendar_event_dialog(event=None, selected_date=None):
         editing = event is not None
         source = event or {}
@@ -3188,17 +3157,12 @@ th{{background:#eff6ff;color:#1d4ed8}}
         recurrence_field = dropdown(220, recurrence_label, list(recurrence_options.keys()))
         until_field = ft.TextField(label="Repeat until (optional)", value=str(source.get("recurrence_until") or "")[:10], width=200, hint_text="YYYY-MM-DD", border_radius=12, border_color=BORDER)
 
-        selected_color = {"value": source.get("color", "#7C3AED")}
+        selected_color = {"value": calendar_event_style(source)[0]}
         color_preview = ft.Container(width=34, height=34, border_radius=12, bgcolor=selected_color["value"], border=border_all(1, BORDER))
         notify_switch = ft.Switch(label="Daily summary at 09:00", value=bool(source.get("notify", True)))
         alarm_switch = ft.Switch(label="Alarm again at event time", value=bool(source.get("alarm", True)))
         note_field = ft.TextField(label="Note", value=source.get("note", ""), multiline=True, min_lines=2, max_lines=2, border_radius=12, border_color=BORDER)
-        color_choices = [
-            "#7C3AED", "#6366F1", "#2563EB", "#0284C7", "#0891B2", "#0F766E",
-            "#16A34A", "#65A30D", "#CA8A04", "#D97706", "#EA580C", "#DC2626",
-            "#E11D48", "#DB2777", "#C026D3", "#9333EA", "#475569", "#111827",
-            "#22C55E", "#06B6D4", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6",
-        ]
+        color_choices = list(CALENDAR_EVENT_COLOR_CHOICES)
 
         def update_picker_fields():
             date_field.value = picker_state["date"].isoformat()
@@ -3404,7 +3368,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
         page.update()
 
     def show_event_detail_dialog(event):
-        color, bg = event_style(event)
+        color, bg = calendar_event_style(event)
         event_time = event.get("time", "09:00")
         note_text = event.get("note") or "No note for this event."
 
@@ -3995,7 +3959,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
         show_message(page, "Calendar reminder", f"{len(events)} event(s) due now.", kind="warning")
 
         def event_line(event):
-            color, bg = event_style(event)
+            color, bg = calendar_event_style(event)
             event_time = event.get("time", alert_time)
             linked_task = next((item for item in all_tasks if item.get("id") == event.get("task_id")), None) if event.get("task_id") else None
             subtitle = event.get("note") or event.get("kind", "Event")

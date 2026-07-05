@@ -14,6 +14,7 @@ import os
 import sys
 import traceback
 import tempfile
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -174,6 +175,59 @@ def check_health_layout(ctx):
         assert required in text, required
 
 
+def find_text_controls(control, value):
+    found = []
+    if isinstance(control, ft.Text) and control.value == value:
+        found.append(control)
+    children = []
+    controls = getattr(control, "controls", None)
+    if isinstance(controls, list):
+        children.extend(controls)
+    for attr in ("content", "title"):
+        child = getattr(control, attr, None)
+        if child is not None:
+            children.append(child)
+    for child in children:
+        found.extend(find_text_controls(child, value))
+    return found
+
+
+def check_calendar_layout():
+    original_load = data.load_calendar_events
+    try:
+        today = date.today()
+        data.load_calendar_events = lambda: [
+            {
+                "id": "red-event",
+                "title": "Red event",
+                "date": today.isoformat(),
+                "time": "09:00",
+                "kind": "Event",
+                "color": "#EF4444",
+                "recurrence": "none",
+            }
+        ]
+        ctx = make_ctx()
+        ctx.state["screen"] = "calendar"
+        ctx.state["calendar_state"] = {
+            "status": "All",
+            "year": today.year,
+            "month": today.month,
+            "selected": today,
+        }
+        render_calendar(ctx)
+        chips = [
+            item
+            for control in ctx.main_body.controls
+            for item in find_text_controls(control, "09:00 Red event")
+        ]
+        assert chips and all(item.color == "#EF4444" for item in chips), [
+            item.color for item in chips
+        ]
+    finally:
+        data.load_calendar_events = original_load
+
+
 def check_browser_layout():
     with tempfile.TemporaryDirectory(prefix="sacheck-browser-smoke-") as temp:
         root = Path(temp)
@@ -209,6 +263,15 @@ def main():
                 print("[FAIL] screen: browser")
                 traceback.print_exc()
                 failures.append("browser")
+            continue
+        if name == "calendar":
+            try:
+                check_calendar_layout()
+                print("[ok]   screen: calendar")
+            except Exception:
+                print("[FAIL] screen: calendar")
+                traceback.print_exc()
+                failures.append("calendar")
             continue
         ctx = make_ctx()
         ctx.state["screen"] = name

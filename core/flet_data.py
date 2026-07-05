@@ -23,6 +23,7 @@ from core.app_paths import (
 )
 from core.create_tools import create_project_folder, tool_default_name, write_blank_file
 from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_PENDING, STATUS_PROGRESS
+from core.flet_theme import normalize_calendar_event_color
 
 APP_NAME = "SA CHECK"
 APP_VERSION = "2.0.3"
@@ -232,6 +233,10 @@ def _normalize_calendar_events(events):
         if normalized_date != event.get("date"):
             event["date"] = normalized_date
             changed = True
+        normalized_color = normalize_calendar_event_color(event.get("color"))
+        if normalized_color != event.get("color"):
+            event["color"] = normalized_color
+            changed = True
         clean.append(event)
     return clean, changed
 
@@ -260,7 +265,9 @@ def load_calendar_events():
 
 
 def save_calendar_events(events):
-    clean_events = [event for event in events if isinstance(event, dict)]
+    clean_events, _changed = _normalize_calendar_events(
+        [event for event in events if isinstance(event, dict)]
+    )
     save_json(CALENDAR_FILE, clean_events)
     save_json(CALENDAR_CACHE_FILE, clean_events)
 

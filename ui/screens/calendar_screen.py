@@ -8,6 +8,7 @@ from core.flet_constants import (
     TEXT, WAITING_BG, WAITING_TEXT, WHITE,
 )
 from core.flet_data import APP_NAME
+from core.flet_theme import calendar_event_style
 from ui.dialogs import show_message
 from ui.flet_widgets import CENTER, border_all, pad_only, pad_sym, task_icon
 from ui.shared import DashboardContext
@@ -188,16 +189,8 @@ def render_calendar(ctx: DashboardContext) -> None:
             ]
         )
 
-    def event_style(event):
-        kind = event.get("kind", "Event")
-        if kind == "Meeting":
-            return "#2563EB", "#EFF6FF"
-        elif kind == "Deadline":
-            return "#DC2626", "#FEF2F2"
-        return "#7C3AED", "#F5F3FF"
-
     def event_chip(event):
-        color, bg = event_style(event)
+        color, bg = calendar_event_style(event)
         def show_event(_e):
             ctx.show_calendar_event_dialog(event=event)
 
@@ -374,7 +367,7 @@ def render_calendar(ctx: DashboardContext) -> None:
         )
 
     def selected_event_row(event):
-        color, bg = event_style(event)
+        color, bg = calendar_event_style(event)
         note_preview = event.get("note") or "No note yet."
         event_time = event.get("time", "09:00")
 

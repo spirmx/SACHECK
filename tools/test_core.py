@@ -20,6 +20,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.flet_data as data  # noqa: E402
 from core.app_lifecycle import SingleInstanceGuard  # noqa: E402
+from core.flet_theme import (  # noqa: E402
+    CALENDAR_EVENT_COLOR_CHOICES,
+    DEFAULT_CALENDAR_EVENT_COLOR,
+    calendar_event_style,
+    normalize_calendar_event_color,
+)
 
 
 def test_safe_item_name():
@@ -89,6 +95,21 @@ def test_normalize_legacy_statuses():
         assert normalized["status"] == expected, normalized
 
 
+def test_calendar_event_palette():
+    assert normalize_calendar_event_color("#ef4444") == "#EF4444"
+    assert normalize_calendar_event_color("invalid") == DEFAULT_CALENDAR_EVENT_COLOR
+    assert calendar_event_style({"kind": "Event", "color": "#EF4444"}) == ("#EF4444", "#FEF2F2")
+    assert calendar_event_style({"kind": "Meeting", "color": "#EF4444"}) == ("#EF4444", "#FEF2F2")
+    assert calendar_event_style({"kind": "Deadline", "color": "#22C55E"}) == ("#22C55E", "#F0FDF4")
+    assert all(calendar_event_style(color)[0] == color for color in CALENDAR_EVENT_COLOR_CHOICES)
+    events, changed = data._normalize_calendar_events(
+        [{"id": "event-1", "date": "2026-07-05T09:00:00", "color": "#ef4444"}]
+    )
+    assert changed is True
+    assert events[0]["date"] == "2026-07-05"
+    assert events[0]["color"] == "#EF4444"
+
+
 def test_unique_target_and_resolve_type():
     # resolve_add_type keeps a specific requested type, upgrades Other/Link
     assert data.resolve_add_type("C:/x/a.docx", "Word") == "Word"
@@ -133,6 +154,7 @@ TESTS = [
     ("date_only", test_date_only),
     ("normalize progress/priority", test_normalize_progress_priority),
     ("normalize legacy statuses", test_normalize_legacy_statuses),
+    ("calendar event palette", test_calendar_event_palette),
     ("resolve_add_type", test_unique_target_and_resolve_type),
     ("single instance guard", test_single_instance_guard),
     ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),

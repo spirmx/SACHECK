@@ -7,6 +7,7 @@ import flet as ft
 
 from core.flet_constants import BORDER, MUTED, MUTED_2, PRIMARY, STATUS_DONE, STATUS_PENDING, STATUS_PROGRESS, TEXT, WHITE
 from core.flet_data import broken_items, event_occurs_on, list_snapshots, load_activity_log, load_calendar_events
+from core.flet_theme import calendar_event_style
 from ui.flet_widgets import CENTER, border_all, pad_only, pad_sym, task_icon
 from ui.shared import DashboardContext
 
@@ -77,6 +78,7 @@ def render_overview(ctx: DashboardContext) -> None:
                         "time": str(event.get("time") or "09:00")[:5],
                         "title": str(event.get("title") or "Calendar event"),
                         "kind": str(event.get("kind") or "Event"),
+                        "color": event.get("color"),
                         "event": True,
                     }
                 )
@@ -257,8 +259,11 @@ def render_overview(ctx: DashboardContext) -> None:
 
     def alert_row(item):
         is_today = item["day"] == today
-        color = "#DC2626" if is_today else "#7C3AED" if item["event"] else "#2563EB"
-        bg = "#FEF2F2" if is_today else "#F5F3FF" if item["event"] else "#EFF6FF"
+        if item["event"]:
+            color, bg = calendar_event_style(item.get("color"))
+        else:
+            color = "#DC2626" if is_today else "#2563EB"
+            bg = "#FEF2F2" if is_today else "#EFF6FF"
         return ft.Container(
             height=48,
             padding=pad_sym(horizontal=10, vertical=6),
