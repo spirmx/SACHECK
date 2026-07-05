@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.0.3`
+Version: `2.0.4`
 
 This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.0.3` redesigns Board and restores every task after screen changes or legacy status migrations.
+`2.0.4` keeps calendar event colors consistent across screens and is published as a required update.
 
 Latest changes:
 
@@ -212,4 +212,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`1.0.9-02 Abillity` fixes native startup presentation while preserving safe refresh, offline-first Work data, settings, and cache.
+`2.0.4` is the current required release and preserves safe refresh, offline-first Work data, settings, and cache.

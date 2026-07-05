@@ -92,16 +92,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.3"
+APP_VERSION = "2.0.4"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
+        "version": "2.0.4",
+        "date": "2026-07-05",
+        "latest": True,
+        "items": [
+            "Kept calendar event colors consistent across Calendar, Overview, and event details.",
+            "Normalized saved event colors and added regression coverage for the shared palette.",
+            "Published this release as a required update while preserving Work folders, settings, cache, and user data.",
+        ],
+    },
+    {
         "version": "2.0.3",
         "date": "2026-07-03",
-        "latest": True,
+        "latest": False,
         "items": [
             "Fixed the Board gray error panel caused by a wrapped filter row in Flutter layout.",
             "Made Board filters horizontally scrollable at narrow window sizes.",

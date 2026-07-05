@@ -11,6 +11,9 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
+RELEASE_VERSION = "2.0.4"
+RELEASE_DATE = "2026-07-05"
+RELEASE_REQUIRED = True
 
 
 def sha256(path: Path) -> str:
@@ -36,7 +39,7 @@ def main() -> None:
     entries = [entry(path, "source") for path in files if path.is_file()]
     entries.extend(entry(ROOT / name, "all") for name in EXTERNAL_ASSETS if (ROOT / name).is_file())
     payload = {
-        "version": "2.0.3",
+        "version": RELEASE_VERSION,
         "algorithm": "sha256",
         "system_files": entries,
     }
@@ -48,24 +51,24 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             existing_update = {}
     installer = ROOT / "release" / "SA_CHECK_Installer.exe"
-    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == "2.0.3" else ""
+    existing_url = str(existing_update.get("installer_url") or "") if existing_update.get("version") == RELEASE_VERSION else ""
     installer_url = os.environ.get("SACHECK_INSTALLER_URL", "").strip() or existing_url
     if installer.is_file() and not installer_url:
         installer_url = f"{RAW_BASE_URL}/release/SA_CHECK_Installer.exe"
     installer_hash = sha256(installer) if installer.is_file() else ""
     update_payload = {
-        "version": "2.0.3",
-        "release_date": "2026-07-04",
-        "required": False,
+        "version": RELEASE_VERSION,
+        "release_date": RELEASE_DATE,
+        "required": RELEASE_REQUIRED,
         "release_status": "ready" if installer_hash else "installer_build_required",
         "installer_url": installer_url if installer_hash else "",
         "installer_sha256": installer_hash,
         "installer_size": installer.stat().st_size if installer_hash else 0,
-        "repair_version": "2.0.3",
+        "repair_version": RELEASE_VERSION,
         "notes": [
-            "Redesigned Board with a live workflow pulse, clearer filters, richer task cards, and flat task visibility by default.",
-            "Fixed Board columns disappearing after visiting a scrollable screen by restoring bounded Kanban layout state.",
-            "Migrated legacy Waiting, Doing, In Progress, Success, and Completed statuses so existing work appears correctly.",
+            "Kept calendar event colors consistent across Calendar, Overview, and event details.",
+            "Normalized saved event colors and added regression coverage for the shared palette.",
+            "This is a required update for installed versions older than 2.0.4.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [
