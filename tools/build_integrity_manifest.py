@@ -11,7 +11,7 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
-RELEASE_VERSION = "2.0.7"
+RELEASE_VERSION = "2.0.8"
 RELEASE_DATE = "2026-07-05"
 RELEASE_REQUIRED = True
 
@@ -66,9 +66,9 @@ def main() -> None:
         "installer_size": installer.stat().st_size if installer_hash else 0,
         "repair_version": RELEASE_VERSION,
         "notes": [
-            "Added an inline custom-type popup when Other is selected while adding work or importing files.",
-            "Kept the current Add form open and selected the newly created type automatically.",
-            "This is a required update for installed versions older than 2.0.7.",
+            "Unified Add file and Add link dialogs across Board and Templates with clear destination badges.",
+            "Restored inline custom-type creation for Templates and added smooth workflow animations.",
+            "This is a required update for installed versions older than 2.0.8.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

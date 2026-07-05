@@ -75,7 +75,7 @@ def task_icon(task_type):
 
 
 def nav_button(icon, active=False):
-    return ft.Container(
+    button = ft.Container(
         width=48,
         height=48,
         border_radius=14,
@@ -91,6 +91,7 @@ def nav_button(icon, active=False):
             ],
         ),
     )
+    return hover_lift(button, scale=1.045, accent=ACCENT_BORDER, base_border=ACCENT_BORDER if active else "#EEF2F7", shadow=not active, lift=3, dur=120)
 
 
 def row_action_button(label, icon, on_click, width=124, primary=False):
@@ -135,7 +136,7 @@ def profile_media_control(size=48):
 
 
 def color_swatch(color, selected=False, on_click=None):
-    return ft.Container(
+    swatch = ft.Container(
         width=28,
         height=28,
         border_radius=999,
@@ -145,6 +146,7 @@ def color_swatch(color, selected=False, on_click=None):
         content=ft.Icon(ft.Icons.CHECK, size=13, color=WHITE) if selected else None,
         on_click=on_click,
     )
+    return hover_lift(swatch, scale=1.13, shadow=True, lift=3, dur=110)
 
 
 def app_theme_preview(theme=None, selected=False, on_click=None):
@@ -152,7 +154,7 @@ def app_theme_preview(theme=None, selected=False, on_click=None):
     bg = theme.get("bg", "#F8FAFC") if isinstance(theme, dict) else "#F8FAFC"
     primary = theme.get("primary", PRIMARY) if isinstance(theme, dict) else PRIMARY
     surface = theme.get("surface", WHITE) if isinstance(theme, dict) else WHITE
-    return ft.Container(
+    preview = ft.Container(
         width=132,
         height=76,
         padding=pad_sym(horizontal=10, vertical=8),
@@ -168,6 +170,7 @@ def app_theme_preview(theme=None, selected=False, on_click=None):
             ],
         ),
     )
+    return hover_lift(preview, scale=1.025, accent=primary, base_border=primary if selected else BORDER, shadow=True, lift=4, dur=140)
 
 
 def app_theme_mockup(theme=None):
@@ -182,7 +185,7 @@ def stat_card(title, value):
         "COMPLETED": ("#DCFCE7", "#059669", ft.Icons.CHECK_CIRCLE_OUTLINE),
     }
     accent_bg, accent_color, icon = accents.get(title.upper(), ("#F8FAFC", PRIMARY, ft.Icons.INSERT_CHART_OUTLINED))
-    return ft.Container(
+    card = ft.Container(
         expand=True,
         height=66,
         bgcolor=WHITE,
@@ -204,6 +207,7 @@ def stat_card(title, value):
             ],
         ),
     )
+    return hover_lift(card, scale=1.018, accent=accent_color, base_border=BORDER, shadow=True, lift=4, dur=140)
 
 
 def dropdown(width, value, options, on_select=None):
@@ -227,6 +231,40 @@ def dropdown(width, value, options, on_select=None):
         hover_color="#F1F5F9",
         elevation=6,
         on_select=on_select,
+    )
+
+
+def add_destination_header(title, subtitle, icon, destination):
+    """Shared Add-file/Add-link header used across every destination screen."""
+    return ft.Row(
+        spacing=12,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        controls=[
+            ft.Container(
+                width=42,
+                height=42,
+                border_radius=13,
+                bgcolor="#EFF6FF",
+                alignment=CENTER,
+                content=ft.Icon(icon, size=22, color=PRIMARY),
+                animate_scale=ft.Animation(160, ft.AnimationCurve.EASE_OUT),
+            ),
+            ft.Column(
+                spacing=2,
+                expand=True,
+                controls=[
+                    ft.Text(title, size=22, weight=ft.FontWeight.W_900, color=TEXT),
+                    ft.Text(subtitle, size=12, color=MUTED),
+                ],
+            ),
+            ft.Container(
+                padding=pad_sym(horizontal=10, vertical=5),
+                border_radius=999,
+                bgcolor="#ECFDF5",
+                border=border_all(1, "#A7F3D0"),
+                content=ft.Text(destination, size=10, weight=ft.FontWeight.W_900, color="#047857"),
+            ),
+        ],
     )
 
 

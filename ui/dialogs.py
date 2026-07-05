@@ -36,7 +36,7 @@ from core.flet_data import (
     update_template_record,
     log_activity,
 )
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, status_menu, task_icon
+from ui.flet_widgets import CENTER, border_all, dropdown, hover_lift, pad_only, pad_sym, status_menu, task_icon
 from ui.virtual_list import DEFAULT_BATCH_SIZE, next_visible_limit, visible_slice
 
 
@@ -934,8 +934,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
         show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_tasks)
 
     more_label = f"More +{hidden_count}" if hidden_count else "View all"
-    controls.append(
-        ft.Container(
+    more_control = ft.Container(
             height=44,
             border_radius=10,
             bgcolor=icon_color + "14",
@@ -955,7 +954,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
                 ],
             ),
         )
-    )
+    controls.append(hover_lift(more_control, scale=1.012, accent=icon_color + "66", base_border=icon_color + "33", shadow=False, dur=120))
 
     def on_expansion_toggle(event):
         if expanded_keys is None or not group_key:
@@ -965,7 +964,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
         else:
             expanded_keys.discard(group_key)
 
-    return ft.Container(
+    group_card = ft.Container(
         bgcolor=WHITE,
         border=border_all(1, BORDER),
         border_radius=13,
@@ -992,6 +991,7 @@ def type_group_card(page, file_type, tasks, save_and_render, all_tasks, group_ke
             controls=[ft.Column(spacing=7, controls=controls)],
         ),
     )
+    return hover_lift(group_card, scale=1.006, accent=icon_color + "55", base_border=BORDER, shadow=False, dur=130)
 
 def grouped_task_controls(page, tasks, save_and_render, all_tasks, column_key="", group_limits=None, on_more=None, file_types_fn=None, expanded_keys=None):
     grouped = {}
@@ -1050,11 +1050,11 @@ def kanban_column(
             ],
         ),
     )
+    hover_lift(header, scale=1.008, accent=accent + "88", base_border=accent + "44", shadow=False, dur=130)
     if tasks:
         card_controls = grouped_task_controls(page, tasks, save_and_render, all_tasks, title, group_limits, on_more, file_types_fn, expanded_keys) if grouped else [task_card(page, task, save_and_render, all_tasks) for task in tasks]
     else:
-        card_controls = [
-            ft.Container(
+        empty_state = ft.Container(
                 height=150,
                 border_radius=13,
                 border=ft.Border(
@@ -1076,7 +1076,7 @@ def kanban_column(
                     ],
                 ),
             )
-        ]
+        card_controls = [hover_lift(empty_state, scale=1.008, accent=accent + "77", base_border=accent + "55", shadow=False, dur=150)]
     return ft.Container(
         expand=True,
         bgcolor="#FBFCFE",

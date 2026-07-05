@@ -1,16 +1,16 @@
 {
-  "version": "2.0.7",
+  "version": "2.0.8",
   "release_date": "2026-07-05",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "3295decf795ff9ff7808fbfef3ba89446265b48f998ec9a7f5b5dc773d3f4b57",
-  "installer_size": 33673976,
-  "repair_version": "2.0.7",
+  "installer_sha256": "fdebfe4b415db8646ba36337747470a463b0eb61530779af151c0a45ee4dce1d",
+  "installer_size": 33677713,
+  "repair_version": "2.0.8",
   "notes": [
-    "Added an inline custom-type popup when Other is selected while adding work or importing files.",
-    "Kept the current Add form open and selected the newly created type automatically.",
-    "This is a required update for installed versions older than 2.0.7.",
+    "Unified Add file and Add link dialogs across Board and Templates with clear destination badges.",
+    "Restored inline custom-type creation for Templates and added smooth workflow animations.",
+    "This is a required update for installed versions older than 2.0.8.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -82,13 +82,13 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "d1255f91c964f7a9737e21d210918655e86d48cdc5747a0d5c6ae04c51c64b80",
+      "sha256": "48ec4890a9cb96214b3901bee49882778f95a5beefd7b3fe2c02f018f0e6e9a9",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
     {
       "path": "core/flet_data.py",
-      "sha256": "53474c4ac5e797216011088393df1c08fbdc43e874855464d14d465af24a41f8",
+      "sha256": "d1c77574cb8e2c66795ce75fec15128228dc08e78508fb47d64012aa9f6c1d13",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_data.py",
       "mode": "source"
     },
@@ -106,7 +106,7 @@
     },
     {
       "path": "core/startup_preflight.py",
-      "sha256": "0b870bdb40bf0c76917c241d1597bb368dd92a97733d3ea620db721376fd7d54",
+      "sha256": "0717f2fedd1ac2ad67440808af35b306a7620d4e19195280a29d41d97cf9646f",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/startup_preflight.py",
       "mode": "source"
     },
@@ -118,19 +118,19 @@
     },
     {
       "path": "ui/dialogs.py",
-      "sha256": "41dc77973fad1264815dba406842b28bdb3fca3ab9f4728838b6118ca54348a0",
+      "sha256": "42a1b65de8607820e20489bee60e7d19f5624cf14d67f49ce387f7c301bcf1e5",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/dialogs.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "469e7d167c1b21a35925522da4df868c3124f6976f0c7f44e4064878c7e55c9d",
+      "sha256": "efd37f94375b30143589c6b184314fe4b27ef937aac98c3869c0b376c04247d9",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },
     {
       "path": "ui/flet_widgets.py",
-      "sha256": "e1758d24be597229699d0326cf16d8c3445207d825b8387b1b89eb3b40af8aa4",
+      "sha256": "bb22c87430f3beb262f0a2821047eeac4b355a7115b5f47f7bae6588eb1b061c",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_widgets.py",
       "mode": "source"
     },
@@ -178,13 +178,13 @@
     },
     {
       "path": "ui/screens/templates.py",
-      "sha256": "56f85c5dd62b9b5e0393fbbe787d6613833d0e7ad4578e2e9b35b9efa95b721f",
+      "sha256": "30e104fdbedc0bfb83f1b205b17240c626213bf1d4de1376a2859707f66a836d",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/screens/templates.py",
       "mode": "source"
     },
     {
       "path": "ui/shared.py",
-      "sha256": "04320190acf0a8e22ba74e88ce6f791a422a85f21e699c78b09cdaffef83cb26",
+      "sha256": "5a1caeaf120b99f639a99376f065c2d0a865dbefc880f517d014693fd7770e58",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/shared.py",
       "mode": "source"
     },

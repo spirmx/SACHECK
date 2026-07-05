@@ -22,7 +22,7 @@ from core.flet_data import (
     save_templates,
 )
 from ui.dialogs import show_message, show_task_detail
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, row_action_button, task_icon
+from ui.flet_widgets import CENTER, add_destination_header, border_all, dropdown, pad_only, pad_sym, row_action_button, task_icon
 from ui.shared import DashboardContext
 
 
@@ -65,6 +65,23 @@ def render_templates(ctx: DashboardContext) -> None:
         )
         note_field = ft.TextField(label="Note (optional)", multiline=True, min_lines=2, max_lines=3, border_radius=12, border_color=BORDER)
         detected_label = ft.Text("Type is detected automatically.", size=12, color=MUTED)
+
+        def select_created_type(name):
+            values = ["Auto-detect", *list(ctx.file_types())]
+            type_field.options = [ft.dropdown.Option(value) for value in values]
+            type_field.value = name
+            detected_label.value = f"New type selected: {name}"
+            detected_label.color = PRIMARY
+            ctx.page.update()
+
+        def on_type_select(event):
+            if event.control.value != "Other":
+                return
+            target = str(target_field.value or "").strip()
+            suffix = Path(target).suffix.lower() if is_file and target else ""
+            ctx.show_inline_type_dialog(select_created_type, suggested_extension=suffix)
+
+        type_field.on_select = on_type_select
 
         def refresh_detection(_e=None):
             value = (target_field.value or "").strip()
@@ -132,13 +149,28 @@ def render_templates(ctx: DashboardContext) -> None:
         ctx.page.show_dialog(
             ft.AlertDialog(
                 modal=True,
-                title=ft.Text(title, size=22, weight=ft.FontWeight.W_800, color=TEXT),
+                title=add_destination_header(
+                    title,
+                    "Save a reusable file" if is_file else "Save a reusable link shortcut",
+                    ft.Icons.UPLOAD_FILE_OUTLINED if is_file else ft.Icons.LINK_ROUNDED,
+                    "Templates · Library",
+                ),
                 content=ft.Column(
                     width=560,
                     height=420,
                     spacing=12,
                     scroll=ft.ScrollMode.AUTO,
                     controls=[
+                        ft.Container(
+                            padding=12,
+                            border_radius=14,
+                            bgcolor="#F8FBFF",
+                            border=border_all(1, "#DBEAFE"),
+                            content=ft.Row(spacing=12, controls=[
+                                ft.Icon(ft.Icons.AUTO_AWESOME_OUTLINED, color=PRIMARY),
+                                ft.Text("Choose the source and type. This item will be stored in the Template Library.", size=12, color=MUTED, expand=True),
+                            ]),
+                        ),
                         name_field,
                         target_row,
                         ft.Column(
@@ -153,7 +185,7 @@ def render_templates(ctx: DashboardContext) -> None:
                 ),
                 actions=[
                     ft.TextButton("Cancel", on_click=lambda _e: (ctx.page.pop_dialog(), ctx.page.update())),
-                    ft.Button("Save Template", on_click=save_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
+                    ft.Button("Add to Templates", icon=ft.Icons.ADD_TASK_OUTLINED, on_click=save_template, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=12))),
                 ],
                 bgcolor=WHITE,
                 shape=ft.RoundedRectangleBorder(radius=16),

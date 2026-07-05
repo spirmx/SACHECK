@@ -93,16 +93,27 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.7"
+APP_VERSION = "2.0.8"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.7",
+        "version": "2.0.8",
         "date": "2026-07-05",
         "latest": True,
+        "items": [
+            "Unified Add file and Add link dialogs across Board and Templates with clear destination badges.",
+            "Removed the confusing Add path action and restored inline custom-type creation for Templates.",
+            "Added smooth event-driven animations for navigation, status, type, task, and workflow controls.",
+            "Added a verified source snapshot exporter and agent continuation guide.",
+        ],
+    },
+    {
+        "version": "2.0.7",
+        "date": "2026-07-05",
+        "latest": False,
         "items": [
             "Added an inline custom-type popup when Other is selected while adding work or importing files.",
             "Kept the current Add form open and selected the newly created type automatically.",
@@ -1057,6 +1068,7 @@ import core.flet_constants as theme_constants  # noqa: E402
 import ui.flet_widgets as widget_theme  # noqa: E402
 from ui.flet_widgets import (  # noqa: E402
     CENTER,
+    add_destination_header,
     border_all,
     dropdown,
     nav_button,
@@ -1924,6 +1936,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 show_create_new=show_create_new,
                 show_add_files=add_files_dialog,
                 show_add_link=lambda *_: add_task_dialog("link"),
+                show_inline_type_dialog=show_inline_type_dialog,
                 show_about=show_about,
                 show_help=show_help,
                 show_version_notes=show_version_notes,
@@ -2150,13 +2163,35 @@ def dashboard_main(page: ft.Page, startup_result=None):
         page.show_dialog(
             ft.AlertDialog(
                 modal=True,
-                title=ft.Text(title, size=24, weight=ft.FontWeight.W_800, color=TEXT),
+                title=add_destination_header(
+                    f"{title} to Board",
+                    "Create a link shortcut" if is_link else "Create a project workspace" if is_project else "Add one file and classify it",
+                    ft.Icons.LINK_ROUNDED if is_link else ft.Icons.CREATE_NEW_FOLDER_OUTLINED if is_project else ft.Icons.UPLOAD_FILE_OUTLINED,
+                    "Board · Waiting",
+                ),
                 content=ft.Column(
                     width=560,
                     height=430,
                     spacing=12,
                     scroll=ft.ScrollMode.AUTO,
                     controls=[
+                        ft.Container(
+                            padding=12,
+                            border_radius=14,
+                            bgcolor="#F8FBFF",
+                            border=border_all(1, "#DBEAFE"),
+                            content=ft.Row(spacing=12, controls=[
+                                ft.Icon(ft.Icons.AUTO_AWESOME_OUTLINED, color=PRIMARY),
+                                ft.Text(
+                                    "Paste a URL, choose its type, and SA CHECK will create a shortcut in Waiting."
+                                    if is_link else
+                                    "Choose a source and SA CHECK will classify it into the matching Waiting folder.",
+                                    size=12,
+                                    color=MUTED,
+                                    expand=True,
+                                ),
+                            ]),
+                        ),
                         name_field,
                         target_row,
                         ft.Column(
@@ -2171,7 +2206,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 ),
                 actions=[
                     ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
-                    ft.Button("Save link" if is_link else "Save", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                    ft.Button("Add link to Waiting" if is_link else "Add to Waiting", icon=ft.Icons.LINK_ROUNDED if is_link else ft.Icons.ADD_TASK_OUTLINED, on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
                 ],
                 bgcolor=WHITE,
                 shape=ft.RoundedRectangleBorder(radius=16),
@@ -2185,7 +2220,6 @@ def dashboard_main(page: ft.Page, startup_result=None):
         list_view = ft.ListView(expand=True, spacing=8)
         summary_text = ft.Text("No files selected yet.", size=12, weight=ft.FontWeight.W_700, color=MUTED)
         note_field = ft.TextField(label="Note for all files (optional)", multiline=True, min_lines=1, max_lines=2, border_radius=12, border_color=BORDER)
-        manual_field = ft.TextField(label="Or paste a file path", border_radius=12, border_color=BORDER, expand=True)
         progress_bar = ft.ProgressBar(value=0, color=PRIMARY, bgcolor="#DBEAFE", border_radius=99)
         progress_text = ft.Text("Preparing import...", size=12, weight=ft.FontWeight.W_800, color=TEXT)
         progress_detail = ft.Text("0 of 0", size=11, color=MUTED)
@@ -2276,7 +2310,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
             if picked_rows:
                 list_view.controls = [row_control(row) for row in picked_rows]
             else:
-                list_view.controls = [ft.Container(alignment=CENTER, padding=30, content=ft.Text("Choose files or paste a path. Each file is auto-sorted by type.", size=13, color=MUTED_2))]
+                list_view.controls = [ft.Container(alignment=CENTER, padding=30, content=ft.Column(spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[ft.Icon(ft.Icons.UPLOAD_FILE_OUTLINED, size=28, color=MUTED_2), ft.Text("Choose one or many files. Each file is auto-sorted by type.", size=13, color=MUTED_2)]))]
             try:
                 list_view.update()
             except Exception:
@@ -2298,17 +2332,6 @@ def dashboard_main(page: ft.Page, startup_result=None):
             update_summary()
             page.update()
 
-        def add_manual(_e):
-            if (manual_field.value or "").strip():
-                add_path(manual_field.value)
-                manual_field.value = ""
-                try:
-                    manual_field.update()
-                except Exception:
-                    pass
-                rebuild_list()
-                update_summary()
-
         def cancel_import(_e=None):
             if import_state["running"]:
                 import_state["cancelled"] = True
@@ -2320,9 +2343,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
             page.update()
 
         def save(_e):
-            add_path(manual_field.value)
             if not picked_rows:
-                show_message(page, "No files", "Choose at least one file or paste a path first.")
+                show_message(page, "No files", "Choose at least one file first.")
                 return
             if import_state["running"]:
                 return
@@ -2385,21 +2407,22 @@ def dashboard_main(page: ft.Page, startup_result=None):
         page.show_dialog(
             ft.AlertDialog(
                 modal=True,
-                title=ft.Text("Add files", size=24, weight=ft.FontWeight.W_800, color=TEXT),
+                title=add_destination_header("Add files to Board", "Bulk import and automatic classification", ft.Icons.UPLOAD_FILE_OUTLINED, "Board · Waiting"),
                 content=ft.Column(
                     width=640,
                     height=520,
                     spacing=12,
                     controls=[
-                        ft.Text("Pick one or many files. SA CHECK detects each type and copies it into the matching Waiting folder.", size=13, color=MUTED),
-                        ft.Row(
-                            spacing=10,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            controls=[
-                                manual_field,
-                                ft.Button("Add path", on_click=add_manual, height=48),
-                                ft.Button("Browse files", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=browse, height=48, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
-                            ],
+                        ft.Container(
+                            padding=12,
+                            border_radius=14,
+                            bgcolor="#F8FBFF",
+                            border=border_all(1, "#DBEAFE"),
+                            content=ft.Row(spacing=12, controls=[
+                                ft.Icon(ft.Icons.AUTO_AWESOME_OUTLINED, color=PRIMARY),
+                                ft.Text("SA CHECK detects each type and copies files into its matching Waiting folder.", size=12, color=MUTED, expand=True),
+                                ft.Button("Browse files", icon=ft.Icons.UPLOAD_FILE_OUTLINED, on_click=browse, height=42, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                            ]),
                         ),
                         summary_text,
                         ft.Container(expand=True, border=border_all(1, BORDER), border_radius=14, padding=8, bgcolor="#F8FBFF", content=list_view),

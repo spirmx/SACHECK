@@ -57,6 +57,7 @@ class DashboardContext:
     show_health: Callable = _noop
     show_calendar: Callable = _noop
     show_calendar_event_dialog: Callable = _noop
+    show_inline_type_dialog: Callable = _noop
     show_templates: Callable = _noop
     update_sidebar: Callable = _noop
     pick_directory: Callable = _noop
