@@ -115,7 +115,10 @@ def check_board_layout(ctx):
     filters = ctx.main_body.controls[1]
     assert filters.height == 58, filters.height
     assert filters.content.wrap is False, filters.content.wrap
-    assert filters.content.scroll == ft.ScrollMode.AUTO, filters.content.scroll
+    assert filters.content.scroll is None, filters.content.scroll
+    filter_text = " | ".join(control_texts(filters))
+    for action in ("Add work", "Add file", "Add link"):
+        assert action in filter_text, action
     board = ctx.main_body.controls[2]
     assert isinstance(board, ft.Row) and len(board.controls) == 3
     text = " | ".join(control_texts(board))

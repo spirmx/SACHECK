@@ -1286,6 +1286,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
         "browser_selected": "",
         "browser_sub_search": {},
         "group_limits": {},
+        "board_grouped": True,
         "settings_search": "",
         "last_sync_check": datetime.now().timestamp(),
         "syncing": False,
@@ -1842,6 +1843,10 @@ def dashboard_main(page: ft.Page, startup_result=None):
     def render_current():
         try:
             update_sidebar()
+            try:
+                quick_add.visible = state["screen"] == SCREEN_OVERVIEW
+            except Exception:
+                pass
             ctx = DashboardContext(
                 page=page,
                 state=state,
@@ -1877,6 +1882,8 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 run_with_duplicate_guard=run_with_duplicate_guard,
                 remember_task_action=remember_task_action,
                 show_create_new=show_create_new,
+                show_add_files=add_files_dialog,
+                show_add_link=lambda *_: add_task_dialog("link"),
                 show_about=show_about,
                 show_help=show_help,
                 show_version_notes=show_version_notes,

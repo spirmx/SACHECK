@@ -70,6 +70,8 @@ class DashboardContext:
     run_with_duplicate_guard: Callable = _noop
     remember_task_action: Callable = _noop
     show_create_new: Callable = _noop
+    show_add_files: Callable = _noop
+    show_add_link: Callable = _noop
     show_about: Callable = _noop
     show_help: Callable = _noop
     show_version_notes: Callable = _noop

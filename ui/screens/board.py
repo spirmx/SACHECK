@@ -75,7 +75,6 @@ def render_board(ctx: DashboardContext) -> None:
         ctx.state["sort"] = "Newest"
     ctx.state.setdefault("group_limits", {})
     ctx.state.setdefault("expanded_groups", set())
-    grouped = bool(ctx.state.setdefault("board_grouped", False))
 
     visible = list(ctx.filtered_tasks() or [])
     by_status = {
@@ -104,11 +103,6 @@ def render_board(ctx: DashboardContext) -> None:
 
     def on_sort_change(event):
         ctx.state.update({"sort": event.control.value or "Newest", "group_limits": {}})
-        ctx.render_current()
-
-    def set_grouped(event):
-        ctx.state["board_grouped"] = bool(event.control.value)
-        ctx.state["group_limits"] = {}
         ctx.render_current()
 
     ctx.search_field.expand = False
@@ -189,12 +183,6 @@ def render_board(ctx: DashboardContext) -> None:
                     )
                     for status in (STATUS_PENDING, STATUS_PROGRESS, STATUS_DONE)
                 ],
-                ft.Button(
-                    "Add work",
-                    icon=ft.Icons.ADD_CIRCLE_OUTLINE,
-                    on_click=lambda _e: ctx.show_create_new(),
-                    style=ft.ButtonStyle(bgcolor=WHITE, color=TEXT, shape=ft.RoundedRectangleBorder(radius=12)),
-                ),
             ],
         ),
     )
@@ -208,7 +196,6 @@ def render_board(ctx: DashboardContext) -> None:
         content=ft.Row(
             spacing=9,
             wrap=False,
-            scroll=ft.ScrollMode.AUTO,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 ctx.search_field,
@@ -229,21 +216,6 @@ def render_board(ctx: DashboardContext) -> None:
                         ],
                     ),
                 ),
-                ft.Container(
-                    height=34,
-                    padding=pad_sym(horizontal=8),
-                    border_radius=10,
-                    bgcolor="#F8FAFC",
-                    border=border_all(1, BORDER),
-                    content=ft.Row(
-                        spacing=4,
-                        controls=[
-                            ft.Icon(ft.Icons.ACCOUNT_TREE_OUTLINED, size=15, color=MUTED),
-                            ft.Text("Group", size=10, weight=ft.FontWeight.W_800, color=MUTED),
-                            ft.Switch(value=grouped, scale=0.65, on_change=set_grouped),
-                        ],
-                    ),
-                ),
                 ft.IconButton(
                     icon=ft.Icons.REFRESH,
                     icon_size=18,
@@ -258,6 +230,28 @@ def render_board(ctx: DashboardContext) -> None:
                     tooltip="Clear filters",
                     disabled=not active_filters,
                     on_click=lambda _e: ctx.reset_filters(),
+                ),
+                ft.Container(expand=True),
+                ft.Button(
+                    "Add work",
+                    icon=ft.Icons.ADD_CIRCLE_OUTLINE,
+                    on_click=lambda _e: ctx.show_create_new(),
+                    height=40,
+                    style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10)),
+                ),
+                ft.Button(
+                    "Add file",
+                    icon=ft.Icons.UPLOAD_FILE_OUTLINED,
+                    on_click=ctx.show_add_files,
+                    height=40,
+                    style=ft.ButtonStyle(bgcolor="#F8FAFC", color=TEXT, side=ft.BorderSide(1, BORDER), shape=ft.RoundedRectangleBorder(radius=10)),
+                ),
+                ft.Button(
+                    "Add link",
+                    icon=ft.Icons.LINK_ROUNDED,
+                    on_click=ctx.show_add_link,
+                    height=40,
+                    style=ft.ButtonStyle(bgcolor="#F8FAFC", color=TEXT, side=ft.BorderSide(1, BORDER), shape=ft.RoundedRectangleBorder(radius=10)),
                 ),
             ],
         ),
@@ -276,7 +270,7 @@ def render_board(ctx: DashboardContext) -> None:
                 STATUS_META[status]["color"],
                 ctx.save_and_render,
                 ctx.all_tasks,
-                grouped=grouped,
+                grouped=True,
                 group_limits=ctx.state["group_limits"],
                 on_more=ctx.render_current,
                 file_types_fn=ctx.file_types,
