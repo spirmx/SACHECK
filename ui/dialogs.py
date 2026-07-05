@@ -815,6 +815,7 @@ def grouped_task_card(page, task, save_and_render, all_tasks):
 
 
 CATEGORY_PREVIEW_LIMIT = 10
+CATEGORY_DIALOG_BATCH = 60
 
 
 def show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_tasks):
@@ -825,17 +826,39 @@ def show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_task
     """
     icon, icon_color = task_icon(file_type)
     ordered = list(tasks)
+    visible_limit = {"value": CATEGORY_DIALOG_BATCH}
     list_view = ft.ListView(spacing=8, expand=True, padding=pad_only(right=6))
     count_label = ft.Text(f"{len(ordered)} of {len(ordered)}", size=12, weight=ft.FontWeight.W_800, color=MUTED)
 
     def matches(task, query):
         return query in str(task.get("name", "")).lower()
 
-    def apply_filter(query=""):
+    def apply_filter(query="", *, reset_limit=True):
         q = (query or "").strip().lower()
         found = [task for task in ordered if matches(task, q)] if q else ordered
+        if reset_limit:
+            visible_limit["value"] = CATEGORY_DIALOG_BATCH
         if found:
-            list_view.controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in found]
+            shown = found[: visible_limit["value"]]
+            list_view.controls = [grouped_task_card(page, task, save_and_render, all_tasks) for task in shown]
+            if len(shown) < len(found):
+                def load_more(_event):
+                    visible_limit["value"] += CATEGORY_DIALOG_BATCH
+                    apply_filter(q, reset_limit=False)
+                    try:
+                        list_view.update()
+                        count_label.update()
+                    except Exception:
+                        pass
+
+                list_view.controls.append(
+                    ft.Button(
+                        f"Load {min(CATEGORY_DIALOG_BATCH, len(found) - len(shown))} more",
+                        icon=ft.Icons.EXPAND_MORE,
+                        on_click=load_more,
+                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12)),
+                    )
+                )
         else:
             list_view.controls = [
                 ft.Container(
@@ -852,7 +875,8 @@ def show_category_tasks_dialog(page, file_type, tasks, save_and_render, all_task
                     ),
                 )
             ]
-        count_label.value = f"{len(found)} of {len(ordered)}"
+        shown_count = min(len(found), visible_limit["value"])
+        count_label.value = f"{shown_count} of {len(found)}" if found else f"0 of {len(ordered)}"
 
     def on_search(event):
         apply_filter(event.control.value)

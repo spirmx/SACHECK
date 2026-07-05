@@ -23,6 +23,7 @@ from ui.shared import DashboardContext
 from ui.screens import render_overview, render_board, render_browser, render_calendar, render_templates, render_health, render_settings
 
 from core.app_paths import APP_SETTINGS_FILE, DATA_FILE, app_folder, work_folder
+from core.bulk_import import import_rows
 from core.flet_theme import CALENDAR_EVENT_COLOR_CHOICES, calendar_event_style
 
 
@@ -92,16 +93,26 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.0.5"
+APP_VERSION = "2.0.6"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.0.5",
+        "version": "2.0.6",
         "date": "2026-07-05",
         "latest": True,
+        "items": [
+            "Added background bulk import with live progress, cancellation, and a clear result summary.",
+            "Batched large category dialogs so thousands of tasks no longer create thousands of controls at once.",
+            "Added repeatable stress coverage for 2,000 Board tasks and bulk-import failure handling.",
+        ],
+    },
+    {
+        "version": "2.0.5",
+        "date": "2026-07-05",
+        "latest": False,
         "items": [
             "Restored the complete cached Board, Calendar, Settings, startup, and dialog improvements.",
             "Moved Board quick actions into the filter row and restored grouped category controls.",
@@ -2076,10 +2087,28 @@ def dashboard_main(page: ft.Page, startup_result=None):
 
     def add_files_dialog(_e=None):
         picked_rows = []
+        import_state = {"running": False, "cancelled": False}
         list_view = ft.ListView(expand=True, spacing=8)
         summary_text = ft.Text("No files selected yet.", size=12, weight=ft.FontWeight.W_700, color=MUTED)
         note_field = ft.TextField(label="Note for all files (optional)", multiline=True, min_lines=1, max_lines=2, border_radius=12, border_color=BORDER)
         manual_field = ft.TextField(label="Or paste a file path", border_radius=12, border_color=BORDER, expand=True)
+        progress_bar = ft.ProgressBar(value=0, color=PRIMARY, bgcolor="#DBEAFE", border_radius=99)
+        progress_text = ft.Text("Preparing import...", size=12, weight=ft.FontWeight.W_800, color=TEXT)
+        progress_detail = ft.Text("0 of 0", size=11, color=MUTED)
+        progress_panel = ft.Container(
+            visible=False,
+            border=border_all(1, "#BFDBFE"),
+            border_radius=12,
+            bgcolor="#EFF6FF",
+            padding=12,
+            content=ft.Column(
+                spacing=8,
+                controls=[
+                    ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[progress_text, progress_detail]),
+                    progress_bar,
+                ],
+            ),
+        )
 
         def type_choices():
             return list(file_types())
@@ -2176,31 +2205,79 @@ def dashboard_main(page: ft.Page, startup_result=None):
                 rebuild_list()
                 update_summary()
 
+        def cancel_import(_e=None):
+            if import_state["running"]:
+                import_state["cancelled"] = True
+                progress_text.value = "Stopping after the current file..."
+                progress_text.color = "#D97706"
+                page.update()
+                return
+            page.pop_dialog()
+            page.update()
+
         def save(_e):
             add_path(manual_field.value)
             if not picked_rows:
                 show_message(page, "No files", "Choose at least one file or paste a path first.")
                 return
-            created = 0
-            errors = []
-            for row in list(picked_rows):
-                try:
-                    task = create_task_from_source(Path(row["path"]).stem, row["path"], file_type=row["type"], note=note_field.value or "", status=STATUS_PENDING)
-                    all_tasks.append(task)
-                    created += 1
-                except Exception as exc:
-                    errors.append(f"{Path(row['path']).name}: {exc}")
-            if not created:
-                show_message(page, "Add failed", "\n".join(errors) or "No files were added.")
+            if import_state["running"]:
                 return
-            page.pop_dialog()
-            save_and_render(f"Added {created} file(s) to Waiting, sorted by type.")
-            if errors:
-                show_message(page, "Some files skipped", f"Added {created}. Skipped:\n" + "\n".join(errors), kind="warning")
-            else:
-                show_message(page, "Added to Waiting", f"{created} file(s) sorted by type.", kind="success")
+            rows = [dict(row) for row in picked_rows]
+            shared_note = note_field.value or ""
+            import_state.update({"running": True, "cancelled": False})
+            progress_panel.visible = True
+            progress_bar.value = 0
+            progress_text.value = "Starting bulk import..."
+            progress_text.color = TEXT
+            progress_detail.value = f"0 of {len(rows)}"
+            save_button.disabled = True
+            page.update()
+
+            def update_progress(done, total, label):
+                progress_bar.value = done / total if total else 0
+                progress_text.value = f"Importing {label}" if done < total else "Finalizing imported work..."
+                progress_detail.value = f"{done} of {total}"
+                try:
+                    page.update()
+                except Exception:
+                    pass
+
+            def worker():
+                result = import_rows(
+                    rows,
+                    lambda row: create_task_from_source(
+                        Path(row["path"]).stem,
+                        row["path"],
+                        file_type=row["type"],
+                        note=shared_note,
+                        status=STATUS_PENDING,
+                    ),
+                    on_progress=update_progress,
+                    is_cancelled=lambda: import_state["cancelled"],
+                )
+                import_state["running"] = False
+                if result.created:
+                    all_tasks.extend(result.created)
+                    save_tasks(all_tasks)
+                page.pop_dialog()
+                render_current()
+                created = len(result.created)
+                if result.cancelled:
+                    show_message(page, "Import stopped", f"Added {created} file(s) before cancellation. Existing imported files were kept.", kind="warning")
+                elif result.errors:
+                    details = "\n".join(result.errors[:8])
+                    extra = len(result.errors) - 8
+                    if extra > 0:
+                        details += f"\n...and {extra} more"
+                    show_message(page, "Bulk import complete", f"Added {created}. Skipped {len(result.errors)}:\n{details}", kind="warning")
+                else:
+                    show_message(page, "Bulk import complete", f"Added {created} file(s), sorted by type.", kind="success")
+
+            page.run_thread(worker)
 
         rebuild_list()
+        save_button = ft.Button("Add to Waiting", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10)))
+        cancel_button = ft.TextButton("Cancel", on_click=cancel_import)
         page.show_dialog(
             ft.AlertDialog(
                 modal=True,
@@ -2223,11 +2300,12 @@ def dashboard_main(page: ft.Page, startup_result=None):
                         summary_text,
                         ft.Container(expand=True, border=border_all(1, BORDER), border_radius=14, padding=8, bgcolor="#F8FBFF", content=list_view),
                         note_field,
+                        progress_panel,
                     ],
                 ),
                 actions=[
-                    ft.TextButton("Cancel", on_click=lambda _e: (page.pop_dialog(), page.update())),
-                    ft.Button("Add to Waiting", on_click=save, style=ft.ButtonStyle(bgcolor=TEXT, color=WHITE, shape=ft.RoundedRectangleBorder(radius=10))),
+                    cancel_button,
+                    save_button,
                 ],
                 bgcolor=WHITE,
                 shape=ft.RoundedRectangleBorder(radius=16),

@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.flet_data as data  # noqa: E402
 from ui.dialogs import (  # noqa: E402
+    CATEGORY_DIALOG_BATCH,
     CATEGORY_PREVIEW_LIMIT,
     grouped_task_controls,
     show_category_tasks_dialog,
@@ -114,7 +115,12 @@ def run():
                 value = ""
 
         search.on_change(E2())
-        assert len(list_view.controls) == 103, f"cleared search should show 103, got {len(list_view.controls)}"
+        assert len(list_view.controls) == CATEGORY_DIALOG_BATCH + 1, (
+            f"cleared search should show one batch plus Load more, got {len(list_view.controls)}"
+        )
+        load_more = list_view.controls[-1]
+        load_more.on_click(None)
+        assert len(list_view.controls) == 103, f"second batch should show all 103, got {len(list_view.controls)}"
 
     check("small group -> preview 3, button 'View all'", small_group)
     check("large group -> preview 10, button 'More +93'", large_group)
