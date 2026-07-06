@@ -17,6 +17,28 @@ def _with_alpha(color, alpha_hex):
     return color
 
 
+# Every looping animation (pulse/breathe/shake/marquee/carousel) captures the
+# current epoch when it starts and stops as soon as the epoch moves on. The
+# central screen re-render bumps the epoch, so loops from a previous render die
+# instead of piling up forever — otherwise they accumulate on every navigation
+# and eventually saturate the async loop and freeze the app.
+_ANIM_EPOCH = 0
+
+
+def bump_anim_epoch():
+    """Invalidate all per-render animation loops created before now.
+
+    Call once at the top of the central screen re-render. Returns the new epoch.
+    """
+    global _ANIM_EPOCH
+    _ANIM_EPOCH += 1
+    return _ANIM_EPOCH
+
+
+def _anim_epoch():
+    return _ANIM_EPOCH
+
+
 def pad_sym(horizontal=0, vertical=0):
     return ft.Padding(horizontal, vertical, horizontal, vertical)
 
@@ -95,8 +117,9 @@ def pulse_dot(page, color, size=9):
     state = {"big": False}
 
     async def _breathe():
+        epoch = _anim_epoch()
         await asyncio.sleep(0.4)  # let the control mount first
-        while True:
+        while _anim_epoch() == epoch:
             state["big"] = not state["big"]
             core.scale = 1.2 if state["big"] else 0.85
             halo.scale = 2.0 if state["big"] else 1.0
@@ -154,8 +177,9 @@ def breathing_badge(page, icon, icon_color, bg, *, size=38, radius=11, icon_size
     state = {"on": False}
 
     async def _breathe():
+        epoch = _anim_epoch()
         await asyncio.sleep(0.35)
-        while True:
+        while _anim_epoch() == epoch:
             state["on"] = not state["on"]
             badge.shadow = ft.BoxShadow(
                 spread_radius=1 if state["on"] else 0,
@@ -212,8 +236,9 @@ def marquee(page, build_chips, *, height=32, seconds=16, gap=10):
     )
 
     async def _run():
+        epoch = _anim_epoch()
         await asyncio.sleep(0.4)
-        while True:
+        while _anim_epoch() == epoch:
             lane.offset = ft.Offset(-0.5, 0)  # scroll left by exactly one copy
             try:
                 lane.update()
@@ -250,8 +275,9 @@ def shake_bell(page, icon, *, period=2.8):
     swings = (0.38, -0.32, 0.26, -0.2, 0.12, 0.0)
 
     async def _ring():
+        epoch = _anim_epoch()
         await asyncio.sleep(0.6)
-        while True:
+        while _anim_epoch() == epoch:
             for angle in swings:
                 icon.rotate = ft.Rotate(angle)
                 try:
@@ -353,8 +379,9 @@ def alert_carousel(page, items, build_card, *, interval=2.6, transition=None):
     state = {"i": 0}
 
     async def _rotate():
+        epoch = _anim_epoch()
         await asyncio.sleep(interval)
-        while True:
+        while _anim_epoch() == epoch:
             state["i"] = (state["i"] + 1) % len(items)
             switcher.content = build_card(items[state["i"]], state["i"])
             try:
@@ -411,8 +438,9 @@ def breathe_glow(page, control, color, *, base_blur=10, peak_blur=26, base_alpha
     state = {"on": False}
 
     async def _loop():
+        epoch = _anim_epoch()
         await asyncio.sleep(0.4)
-        while True:
+        while _anim_epoch() == epoch:
             state["on"] = not state["on"]
             control.shadow = ft.BoxShadow(
                 spread_radius=0,

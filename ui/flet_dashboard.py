@@ -96,16 +96,25 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.1.0-1"
+APP_VERSION = "2.1.0-2"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.1.0-1",
+        "version": "2.1.0-2",
         "date": "2026-07-06",
         "latest": True,
+        "items": [
+            "Removed the lingering animation pile-up that caused the UI to lag after repeated renders and navigation.",
+            "The live strips now retire old animation loops on re-render so the dashboard stays responsive over long sessions.",
+        ],
+    },
+    {
+        "version": "2.1.0-1",
+        "date": "2026-07-06",
+        "latest": False,
         "items": [
             "Smoothed the live Doing work island: removed the lag and the janky character-by-character scroll on the task name.",
             "The strip now rebuilds only when the open task changes and ticks the clock once per second instead of repainting every frame.",
@@ -1120,6 +1129,7 @@ from ui.flet_widgets import (  # noqa: E402
     border_all,
     breathe_glow,
     breathing_badge,
+    bump_anim_epoch,
     dropdown,
     nav_button,
     pad_only,
@@ -2007,6 +2017,9 @@ def dashboard_main(page: ft.Page, startup_result=None):
 
     def render_current():
         try:
+            # Retire animation loops from the previous render so they don't pile
+            # up over a long session and eventually freeze the UI.
+            bump_anim_epoch()
             update_sidebar()
             try:
                 quick_add.visible = state["screen"] == SCREEN_OVERVIEW

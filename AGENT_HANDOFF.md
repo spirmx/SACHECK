@@ -1,8 +1,14 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.1.0-1`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.1.0-2`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
+
+## Release 2.1.0-2 — animation-loop lag fix
+
+- Stopped old per-render animation loops from surviving navigation. The live strips, badges, marquis, glow, and carousel helpers now retire when the dashboard re-renders, which removes the lag buildup that was freezing long sessions.
+- Kept the 2.1.0-1 work-session reliability release intact underneath this fix: session recovery, safe shutdown backup, and the MRU Work Switcher still behave the same.
+- The user-facing result is the same dashboard behavior with less UI churn and fewer runaway async loops.
 
 ## Release 2.1.0-1 — work-session reliability
 
@@ -30,8 +36,8 @@ This file is the continuation contract for any agent editing this repository. In
 
 - Repository: `spirmx/SACHECK`, branch `main`.
 - Last known pre-release baseline: `ef7e12c` (`2.0.7`).
-- Current source/release target: `2.1.0-1`, required update. Refresh the actual HEAD with `git log` after checkout.
-- Release `2.1.0-1` adds low-overhead live-work rendering, session recovery, safe shutdown backup, and the MRU Work Switcher on top of the 2.1.0 stability baseline.
+- Current source/release target: `2.1.0-2`, required update. Refresh the actual HEAD with `git log` after checkout.
+- Release `2.1.0-2` adds the animation-loop lag fix on top of the 2.1.0-1 work-session reliability baseline.
 - Claude recovery stash: `stash@{0}` when this document was created, label `recover-claude-ui-cache-2026-07-05`. Stash indexes move; identify it by label/commit, never by index alone.
 - Earlier safety stash: label `codex-pre-v2-release-main-work`.
 

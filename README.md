@@ -8,11 +8,11 @@ Publisher: HOYTURBRO
 
 ## Current Release
 
-Version: `2.1.0-1`
+Version: `2.1.0-2`
 
 This hotfix restores the Board Kanban view by correcting the Flutter filter-row layout.
 
-`2.1.0-1` adds low-overhead live-work rendering, persistent session recovery, safe shutdown backup, and the MRU Work Switcher while preserving the 2.1 stability baseline.
+`2.1.0-2` hardens the live work strips by retiring old animation loops on re-render, which removes the lag that could build up after repeated navigation.
 
 Latest changes:
 
@@ -212,4 +212,4 @@ Before publishing a new update:
 
 ## Current Status
 
-`2.1.0-1` is the current required release. It preserves offline-first Work data, settings, cache, templates, and Calendar records while adding session recovery and safer shutdown behavior.
+`2.1.0-2` is the current required release. It preserves offline-first Work data, settings, cache, templates, and Calendar records while adding the lag fix on top of session recovery and safer shutdown behavior.
