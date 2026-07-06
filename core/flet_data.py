@@ -2,6 +2,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import time
 import uuid
 import webbrowser
@@ -18,6 +19,7 @@ from core.app_paths import (
     CALENDAR_FILE,
     DATA_FILE,
     SNAPSHOT_DIR,
+    SESSION_FILE,
     TEMPLATE_FILE,
     UNDO_STACK_FILE,
     work_folder,
@@ -27,7 +29,7 @@ from core.flet_constants import FILE_TYPES, STATUS_DONE, STATUS_FOLDERS, STATUS_
 from core.flet_theme import normalize_calendar_event_color
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.0-1"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 
@@ -43,21 +45,107 @@ CREATE_TOOLS = [
 ]
 
 _ACTIVE_OPEN_WORK = None
+_OPEN_WORK_HISTORY = []
+_ACTIVE_OPEN_INDEX = -1
+_OPEN_WORK_LOCK = threading.RLock()
+MAX_OPEN_WORK_HISTORY = 12
+
+
+def _active_session_payload():
+    return {
+        "version": 2,
+        "active_index": _ACTIVE_OPEN_INDEX,
+        "items": [dict(item) for item in _OPEN_WORK_HISTORY],
+    }
+
+
+def _persist_open_work_session():
+    try:
+        save_json(SESSION_FILE, _active_session_payload())
+    except OSError:
+        pass
 
 
 def active_open_work():
     """Return work opened successfully during this app session."""
-    return dict(_ACTIVE_OPEN_WORK) if _ACTIVE_OPEN_WORK else None
+    with _OPEN_WORK_LOCK:
+        if not _ACTIVE_OPEN_WORK:
+            return None
+        active = dict(_ACTIVE_OPEN_WORK)
+        active["switcher_index"] = _ACTIVE_OPEN_INDEX + 1
+        active["switcher_total"] = len(_OPEN_WORK_HISTORY)
+        return active
 
 
 def _mark_active_open_work(task):
-    global _ACTIVE_OPEN_WORK
-    _ACTIVE_OPEN_WORK = {
+    global _ACTIVE_OPEN_WORK, _OPEN_WORK_HISTORY, _ACTIVE_OPEN_INDEX
+    item = {
         "id": task.get("id"),
         "name": str(task.get("name") or "Untitled work").strip() or "Untitled work",
         "type": str(task.get("type") or "Other"),
         "opened_at": datetime.now().isoformat(timespec="seconds"),
     }
+    with _OPEN_WORK_LOCK:
+        item_id = str(item.get("id") or "")
+        _OPEN_WORK_HISTORY = [row for row in _OPEN_WORK_HISTORY if str(row.get("id") or "") != item_id]
+        _OPEN_WORK_HISTORY.insert(0, item)
+        del _OPEN_WORK_HISTORY[MAX_OPEN_WORK_HISTORY:]
+        _ACTIVE_OPEN_INDEX = 0
+        _ACTIVE_OPEN_WORK = dict(item)
+        _persist_open_work_session()
+
+
+def cycle_active_open_work(step=1):
+    """Cycle the MRU work switcher without reopening external targets."""
+    global _ACTIVE_OPEN_WORK, _ACTIVE_OPEN_INDEX
+    with _OPEN_WORK_LOCK:
+        if not _OPEN_WORK_HISTORY:
+            return None
+        direction = -1 if int(step or 1) < 0 else 1
+        _ACTIVE_OPEN_INDEX = (_ACTIVE_OPEN_INDEX + direction) % len(_OPEN_WORK_HISTORY)
+        _ACTIVE_OPEN_WORK = dict(_OPEN_WORK_HISTORY[_ACTIVE_OPEN_INDEX])
+        _persist_open_work_session()
+        return active_open_work()
+
+
+def restore_active_work_session(tasks):
+    """Restore the last successfully opened task without reopening its target."""
+    global _ACTIVE_OPEN_WORK, _OPEN_WORK_HISTORY, _ACTIVE_OPEN_INDEX
+    payload = load_json(SESSION_FILE, {})
+    if not isinstance(payload, dict):
+        return None
+    raw_items = payload.get("items") if isinstance(payload.get("items"), list) else [payload]
+    tasks_by_id = {str(item.get("id") or ""): item for item in (tasks or []) if isinstance(item, dict) and item.get("id")}
+    restored = []
+    seen = set()
+    for row in raw_items[:MAX_OPEN_WORK_HISTORY]:
+        if not isinstance(row, dict):
+            continue
+        task_id = str(row.get("id") or "").strip()
+        opened_at = str(row.get("opened_at") or "").strip()
+        task = tasks_by_id.get(task_id)
+        if not task or not opened_at or task_id in seen:
+            continue
+        seen.add(task_id)
+        restored.append({
+            "id": task_id,
+            "name": str(task.get("name") or row.get("name") or "Untitled work").strip() or "Untitled work",
+            "type": str(task.get("type") or row.get("type") or "Other"),
+            "opened_at": opened_at,
+            "recovered": True,
+        })
+    if not restored:
+        return None
+    with _OPEN_WORK_LOCK:
+        _OPEN_WORK_HISTORY = restored
+        try:
+            requested_index = int(payload.get("active_index") or 0)
+        except (TypeError, ValueError):
+            requested_index = 0
+        _ACTIVE_OPEN_INDEX = max(0, min(requested_index, len(restored) - 1))
+        _ACTIVE_OPEN_WORK = dict(restored[_ACTIVE_OPEN_INDEX])
+        _persist_open_work_session()
+        return active_open_work()
 
 
 def _snapshot_recovery_value(path: Path, fallback):

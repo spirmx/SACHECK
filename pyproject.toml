@@ -1,6 +1,6 @@
 [project]
 name = "sacheck"
-version = "2.1.0"
+version = "2.1.0.post1"
 description = "SA CHECK desktop work board"
 dependencies = [
   "flet==0.85.3",

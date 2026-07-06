@@ -1,4 +1,4 @@
-#define MyAppVersion "2.1.0"
+#define MyAppVersion "2.1.0-1"
 #define MyAppPublisher "HOYTURBRO"
 #define MyAppExeName "SACHECK.exe"
 
@@ -42,11 +42,11 @@ CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
 UsePreviousTasks=yes
-VersionInfoVersion=2.1.0.0
+VersionInfoVersion=2.1.0.1
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=SA CHECK Desktop Work Board Installer
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=2.1.0.0
+VersionInfoProductVersion=2.1.0.1
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -55,7 +55,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: checkedonce
 
 [Files]
-Source: "..\build\windows_2.1.0\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\windows_2.1.0-1\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"

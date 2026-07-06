@@ -1,8 +1,19 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.1.0`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.1.0-1`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
+
+## Release 2.1.0-1 — work-session reliability
+
+- Removed the character-by-character live-work marquee that caused UI lag. Long names now use ellipsis, the clock updates only when the second changes, and the island rebuilds only when active work changes.
+- Added persistent session recovery in `%APPDATA%\SA CHECK\data\runtime_session.json`; stale or malformed entries are ignored and old single-item sessions migrate automatically.
+- Added safe shutdown: background loops stop, active sync receives up to five seconds to finish, then Tasks, Calendar, and Settings are flushed atomically before exit.
+- Added an automatic retained snapshot before shutdown using the existing snapshot/retention system. Failures are isolated and written to Activity Log rather than blocking exit indefinitely.
+- Added the Work Switcher. `Ctrl+Tab` cycles forward and `Ctrl+Shift+Tab` cycles backward through up to 12 most-recently-opened tasks without relaunching files or browser tabs.
+- Dynamic Island shows the selected MRU position as `work x/y`; opening a task again moves it to the front of the list.
+- Added regression coverage for session persistence, recovery, MRU ordering, forward/reverse cycling, and lifecycle/package safety. Core, smoke, Board group, bulk import, and 2,000-task stress checks passed.
+- Built and installed the matching package into `C:\SACHECK`; update and integrity manifests match installer size and SHA-256.
 
 ## Release 2.1.0 — sync visibility and stability consolidation
 
@@ -19,8 +30,8 @@ This file is the continuation contract for any agent editing this repository. In
 
 - Repository: `spirmx/SACHECK`, branch `main`.
 - Last known pre-release baseline: `ef7e12c` (`2.0.7`).
-- Current source/release target: `2.1.0`, required update. Refresh the actual HEAD with `git log` after checkout.
-- Release `2.1.0` includes the 2.0.9 workflow baseline plus scheduled-sync state visibility, live Doing work in the Header, stronger sync concurrency/timeout handling, and structured runtime-failure diagnostics.
+- Current source/release target: `2.1.0-1`, required update. Refresh the actual HEAD with `git log` after checkout.
+- Release `2.1.0-1` adds low-overhead live-work rendering, session recovery, safe shutdown backup, and the MRU Work Switcher on top of the 2.1.0 stability baseline.
 - Claude recovery stash: `stash@{0}` when this document was created, label `recover-claude-ui-cache-2026-07-05`. Stash indexes move; identify it by label/commit, never by index alone.
 - Earlier safety stash: label `codex-pre-v2-release-main-work`.
 

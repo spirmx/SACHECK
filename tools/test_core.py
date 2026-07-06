@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import sys
 import traceback
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -145,6 +146,41 @@ def test_update_build_version():
     assert parse_version("2.0.8-1") > parse_version("2.0.8")
 
 
+def test_active_work_session_recovery():
+    original_file = data.SESSION_FILE
+    original_active = data._ACTIVE_OPEN_WORK
+    original_history = data._OPEN_WORK_HISTORY
+    original_index = data._ACTIVE_OPEN_INDEX
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            data.SESSION_FILE = Path(folder) / "runtime_session.json"
+            task = {"id": "task-1", "name": "Recovered work", "type": "Word"}
+            second = {"id": "task-2", "name": "Second work", "type": "Excel"}
+            data._ACTIVE_OPEN_WORK = None
+            data._OPEN_WORK_HISTORY = []
+            data._ACTIVE_OPEN_INDEX = -1
+            data._mark_active_open_work(task)
+            data._mark_active_open_work(second)
+            assert data.SESSION_FILE.is_file()
+            assert data.active_open_work()["id"] == "task-2"
+            assert data.active_open_work()["switcher_total"] == 2
+            assert data.cycle_active_open_work()["id"] == "task-1"
+            assert data.cycle_active_open_work(-1)["id"] == "task-2"
+            data._ACTIVE_OPEN_WORK = None
+            data._OPEN_WORK_HISTORY = []
+            restored = data.restore_active_work_session([task, second])
+            assert restored and restored["id"] == "task-2"
+            assert restored["name"] == "Second work" and restored["recovered"] is True
+            data._ACTIVE_OPEN_WORK = None
+            data._OPEN_WORK_HISTORY = []
+            assert data.restore_active_work_session([]) is None
+    finally:
+        data.SESSION_FILE = original_file
+        data._ACTIVE_OPEN_WORK = original_active
+        data._OPEN_WORK_HISTORY = original_history
+        data._ACTIVE_OPEN_INDEX = original_index
+
+
 def test_unique_target_and_resolve_type():
     # resolve_add_type keeps a specific requested type, upgrades Other/Link
     assert data.resolve_add_type("C:/x/a.docx", "Word") == "Word"
@@ -192,6 +228,7 @@ TESTS = [
     ("calendar event palette", test_calendar_event_palette),
     ("custom file type creation", test_custom_file_type_creation),
     ("update build version", test_update_build_version),
+    ("active work session recovery", test_active_work_session_recovery),
     ("resolve_add_type", test_unique_target_and_resolve_type),
     ("single instance guard", test_single_instance_guard),
     ("lifecycle/package hygiene", test_lifecycle_and_package_hygiene),

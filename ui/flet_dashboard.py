@@ -96,16 +96,25 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.0-1"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.1.0",
+        "version": "2.1.0-1",
         "date": "2026-07-06",
         "latest": True,
+        "items": [
+            "Smoothed the live Doing work island: removed the lag and the janky character-by-character scroll on the task name.",
+            "The strip now rebuilds only when the open task changes and ticks the clock once per second instead of repainting every frame.",
+        ],
+    },
+    {
+        "version": "2.1.0",
+        "date": "2026-07-06",
+        "latest": False,
         "items": [
             "Added a four-state scheduled-sync indicator: gray idle, animated amber syncing, green success, and red failure with diagnostic logging.",
             "Added a live Doing strip in the header with marquee task names and a fixed status-change time.",
@@ -1053,6 +1062,7 @@ from core.flet_data import (  # noqa: E402
     apply_status_date,
     broken_items,
     create_snapshot,
+    cycle_active_open_work,
     create_custom_file_type,
     create_task_from_source,
     create_task_from_tool,
@@ -1083,6 +1093,7 @@ from core.flet_data import (  # noqa: E402
     retry_file_operation,
     resolve_add_type,
     restore_snapshot,
+    restore_active_work_session,
     runtime_file_types,
     safe_item_name,
     save_settings,
@@ -1359,6 +1370,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
     install_pointer_feedback()
     all_tasks = load_tasks()
     settings = load_settings()
+    restore_active_work_session(all_tasks)
     UI_LANGUAGE = str(settings.get("language") or "en").lower()
     apply_app_theme(settings)
     root_work = work_folder()
@@ -1407,6 +1419,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
     }
     shutdown_event = threading.Event()
     sync_lock = threading.Lock()
+    shutdown_lock = threading.Lock()
 
     def record_runtime_failure(component, exc, **details):
         message = str(exc or "Unknown error").strip() or "Unknown error"
@@ -4188,7 +4201,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
             live_work_dot.shadow = ft.BoxShadow(blur_radius=10, color="#805EEAD4")
             live_work_kicker.value = "DOING NOW"
             live_work_kicker.color = "#99F6E4"
-            live_work_state.value = "งานที่เปิดล่าสุด"
+            live_work_state.value = f"งาน {task.get('switcher_index', 1)}/{task.get('switcher_total', 1)} · Ctrl+Tab"
             live_work_state.color = "#BAE6FD"
             live_work_meta.visible = True
             live_work_time.color = "#CCFBF1"
@@ -4248,7 +4261,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
                 except Exception:
                     pass
 
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(0.5)
 
     header = ft.Container(
         height=96,
@@ -4302,18 +4315,48 @@ th{{background:#eff6ff;color:#1d4ed8}}
         state["closed"] = True
         shutdown_event.set()
 
-    def _close(_e):
-        if state.get("closing"):
-            return
+    def finalize_shutdown():
+        """Stop background work, flush user state, then create one backup."""
+        if not shutdown_lock.acquire(blocking=False):
+            return False
         state["closing"] = True
         mark_closed()
+        acquired_sync_lock = False
         try:
-            save_settings(settings)
+            deadline = time.monotonic() + 5.0
+            while state.get("syncing") and time.monotonic() < deadline:
+                time.sleep(0.05)
+            remaining = max(0.0, deadline - time.monotonic())
+            acquired_sync_lock = sync_lock.acquire(timeout=remaining)
+            if not acquired_sync_lock:
+                record_runtime_failure("Safe shutdown", TimeoutError("Active sync did not finish within 5 seconds."))
+            for component, operation in (
+                ("Shutdown task save", lambda: save_tasks(all_tasks)),
+                ("Shutdown calendar save", lambda: save_persisted_calendar_events(calendar_events)),
+                ("Shutdown settings save", lambda: save_settings(settings)),
+                ("Automatic shutdown backup", lambda: create_snapshot("Automatic backup before shutdown")),
+            ):
+                try:
+                    operation()
+                except Exception as exc:
+                    record_runtime_failure(component, exc)
+            try:
+                log_activity("Safe shutdown", "User state was flushed and the shutdown backup completed.", {"tasks": len(all_tasks)})
+            except Exception:
+                pass
+            return True
         finally:
-            # The embedded Flutter runner can keep the native process alive
-            # after Window.close(). Explicit exit is deterministic and safe
-            # because task/calendar writes are persisted at mutation time.
-            os._exit(0)
+            if acquired_sync_lock:
+                sync_lock.release()
+            shutdown_lock.release()
+
+    def _close(_e=None):
+        if state.get("closing"):
+            return
+        finalize_shutdown()
+        # The embedded Flutter runner can keep the native process alive after
+        # Window.close(). Exit only after atomic saves and backup complete.
+        os._exit(0)
 
     def window_button(icon, on_click, danger=False, tooltip=""):
         return ft.IconButton(
@@ -4475,6 +4518,8 @@ th{{background:#eff6ff;color:#1d4ed8}}
             key = str(getattr(event, "key", "")).lower()
             if (getattr(event, "ctrl", False) or getattr(event, "meta", False)) and key == "k":
                 open_command_palette()
+            elif (getattr(event, "ctrl", False) or getattr(event, "meta", False)) and key == "tab":
+                cycle_active_open_work(-1 if getattr(event, "shift", False) else 1)
             elif key == "escape" and state.get("cmd_palette_open"):
                 state["cmd_palette_open"] = False
                 page.pop_dialog()
@@ -4484,7 +4529,7 @@ th{{background:#eff6ff;color:#1d4ed8}}
 
     page.on_keyboard_event = on_global_key
     page.on_disconnect = mark_closed
-    page.on_close = mark_closed
+    page.on_close = _close
 
     page.add(
         ft.Column(

@@ -114,6 +114,7 @@ migrate_user_file_if_needed("data/settings_log.json", "data/settings_log.json")
 migrate_user_file_if_needed("data/activity_log.json", "data/activity_log.json")
 migrate_user_file_if_needed("data/undo_stack.json", "data/undo_stack.json")
 migrate_user_file_if_needed("data/calendar_events.json", "data/calendar_events.json")
+migrate_user_file_if_needed("data/runtime_session.json", "data/runtime_session.json")
 
 DATA_FILE = user_data_folder() / "data" / "tasks.json"
 TEMPLATE_FILE = user_data_folder() / "data" / "templates.json"
@@ -123,6 +124,7 @@ ACTIVITY_LOG_FILE = user_data_folder() / "data" / "activity_log.json"
 UNDO_STACK_FILE = user_data_folder() / "data" / "undo_stack.json"
 CALENDAR_FILE = user_data_folder() / "data" / "calendar_events.json"
 CALENDAR_CACHE_FILE = user_data_folder() / "cache" / "calendar" / "calendar_events.json"
+SESSION_FILE = user_data_folder() / "data" / "runtime_session.json"
 SNAPSHOT_DIR = user_data_folder() / "data" / "snapshots"
 ICON_CACHE_DIR = user_data_folder() / "cache" / "icons"
 APP_ICON_FILE = app_folder() / "assets" / "app" / "app.ico"
