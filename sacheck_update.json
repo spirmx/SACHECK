@@ -1,17 +1,17 @@
 {
-  "version": "2.1.0-2",
+  "version": "2.1.0-3",
   "release_date": "2026-07-06",
   "required": true,
   "release_status": "ready",
   "installer_url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/release/SA_CHECK_Installer.exe",
-  "installer_sha256": "2bec0af119b265b258637110124bd7ce0eaf9b8efc5bea5f358dd9f7050ce7af",
-  "installer_size": 33731429,
-  "repair_version": "2.1.0-2",
+  "installer_sha256": "91c8f9713d9bec38398fc2f397589bca47b72d6f8a2fdf1e45c58b96559d6fdf",
+  "installer_size": 33738876,
+  "repair_version": "2.1.0-3",
   "notes": [
-    "Smoothed the live Doing work island: removed the lag and the janky character-by-character scroll on the task name.",
-    "The header strip now rebuilds only when the open task changes and ticks the clock once per second instead of repainting every frame.",
-    "Keeps the 2.1 four-state sync indicator, sync hardening, and workflow animations intact.",
-    "This is a required update for installed versions older than 2.1.0-2.",
+    "Big idle-CPU cut: replaced the always-on glow/halo/ping animations with cheap low-frequency heartbeats that let the canvas rest.",
+    "Added a Settings > Theme toggle for motion effects (off by default) so live pulses run only when you want them.",
+    "Keeps the 2.1.0-2 animation-loop retirement fix plus the four-state sync indicator and sync hardening.",
+    "This is a required update for installed versions older than 2.1.0-3.",
     "Work folders, settings, cache, and user data remain preserved during updates."
   ],
   "repair_files": [
@@ -83,7 +83,7 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "2f728ccd1bd730b3a07c172a690d90f3a94bab6632a0a3192ef40f90c8870c92",
+      "sha256": "a8c0c29136f567860802b8a8db20126bc28b5e1be3203b30c35d151b8eed2a09",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/core/flet_constants.py",
       "mode": "source"
     },
@@ -131,7 +131,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "c1c6ecdbfd8d8ff8d9e70649484b039b6ee19d8b7714ee2b0b4cca6e639b49fc",
+      "sha256": "2756f35889a34591a8b25b4e308dacaab2d35c4fb535ea82ccf4b4251b3abb4f",
       "url": "https://raw.githubusercontent.com/spirmx/SACHECK/main/ui/flet_dashboard.py",
       "mode": "source"
     },

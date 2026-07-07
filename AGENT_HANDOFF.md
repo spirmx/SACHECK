@@ -1,19 +1,16 @@
 # SA CHECK Agent Handoff
 
-Current release target: `2.1.0-2`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
+Current release target: `2.1.0-3`. Before continuing, verify `git status`, all linked worktrees, and the update/integrity manifests. Do not build from an older clean branch when another worktree contains uncommitted UI work.
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
 
-## PENDING — unreleased source on main, needs a build (note for CodeX)
+## Release 2.1.0-3 — animation CPU cut + motion toggle
 
-`main` now carries a **source-only** improvement on top of 2.1.0-2 that is **not yet built or shipped**. Version, installer, and manifests were intentionally left at 2.1.0-2 so the update channel stays valid (installed 2.1.0-2 clients see no forced re-download). Please fold this into your next versioned release (suggested `2.1.0-3`): bump the version everywhere, `flet build windows -o build/windows_<ver>`, compile a new `installer/SACHECK_<ver>.iss`, run `tools/build_integrity_manifest.py`, then commit + push atomically.
+- **Idle-CPU cut.** The always-on ambient animations were the dominant Flutter-repaint cost. `pulse_dot` and `breathing_badge` are now cheap scale "heartbeats" (short pop, long rest; no glow/halo/blur/ping). Measured idle CPU dropped from ~78% of one core to near 0% when motion is off (~40% when on). Files: `ui/flet_widgets.py`, `ui/flet_dashboard.py`, `ui/screens/settings_screen.py`.
+- **Motion toggle.** `flet_widgets._MOTION` (default OFF) gates the ambient loops; `set_motion()` is wired from `settings["motion_effects"]` at startup and from a new **Settings > Theme > "Motion effects"** switch. Periodic effects (`shake_bell`, `alert_carousel`) and all one-shot/hover/count-up effects always run.
+- Preserves the 2.1.0-2 epoch/`bump_anim_epoch` loop-retirement fix (now also cheaper).
 
-What changed (files: `ui/flet_widgets.py`, `ui/flet_dashboard.py`, `ui/screens/settings_screen.py`):
-- **Idle-CPU cut.** The always-on ambient animations were the dominant Flutter-repaint cost. `pulse_dot` and `breathing_badge` were rewritten as cheap scale "heartbeats" (short pop, long rest, no glow/halo/blur/ping). Measured dev idle CPU: ~78% → **9%** of one core (motion off), ~40% (motion on).
-- **Motion toggle.** `flet_widgets._MOTION` (default OFF) gates the ambient loops; `set_motion()` is wired from `settings["motion_effects"]` at startup and from a new **Settings → Theme → "Motion effects"** switch. Periodic effects (shake_bell, carousel) and one-shot/hover effects always run.
-- The 2.1.0-2 epoch/`bump_anim_epoch` loop-retirement fix is preserved and now also cheaper.
-
-**Build-environment warning:** a local `flet build windows` on this machine failed at the CMake INSTALL step — `file INSTALL cannot find C:/WINDOWS/System32/vcruntime140_1.dll`. The DLL exists in `System32` but is **missing from `SysWOW64`**, so the (32-bit) VS CMake can't resolve it via WOW64 redirection. Repair/reinstall the **Microsoft VC++ 2015–2022 x64 Redistributable** before building here, or build from an environment that has it.
+**Build-environment note (important for future Windows builds on this machine):** the VS BuildTools CMake is 32-bit, so CMake's `InstallRequiredSystemLibraries` resolves `C:/WINDOWS/System32/vcruntime140_1.dll` through WOW64 redirection to `C:\WINDOWS\SysWOW64\`, which is MISSING that DLL — `flet build windows` then fails at the CMake INSTALL step with `file INSTALL cannot find ...vcruntime140_1.dll`. Workaround used for the 2.1.0-3 build: temporarily copy the x64 `vcruntime140_1.dll` from `...\VC\Redist\MSVC\14.44.35112\x64\Microsoft.VC143.CRT\` into `C:\WINDOWS\SysWOW64\`, run the build, then delete it again (it did not exist there before, so removal restores the prior state). The permanent fix is to repair/reinstall the **Microsoft VC++ 2015-2022 x64 Redistributable** so SysWOW64 has the (x86) DLL.
 
 ## Release 2.1.0-2 — animation-loop lag fix
 

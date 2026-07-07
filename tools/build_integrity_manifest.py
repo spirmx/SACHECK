@@ -11,7 +11,7 @@ RAW_BASE_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main"
 SOURCE_ROOTS = ("config", "core", "stores", "ui")
 TOP_LEVEL_FILES = ("app.py", "flet_app.py")
 EXTERNAL_ASSETS = ("assets/app/app.ico", "assets/app/app_logo.png")
-RELEASE_VERSION = "2.1.0-2"
+RELEASE_VERSION = "2.1.0-3"
 RELEASE_DATE = "2026-07-06"
 RELEASE_REQUIRED = True
 
@@ -66,10 +66,10 @@ def main() -> None:
         "installer_size": installer.stat().st_size if installer_hash else 0,
         "repair_version": RELEASE_VERSION,
         "notes": [
-            "Smoothed the live Doing work island: removed the lag and the janky character-by-character scroll on the task name.",
-            "The header strip now rebuilds only when the open task changes and ticks the clock once per second instead of repainting every frame.",
-            "Keeps the 2.1 four-state sync indicator, sync hardening, and workflow animations intact.",
-            "This is a required update for installed versions older than 2.1.0-2.",
+            "Big idle-CPU cut: replaced the always-on glow/halo/ping animations with cheap low-frequency heartbeats that let the canvas rest.",
+            "Added a Settings > Theme toggle for motion effects (off by default) so live pulses run only when you want them.",
+            "Keeps the 2.1.0-2 animation-loop retirement fix plus the four-state sync indicator and sync hardening.",
+            "This is a required update for installed versions older than 2.1.0-3.",
             "Work folders, settings, cache, and user data remain preserved during updates.",
         ],
         "repair_files": [

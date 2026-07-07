@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0-2",
+  "version": "2.1.0-3",
   "algorithm": "sha256",
   "system_files": [
     {
@@ -59,7 +59,7 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "2f728ccd1bd730b3a07c172a690d90f3a94bab6632a0a3192ef40f90c8870c92",
+      "sha256": "a8c0c29136f567860802b8a8db20126bc28b5e1be3203b30c35d151b8eed2a09",
       "mode": "source"
     },
     {
@@ -99,7 +99,7 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "c1c6ecdbfd8d8ff8d9e70649484b039b6ee19d8b7714ee2b0b4cca6e639b49fc",
+      "sha256": "2756f35889a34591a8b25b4e308dacaab2d35c4fb535ea82ccf4b4251b3abb4f",
       "mode": "source"
     },
     {

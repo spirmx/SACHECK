@@ -96,16 +96,25 @@ def bundled_asset_path(*parts):
 
 
 APP_NAME = "SA CHECK"
-APP_VERSION = "2.1.0-2"
+APP_VERSION = "2.1.0-3"
 MANUAL_VERSION = "2026-06-18-user-guide"
 DEFAULT_UPDATE_CHANNEL_URL = "https://raw.githubusercontent.com/spirmx/SACHECK/main/sacheck_update.json"
 UPDATE_MANIFEST_FILE = "sacheck_update.json"
 DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES = 1
 VERSION_HISTORY = [
     {
-        "version": "2.1.0-2",
+        "version": "2.1.0-3",
         "date": "2026-07-06",
         "latest": True,
+        "items": [
+            "Cut idle CPU sharply by replacing the always-on glow/halo/ping animations with cheap, low-frequency heartbeats.",
+            "Added a Settings > Theme toggle for motion effects (off by default) so live pulses run only when you want them.",
+        ],
+    },
+    {
+        "version": "2.1.0-2",
+        "date": "2026-07-06",
+        "latest": False,
         "items": [
             "Removed the lingering animation pile-up that caused the UI to lag after repeated renders and navigation.",
             "The live strips now retire old animation loops on re-render so the dashboard stays responsive over long sessions.",
