@@ -24,6 +24,22 @@ def _with_alpha(color, alpha_hex):
 # and eventually saturate the async loop and freeze the app.
 _ANIM_EPOCH = 0
 
+# Switch for the always-on ambient loops (pulse_dot, breathing_badge, breathe_glow).
+# These repaint the Flutter canvas almost continuously and were the dominant CPU
+# cost, so they default OFF. Periodic/low-duty effects (shake_bell, alert_carousel,
+# marquee) and all one-shot entrance/count-up/hover effects stay on regardless.
+# Default OFF for lowest CPU; the Settings "motion effects" toggle turns it on.
+_MOTION = False
+
+
+def set_motion(enabled: bool):
+    global _MOTION
+    _MOTION = bool(enabled)
+
+
+def _should_animate(page):
+    return page is not None and _MOTION
+
 
 def bump_anim_epoch():
     """Invalidate all per-render animation loops created before now.
@@ -80,69 +96,48 @@ def hover_lift(container, scale=1.02, accent=None, base_border=None, shadow=True
 
 
 def pulse_dot(page, color, size=9):
-    """A status dot that breathes inside a glowing aura: a solid core plus a soft
-    halo ring that expand and fade together in a loop, reading as a "live" beacon.
-    The loop is driven by an async task and self-stops the moment the control
-    leaves the page (update() raises), so it is safe for dialogs.
+    """A small status dot with a cheap "heartbeat": a quick scale pop followed by a
+    long rest, so the Flutter canvas is idle most of the time (no glow/halo/blur,
+    single tiny control, one animated property). Static when motion is off.
     """
-    core = ft.Container(
+    dot = ft.Container(
         width=size,
         height=size,
         border_radius=999,
         bgcolor=color,
-        shadow=ft.BoxShadow(spread_radius=1, blur_radius=6, color=_with_alpha(color, "99")),
-        animate_scale=ft.Animation(760, ft.AnimationCurve.EASE_IN_OUT),
+        animate_scale=ft.Animation(420, ft.AnimationCurve.EASE_IN_OUT),
     )
-    halo = ft.Container(
-        width=size,
-        height=size,
-        border_radius=999,
-        bgcolor=_with_alpha(color, "55"),
-        scale=1.0,
-        opacity=0.5,
-        animate_scale=ft.Animation(760, ft.AnimationCurve.EASE_IN_OUT),
-        animate_opacity=ft.Animation(760, ft.AnimationCurve.EASE_IN_OUT),
-    )
-    box = int(size * 2.4)
-    stack = ft.Stack(
-        width=box,
-        height=box,
-        alignment=CENTER,
-        clip_behavior=ft.ClipBehavior.NONE,
-        controls=[
-            ft.Container(width=box, height=box, alignment=CENTER, content=halo),
-            ft.Container(width=box, height=box, alignment=CENTER, content=core),
-        ],
-    )
-    state = {"big": False}
 
-    async def _breathe():
+    async def _beat():
         epoch = _anim_epoch()
         await asyncio.sleep(0.4)  # let the control mount first
-        while _anim_epoch() == epoch:
-            state["big"] = not state["big"]
-            core.scale = 1.2 if state["big"] else 0.85
-            halo.scale = 2.0 if state["big"] else 1.0
-            halo.opacity = 0.06 if state["big"] else 0.5
+        while _MOTION and _anim_epoch() == epoch:
+            dot.scale = 1.4  # quick pop
             try:
-                halo.update()
-                core.update()
+                dot.update()
             except Exception:
-                break  # control detached (dialog closed) -> stop the loop
-            await asyncio.sleep(0.76)
+                break
+            await asyncio.sleep(0.5)
+            dot.scale = 1.0  # settle, then idle so Flutter stops repainting
+            try:
+                dot.update()
+            except Exception:
+                break
+            await asyncio.sleep(2.8)
 
     if page is not None:
         try:
-            page.run_task(_breathe)
+            page.run_task(_beat)
         except Exception:
             pass
-    return stack
+    return dot
 
 
 def breathing_badge(page, icon, icon_color, bg, *, size=38, radius=11, icon_size=19, ping=False):
-    """An icon badge whose glow gently breathes; when `ping` is set it also emits
-    an expanding ring, marking a "live"/active lane. Cheap enough for a handful of
-    instances (e.g. board column headers) — the async loop self-stops on detach.
+    """An icon badge with a cheap heartbeat: a quick scale pop, then a long rest.
+    No glow/blur breathing and no expanding ping ring (those repaint large areas
+    continuously), so the canvas stays idle between beats. `ping` just makes the
+    beat a touch stronger. Static when motion is off.
     """
     badge = ft.Container(
         width=size,
@@ -151,60 +146,34 @@ def breathing_badge(page, icon, icon_color, bg, *, size=38, radius=11, icon_size
         bgcolor=bg,
         alignment=CENTER,
         content=ft.Icon(icon, size=icon_size, color=icon_color),
-        animate=ft.Animation(800, ft.AnimationCurve.EASE_IN_OUT),
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=5, color=_with_alpha(icon_color, "22")),
+        animate_scale=ft.Animation(430, ft.AnimationCurve.EASE_IN_OUT),
     )
-    ring = None
-    if ping:
-        ring = ft.Container(
-            width=size,
-            height=size,
-            border_radius=radius,
-            border=border_all(2, icon_color),
-            scale=1.0,
-            opacity=0.55,
-            animate_scale=ft.Animation(1150, ft.AnimationCurve.EASE_OUT),
-            animate_opacity=ft.Animation(1150, ft.AnimationCurve.EASE_OUT),
-        )
+    peak = 1.13 if ping else 1.08
 
-    box = size + 12
-    layers = []
-    if ring is not None:
-        layers.append(ft.Container(width=box, height=box, alignment=CENTER, content=ring))
-    layers.append(ft.Container(width=box, height=box, alignment=CENTER, content=badge))
-    stack = ft.Stack(width=box, height=box, alignment=CENTER, clip_behavior=ft.ClipBehavior.NONE, controls=layers)
-
-    state = {"on": False}
-
-    async def _breathe():
+    async def _beat():
         epoch = _anim_epoch()
         await asyncio.sleep(0.35)
-        while _anim_epoch() == epoch:
-            state["on"] = not state["on"]
-            badge.shadow = ft.BoxShadow(
-                spread_radius=1 if state["on"] else 0,
-                blur_radius=17 if state["on"] else 5,
-                color=_with_alpha(icon_color, "66" if state["on"] else "22"),
-            )
+        while _MOTION and _anim_epoch() == epoch:
+            badge.scale = peak
             try:
                 badge.update()
             except Exception:
                 break
-            if ring is not None:
-                ring.scale = 1.8 if state["on"] else 1.0
-                ring.opacity = 0.0 if state["on"] else 0.55
-                try:
-                    ring.update()
-                except Exception:
-                    break
-            await asyncio.sleep(0.82)
+            await asyncio.sleep(0.5)
+            badge.scale = 1.0
+            try:
+                badge.update()
+            except Exception:
+                break
+            await asyncio.sleep(3.0)
 
     if page is not None:
         try:
-            page.run_task(_breathe)
+            page.run_task(_beat)
         except Exception:
             pass
-    return stack
+    return badge
 
 
 def marquee(page, build_chips, *, height=32, seconds=16, gap=10):
@@ -266,13 +235,13 @@ def marquee(page, build_chips, *, height=32, seconds=16, gap=10):
     return ft.Row(controls=[holder])
 
 
-def shake_bell(page, icon, *, period=2.8):
+def shake_bell(page, icon, *, period=6.0):
     """Make a bell icon periodically ring — a quick side-to-side rotation wiggle,
-    then a pause, on a loop. Self-stops when the icon detaches.
+    then a long pause, on a loop. Self-stops when the icon detaches.
     """
     icon.rotate = ft.Rotate(0)
-    icon.animate_rotation = ft.Animation(110, ft.AnimationCurve.EASE_IN_OUT)
-    swings = (0.38, -0.32, 0.26, -0.2, 0.12, 0.0)
+    icon.animate_rotation = ft.Animation(120, ft.AnimationCurve.EASE_IN_OUT)
+    swings = (0.34, -0.26, 0.16, 0.0)
 
     async def _ring():
         epoch = _anim_epoch()
@@ -360,7 +329,7 @@ def count_up(page, text_control, target, *, duration=0.85, suffix="", prefix="",
     return text_control
 
 
-def alert_carousel(page, items, build_card, *, interval=2.6, transition=None):
+def alert_carousel(page, items, build_card, *, interval=4.0, transition=None):
     """Cycle through `items` one card at a time with an animated swap — a compact,
     reliable "running alerts" ticker. `build_card(item, index)` must return a
     freshly-keyed control so the switcher detects the change and animates it.
@@ -429,7 +398,7 @@ def fade_in_up(page, control, *, delay=0.0, dy=0.18, dur=340):
     return control
 
 
-def breathe_glow(page, control, color, *, base_blur=10, peak_blur=26, base_alpha="14", peak_alpha="55", period=1.0):
+def breathe_glow(page, control, color, *, base_blur=10, peak_blur=26, base_alpha="14", peak_alpha="55", period=2.0):
     """Make any Container softly pulse its coloured shadow — a calm "you are here"
     beacon (e.g. today's calendar cell). Self-stops when the control detaches.
     """
@@ -440,7 +409,7 @@ def breathe_glow(page, control, color, *, base_blur=10, peak_blur=26, base_alpha
     async def _loop():
         epoch = _anim_epoch()
         await asyncio.sleep(0.4)
-        while _anim_epoch() == epoch:
+        while _MOTION and _anim_epoch() == epoch:
             state["on"] = not state["on"]
             control.shadow = ft.BoxShadow(
                 spread_radius=0,

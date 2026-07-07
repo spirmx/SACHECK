@@ -13,7 +13,7 @@ from core.flet_data import (
     create_custom_file_type, save_settings
 )
 from ui.dialogs import show_message
-from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, type_style, app_logo_control, profile_media_control, app_theme_preview, app_theme_mockup, color_swatch, nav_button
+from ui.flet_widgets import CENTER, border_all, dropdown, pad_only, pad_sym, type_style, app_logo_control, profile_media_control, app_theme_preview, app_theme_mockup, color_swatch, nav_button, set_motion
 from ui.shared import DashboardContext
 
 def render_settings(ctx: DashboardContext) -> None:
@@ -53,6 +53,7 @@ def render_settings(ctx: DashboardContext) -> None:
     template_rank_switch = ft.Switch(value=ctx.settings.get("template_ranking_enabled", True), label="Smart templates (rank by usage & recency)")
     update_checks_switch = ft.Switch(value=ctx.settings.get("update_checks_enabled", True), label="Check for app updates on startup")
     offline_mode_switch = ft.Switch(value=ctx.settings.get("offline_mode", False), label="Offline Mode (disables update checks and telemetry, hides Online status)")
+    motion_switch = ft.Switch(value=ctx.settings.get("motion_effects", False), label="Motion effects (live pulsing dots & badges — uses more CPU)")
     interval_select = dropdown(100, str(ctx.settings.get("sync_interval_seconds", 5)), ["1", "3", "5", "10", "30", "60"])
     snapshot_select = dropdown(100, str(ctx.settings.get("snapshot_retention", 25)), ["5", "10", "25", "50", "100"])
     update_interval_select = dropdown(100, str(ctx.settings.get("update_check_interval_minutes", DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)), ["15", "30", "60", "120", "240", "1440"])
@@ -192,6 +193,8 @@ def render_settings(ctx: DashboardContext) -> None:
         ctx.settings["template_ranking_enabled"] = bool(template_rank_switch.value)
         ctx.settings["update_checks_enabled"] = bool(update_checks_switch.value)
         ctx.settings["offline_mode"] = bool(offline_mode_switch.value)
+        ctx.settings["motion_effects"] = bool(motion_switch.value)
+        set_motion(bool(motion_switch.value))
         ctx.settings["update_check_interval_minutes"] = int(update_interval_select.value or DEFAULT_UPDATE_CHECK_INTERVAL_MINUTES)
         ctx.settings["sync_interval_seconds"] = int(interval_select.value or 5)
         ctx.settings["snapshot_retention"] = int(snapshot_select.value or 25)
@@ -827,6 +830,7 @@ def render_settings(ctx: DashboardContext) -> None:
                 s_row(ft.Icons.DARK_MODE_OUTLINED, "Dark theme", "Use the dark colour scheme across the app", theme_switch),
                 s_row(ft.Icons.BRUSH_OUTLINED, "App theme", "Accent palette for the whole workspace", ft.Row(spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[app_theme_preview(), app_theme_select])),
                 s_row(ft.Icons.FLAG_OUTLINED, "Status theme", "Colours for Waiting / Doing / Success", status_theme_select),
+                s_row(ft.Icons.AUTO_AWESOME_OUTLINED, "Motion effects", "Live pulsing dots & badges (off = lowest CPU)", motion_switch),
             ], blocks=[apply_theme_block]),
         ]
 

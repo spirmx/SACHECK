@@ -1131,6 +1131,7 @@ from ui.flet_widgets import (  # noqa: E402
     breathing_badge,
     bump_anim_epoch,
     dropdown,
+    set_motion,
     nav_button,
     pad_only,
     pad_sym,
@@ -1380,6 +1381,7 @@ def dashboard_main(page: ft.Page, startup_result=None):
     install_pointer_feedback()
     all_tasks = load_tasks()
     settings = load_settings()
+    set_motion(bool(settings.get("motion_effects", False)))
     restore_active_work_session(all_tasks)
     UI_LANGUAGE = str(settings.get("language") or "en").lower()
     apply_app_theme(settings)

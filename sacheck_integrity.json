@@ -59,7 +59,7 @@
     },
     {
       "path": "core/flet_constants.py",
-      "sha256": "da5a1e02702d35eb03c6b18b7222465f669fd493d29da1175cb54ee4ef6627c8",
+      "sha256": "2f728ccd1bd730b3a07c172a690d90f3a94bab6632a0a3192ef40f90c8870c92",
       "mode": "source"
     },
     {
@@ -99,12 +99,12 @@
     },
     {
       "path": "ui/flet_dashboard.py",
-      "sha256": "791b21e90ed260c61accd10a43197879f40843bb0ff0fa556171675b9f2077df",
+      "sha256": "c1c6ecdbfd8d8ff8d9e70649484b039b6ee19d8b7714ee2b0b4cca6e639b49fc",
       "mode": "source"
     },
     {
       "path": "ui/flet_widgets.py",
-      "sha256": "b0d6828bfd7e0197713a7573ee1ea4e13b84dc8aa52eb0e727e5d8ac32e75edb",
+      "sha256": "5d7685c2ee4b11b25f71bd54e7fae17f4cc03467d6a7f3d3353480ae35d5adf2",
       "mode": "source"
     },
     {
@@ -139,7 +139,7 @@
     },
     {
       "path": "ui/screens/settings_screen.py",
-      "sha256": "ec7bd0f3d59529f740d52eb61ef7baf47c52ae87d3fb96fe08895b7f1e6afe3d",
+      "sha256": "c0e83771397d6f24b1468ea70277e52c8f4357eba0f2cb6398a418424ea5d6b6",
       "mode": "source"
     },
     {

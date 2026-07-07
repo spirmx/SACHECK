@@ -4,6 +4,17 @@ Current release target: `2.1.0-2`. Before continuing, verify `git status`, all l
 
 This file is the continuation contract for any agent editing this repository. Inspect the live tree; do not assume the last release describes current work.
 
+## PENDING — unreleased source on main, needs a build (note for CodeX)
+
+`main` now carries a **source-only** improvement on top of 2.1.0-2 that is **not yet built or shipped**. Version, installer, and manifests were intentionally left at 2.1.0-2 so the update channel stays valid (installed 2.1.0-2 clients see no forced re-download). Please fold this into your next versioned release (suggested `2.1.0-3`): bump the version everywhere, `flet build windows -o build/windows_<ver>`, compile a new `installer/SACHECK_<ver>.iss`, run `tools/build_integrity_manifest.py`, then commit + push atomically.
+
+What changed (files: `ui/flet_widgets.py`, `ui/flet_dashboard.py`, `ui/screens/settings_screen.py`):
+- **Idle-CPU cut.** The always-on ambient animations were the dominant Flutter-repaint cost. `pulse_dot` and `breathing_badge` were rewritten as cheap scale "heartbeats" (short pop, long rest, no glow/halo/blur/ping). Measured dev idle CPU: ~78% → **9%** of one core (motion off), ~40% (motion on).
+- **Motion toggle.** `flet_widgets._MOTION` (default OFF) gates the ambient loops; `set_motion()` is wired from `settings["motion_effects"]` at startup and from a new **Settings → Theme → "Motion effects"** switch. Periodic effects (shake_bell, carousel) and one-shot/hover effects always run.
+- The 2.1.0-2 epoch/`bump_anim_epoch` loop-retirement fix is preserved and now also cheaper.
+
+**Build-environment warning:** a local `flet build windows` on this machine failed at the CMake INSTALL step — `file INSTALL cannot find C:/WINDOWS/System32/vcruntime140_1.dll`. The DLL exists in `System32` but is **missing from `SysWOW64`**, so the (32-bit) VS CMake can't resolve it via WOW64 redirection. Repair/reinstall the **Microsoft VC++ 2015–2022 x64 Redistributable** before building here, or build from an environment that has it.
+
 ## Release 2.1.0-2 — animation-loop lag fix
 
 - Stopped old per-render animation loops from surviving navigation. The live strips, badges, marquis, glow, and carousel helpers now retire when the dashboard re-renders, which removes the lag buildup that was freezing long sessions.
